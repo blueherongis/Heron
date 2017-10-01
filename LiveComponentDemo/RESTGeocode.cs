@@ -1,0 +1,130 @@
+﻿using System;
+using System.IO;
+using System.Xml;
+using System.Xml.Linq;
+using System.Linq;
+using System.Data;
+using System.Drawing;
+using System.Reflection;
+using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+using Grasshopper;
+using Grasshopper.Kernel;
+using Grasshopper.Kernel.Data;
+using Grasshopper.Kernel.Types;
+using Rhino.Geometry;
+using GH_IO;
+using GH_IO.Serialization;
+
+using Newtonsoft.Json.Bson;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Schema;
+using Newtonsoft.Json.Serialization;
+
+namespace Heron
+{
+    public class RESTGeocode : GH_Component
+    {
+        //Class Constructor
+        public RESTGeocode() : base("ESRI REST Service Geocode","RESTGeocode","Get coordinates based on a Point-of-Interest or Address","Heron","GIS REST")
+        { 
+        
+        }
+
+
+        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        {
+            pManager.AddTextParameter("Point-of-Interest or Address", "address", "POI or Address string to geocode", GH_ParamAccess.item);
+            
+        }
+
+        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        {
+            pManager.AddTextParameter("Candidates", "Candidates", "List of Candidate locations", GH_ParamAccess.tree);
+            pManager.AddTextParameter("Latitude", "LAT", "Latitude of Candidate location", GH_ParamAccess.tree);
+            pManager.AddTextParameter("Longitude", "LON", "Longitude of Candidate location", GH_ParamAccess.tree);
+            
+        }
+
+        protected override void SolveInstance(IGH_DataAccess DA)
+        {
+            string Address = "";
+
+            DA.GetData<string>("Point-of-Interest or Address", ref Address);
+
+            string address = System.Net.WebUtility.UrlEncode(Address);
+            string output = GetData("http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?Address=" + address + "&f=pjson");
+            JObject ja = JObject.Parse(output);
+
+            GH_Structure<GH_String> addr = new GH_Structure<GH_String>();
+            GH_Structure<GH_String> latx = new GH_Structure<GH_String>();
+            GH_Structure<GH_String> lony = new GH_Structure<GH_String>();
+
+            for (int i = 0; i < ja["candidates"].Count(); i++)
+            {
+                GH_Path path = new GH_Path(i);
+                if (ja["candidates"][i]["score"].Value<int>() > 99)
+                {
+                    addr.Append(new GH_String(ja["candidates"][i]["address"].ToString()), path);
+                    addr.Append(new GH_String("LON: " + ja["candidates"][i]["location"]["x"].ToString()), path);
+                    addr.Append(new GH_String("LAT: " + ja["candidates"][i]["location"]["y"].ToString()), path);
+                    lony.Append(new GH_String(ja["candidates"][i]["location"]["y"].ToString()), path);
+                    latx.Append(new GH_String(ja["candidates"][i]["location"]["x"].ToString()), path);
+                }
+            }
+
+            if (addr == null)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "No Candidate locations found");
+                return;
+            }
+            else
+            {
+                DA.SetDataTree(0, addr);
+                DA.SetDataTree(1, lony);
+                DA.SetDataTree(2, latx);
+            }
+
+
+        }
+
+        public static string GetData(string qst)
+        {
+            System.Net.HttpWebRequest req = System.Net.WebRequest.Create(qst) as System.Net.HttpWebRequest;
+            string result = null;
+            try
+            {
+                using (System.Net.HttpWebResponse resp = req.GetResponse() as System.Net.HttpWebResponse)
+                {
+                    System.IO.StreamReader reader = new System.IO.StreamReader(resp.GetResponseStream());
+                    result = reader.ReadToEnd();
+                    reader.Close();
+                }
+            }
+            catch
+            {
+                return "Something went wrong getting data from the Service";
+            }
+            return result;
+        }
+
+
+        protected override System.Drawing.Bitmap Icon
+        {
+            get
+            {
+                return Properties.Resources.geocode;
+            }
+        }
+
+        public override Guid ComponentGuid
+        {
+            get { return new Guid("{019FCF0D-08A1-4CB0-A0D7-EDD6F840378E}"); }
+        }
+    }
+}
