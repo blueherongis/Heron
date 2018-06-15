@@ -29,7 +29,7 @@ namespace Heron
         {
             get
             {
-                return "0.1.0.1";
+                return "0.1.0.0";
             }
         }
 
