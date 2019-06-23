@@ -31,62 +31,56 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class DDtoXY : GH_Component
+    public class XYtoDD : GH_Component
     {
         //Class Constructor
-        public DDtoXY() : base("Decimal Degrees to XY","DDtoXY","Convert Decimal Degrees Longitude/Latitude to X/Y","Heron","GIS Tools")
+        public XYtoDD() : base("XY to Decimal Degrees","XYtoDD","Convert X/Y to Decimal Degrees Longitude/Latitude","Heron","GIS Tools")
         { 
         
         }
 
-
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddNumberParameter("Latitude", "LAT", "Decimal Degree Latitude", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Longitude", "LON", "Decimal Degree Longitude", GH_ParamAccess.item);
+            pManager.AddPointParameter("xyPoint", "xyPoint", "Point to translate to Longitude/Latitude", GH_ParamAccess.item);
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddPointParameter("xyPoint", "xyPoint", "Longitude/Latitude translated to X/Y", GH_ParamAccess.item);
-            
+            pManager.AddNumberParameter("Latitude", "LAT", "Decimal Degree Latitude", GH_ParamAccess.item);
+            pManager.AddNumberParameter("Longitude", "LON", "Decimal Degree Longitude", GH_ParamAccess.item);           
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            double lat = -1;
-            double lon = -1;
-            DA.GetData<double>("Latitude", ref lat);
-            DA.GetData<double>("Longitude", ref lon);
+            Point3d xyPt = new Point3d();
+            DA.GetData<Point3d>("xyPoint", ref xyPt);
+            DA.SetData("Latitude", ConvertToWSG(xyPt).Y);
+            DA.SetData("Longitude", ConvertToWSG(xyPt).X);
+        }
 
-
+        public static Point3d ConvertToWSG(Point3d xyz)
+        {
             EarthAnchorPoint eap = new EarthAnchorPoint();
             eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
             Rhino.UnitSystem us = new Rhino.UnitSystem();
             Transform xf = eap.GetModelToEarthTransform(us);
-
-            //http://www.grasshopper3d.com/forum/topics/matrix-datatype-in-rhinocommon
-            //Thanks Andrew
-
-            Transform Inversexf = new Transform();
-            xf.TryGetInverse(out Inversexf);
-            Point3d ptMod = new Point3d(lon, lat, 0);
-            ptMod = Inversexf * ptMod / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-
-            DA.SetData("xyPoint", ptMod);
+            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
+            Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
+            ptON = xf * ptON;
+            return ptON;
         }
 
         protected override System.Drawing.Bitmap Icon
         {
             get
             {
-                return Properties.Resources.ddtoxy;
+                return Properties.Resources.xytodd;
             }
         }
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{78543216-14B5-422C-85F8-BB575FBED3D2}"); }
+            get { return new Guid("{0B461B47-632B-4145-AA06-157AAFAC1DDA}"); }
         }
     }
 }

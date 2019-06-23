@@ -42,7 +42,7 @@ namespace Heron
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
             pManager.AddTextParameter("IMG Location", "imgLocation", "Filepath for the *.img or *.hgt input", GH_ParamAccess.item);
-            
+            pManager[0].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -130,6 +130,7 @@ namespace Heron
                     cCount.Append(new GH_Integer(Lcol - Ucol), path);
                     Mesh mesh = new Mesh();
                     List<Point3d> verts = new List<Point3d>();
+                    //var vertsParallel = new System.Collections.Concurrent.ConcurrentDictionary<double[][], Point3d>(Environment.ProcessorCount, ((Urow - 1) * (Lrow - 1)));
 
                     double[] bits = new double[width * height];
                     band.ReadRaster(0, 0, width, height, bits, width, height, 0, 0);
@@ -140,7 +141,7 @@ namespace Heron
                         {
                             // equivalent to bits[col][row] if bits is 2-dimension array
                             double pixel = bits[col + row * width];
-                            if (pixel < 0)
+                            if (pixel < -10000)
                             {
                                 pixel = 0;
                             }
@@ -151,10 +152,31 @@ namespace Heron
                             Point3d pt = new Point3d(gcol, grow, pixel);
                             verts.Add(ConvertToXYZ(pt));
                         }
+
+                        /*Parallel.For(Urow, Lrow - 1, rowP =>
+                            {
+                                // equivalent to bits[col][row] if bits is 2-dimension array
+                                double pixel = bits[col + rowP * width];
+                                if (pixel < -10000)
+                                {
+                                    pixel = 0;
+                                }
+
+                                double gcol = adfGeoTransform[0] + adfGeoTransform[1] * col + adfGeoTransform[2] * rowP;
+                                double grow = adfGeoTransform[3] + adfGeoTransform[4] * col + adfGeoTransform[5] * rowP;
+
+                                Point3d pt = new Point3d(gcol, grow, pixel);
+                                vertsParallel[] = ConvertToXYZ(pt);
+                            });
+                         * */
+                         
                     }
 
                     //Create meshes
+                    //non Parallel
                     mesh.Vertices.AddVertices(verts);
+                    //Parallel
+                    //mesh.Vertices.AddVertices(vertsParallel.Values);
 
                     for (int u = 1; u < cCount[path][0].Value; u++)
                     {
@@ -215,6 +237,7 @@ namespace Heron
             eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
             Rhino.UnitSystem us = new Rhino.UnitSystem();
             Transform xf = eap.GetModelToEarthTransform(us);
+            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
             Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
             ptON = xf * ptON;
             return ptON;
@@ -232,7 +255,7 @@ namespace Heron
             Transform Inversexf = new Transform();
             xf.TryGetInverse(out Inversexf);
             Point3d ptMod = new Point3d(wsg.X, wsg.Y, wsg.Z);
-            ptMod = Inversexf * ptMod;
+            ptMod = Inversexf * ptMod / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
             return ptMod;
         }
 

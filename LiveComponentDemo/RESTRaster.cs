@@ -86,6 +86,9 @@ namespace Heron
             GH_Structure<GH_String> mapquery = new GH_Structure<GH_String>();
             GH_Structure<GH_ObjectWrapper> imgFrame = new GH_Structure<GH_ObjectWrapper>();
 
+            FileInfo file = new FileInfo(fileloc);
+            file.Directory.Create();
+
             string size = "";
             if (Res != 0)
             {
@@ -171,6 +174,7 @@ namespace Heron
             eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
             Rhino.UnitSystem us = new Rhino.UnitSystem();
             Transform xf = eap.GetModelToEarthTransform(us);
+            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
             Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
             ptON = xf * ptON;
             return ptON;

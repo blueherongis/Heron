@@ -39,7 +39,7 @@ namespace Heron
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("Point-of-Interest or Address", "address", "POI or Address string to geocode", GH_ParamAccess.item);
+            pManager.AddTextParameter("Addresses", "addresses", "POI or Address string(s) to geocode", GH_ParamAccess.tree);
             
         }
 
@@ -53,28 +53,45 @@ namespace Heron
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string Address = "";
+            GH_Structure<GH_String> Addresses = new GH_Structure<GH_String>();
 
-            DA.GetData<string>("Point-of-Interest or Address", ref Address);
-
-            string address = System.Net.WebUtility.UrlEncode(Address);
-            string output = GetData("http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?Address=" + address + "&f=pjson");
-            JObject ja = JObject.Parse(output);
+            DA.GetDataTree<GH_String>("Addresses", out Addresses);
 
             GH_Structure<GH_String> addr = new GH_Structure<GH_String>();
             GH_Structure<GH_String> latx = new GH_Structure<GH_String>();
             GH_Structure<GH_String> lony = new GH_Structure<GH_String>();
 
-            for (int i = 0; i < ja["candidates"].Count(); i++)
+            for (int a = 0; a < Addresses.Branches.Count; a++)
             {
-                GH_Path path = new GH_Path(i);
-                if (ja["candidates"][i]["score"].Value<int>() > 99)
+                IList branch = Addresses.Branches[a];
+                GH_Path path = Addresses.Paths[a];
+                int count = 0;
+                foreach (GH_String addressString in branch)
                 {
-                    addr.Append(new GH_String(ja["candidates"][i]["address"].ToString()), path);
-                    addr.Append(new GH_String("LON: " + ja["candidates"][i]["location"]["x"].ToString()), path);
-                    addr.Append(new GH_String("LAT: " + ja["candidates"][i]["location"]["y"].ToString()), path);
-                    lony.Append(new GH_String(ja["candidates"][i]["location"]["y"].ToString()), path);
-                    latx.Append(new GH_String(ja["candidates"][i]["location"]["x"].ToString()), path);
+                    string address = System.Net.WebUtility.UrlEncode(addressString.Value);
+                    string output = GetData("http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?Address=" + address + "&f=pjson");
+                    JObject ja = JObject.Parse(output);
+
+                    if (ja["candidates"].Count() < 1)
+                    {
+                        addr.Append(new GH_String("No Cadidate location found for this address"), path);
+                        lony.Append(new GH_String(""), path);
+                        latx.Append(new GH_String(""), path);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < ja["candidates"].Count(); i++)
+                        {
+                            if (ja["candidates"][i]["score"].Value<int>() > 99)
+                            {
+                                addr.Append(new GH_String(ja["candidates"][i]["address"].ToString()), new GH_Path(path[count],i));
+                                addr.Append(new GH_String("LON: " + ja["candidates"][i]["location"]["x"].ToString()), new GH_Path(path[count], i));
+                                addr.Append(new GH_String("LAT: " + ja["candidates"][i]["location"]["y"].ToString()), new GH_Path(path[count], i));
+                                lony.Append(new GH_String(ja["candidates"][i]["location"]["y"].ToString()), new GH_Path(path[count], i));
+                                latx.Append(new GH_String(ja["candidates"][i]["location"]["x"].ToString()), new GH_Path(path[count], i));
+                            }
+                        }
+                    }
                 }
             }
 

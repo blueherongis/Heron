@@ -95,18 +95,8 @@ namespace Heron
 
                 mapquery.Append(new GH_String(restquery), cpath);
 
-                System.Net.HttpWebRequest req = System.Net.WebRequest.Create(restquery) as System.Net.HttpWebRequest;
-                string result = null;
+                string result = GetData(restquery);
 
-                if (run == true)
-                {
-                    using (System.Net.HttpWebResponse resp = req.GetResponse() as System.Net.HttpWebResponse)
-                    {
-                        System.IO.StreamReader reader = new System.IO.StreamReader(resp.GetResponseStream());
-                        result = reader.ReadToEnd();
-                        reader.Close();
-                    }
-                }
 
                 jT.Append(new GH_ObjectWrapper(JsonConvert.DeserializeObject<JObject>(result)), cpath);
                 j.Add(JsonConvert.DeserializeObject<JObject>(result));
@@ -118,27 +108,32 @@ namespace Heron
                     JObject aa = (JObject)j[i]["features"][m]["attributes"];
                     GH_Path path = new GH_Path(i, m);
 
-                    //choose type of geometry to read
-                    JsonReader jreader = j[i]["features"][m]["geometry"].CreateReader();
-                    int jrc = 0;
-                    string gt = null;
-                    while ((jreader.Read()) && (jrc < 1))
+                    //need to be able to escape this if no "geometry" property
+                    if (j[i].Property("features.["+m+"].geometry") != null)
                     {
-                        if (jreader.Value != null)
+                        //choose type of geometry to read
+                        JsonReader jreader = j[i]["features"][m]["geometry"].CreateReader();
+                        int jrc = 0;
+                        string gt = null;
+                        while ((jreader.Read()) && (jrc < 1))
                         {
-                            //gtype.Add(jreader.Value, path);
-                            gt = jreader.Value.ToString();
-                            jrc++;
+                            if (jreader.Value != null)
+                            {
+                                //gtype.Add(jreader.Value, path);
+                                gt = jreader.Value.ToString();
+                                jrc++;
+                            }
+                        }
+
+                        JArray c = (JArray)j[i]["features"][m]["geometry"][gt][0];
+                        for (int k = 0; k < c.Count; k++)
+                        {
+                            double xx = (double)j[i]["features"][m]["geometry"][gt][0][k][0];
+                            double yy = (double)j[i]["features"][m]["geometry"][gt][0][k][1];
+                            restpoints.Append(new GH_Point(ConvertXY(xx, yy, SRef)), path);
                         }
                     }
 
-                    JArray c = (JArray)j[i]["features"][m]["geometry"][gt][0];
-                    for (int k = 0; k < c.Count; k++)
-                    {
-                        double xx = (double)j[i]["features"][m]["geometry"][gt][0][k][0];
-                        double yy = (double)j[i]["features"][m]["geometry"][gt][0][k][1];
-                        restpoints.Append(new GH_Point(ConvertXY(xx, yy, SRef)), path);
-                    }
 
                     foreach (JProperty attribute in j[i]["features"][m]["attributes"])
                     {
@@ -158,6 +153,27 @@ namespace Heron
             DA.SetDataTree(2, restpoints);
             DA.SetDataTree(3, mapquery);
 
+        }
+        
+        //Return JSON from webquery
+        public static string GetData(string qst)
+        {
+            System.Net.HttpWebRequest req = System.Net.WebRequest.Create(qst) as System.Net.HttpWebRequest;
+            string result = null;
+            try
+            {
+                using (System.Net.HttpWebResponse resp = req.GetResponse() as System.Net.HttpWebResponse)
+                {
+                    System.IO.StreamReader reader = new System.IO.StreamReader(resp.GetResponseStream());
+                    result = reader.ReadToEnd();
+                    reader.Close();
+                }
+            }
+            catch
+            {
+                return "Something went wrong getting data from the Service";
+            }
+            return result;
         }
 
         //Conversion from WSG84 to Google/Bing from
@@ -197,6 +213,7 @@ namespace Heron
             eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
             Rhino.UnitSystem us = new Rhino.UnitSystem();
             Transform xf = eap.GetModelToEarthTransform(us);
+            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
             Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
             ptON = xf * ptON;
             return ptON;
@@ -214,7 +231,7 @@ namespace Heron
             Transform Inversexf = new Transform();
             xf.TryGetInverse(out Inversexf);
             Point3d ptMod = new Point3d(wsg.X, wsg.Y, wsg.Z);
-            ptMod = Inversexf * ptMod;
+            ptMod = Inversexf * ptMod / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
             return ptMod;
         }
 
