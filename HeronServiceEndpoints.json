@@ -1,0 +1,64 @@
+{
+	"Mapbox Maps":
+	[
+		{
+			"service" : "Mapbox Satellite",
+			"url" : "https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Satellite-Streets",
+			"url" : "https://api.mapbox.com/v4/mapbox.streets-satellite/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Streets",
+			"url" : "https://api.mapbox.com/v4/mapbox.streets/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Streets-Basic",
+			"url" : "https://api.mapbox.com/v4/mapbox.streets-basic/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Light",
+			"url" : "https://api.mapbox.com/v4/mapbox.light/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Dark",
+			"url" : "https://api.mapbox.com/v4/mapbox.dark/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Outdoors",
+			"url" : "https://api.mapbox.com/v4/mapbox.outdoors/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Run-Bike-Hike",
+			"url" : "https://api.mapbox.com/v4/mapbox.run-bike-hike/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Comic",
+			"url" : "https://api.mapbox.com/v4/mapbox.comic/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Pencil",
+			"url" : "https://api.mapbox.com/v4/mapbox.pencil/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Pirate",
+			"url" : "https://api.mapbox.com/v4/mapbox.pirates/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Emerald",
+			"url" : "https://api.mapbox.com/v4/mapbox.emerald/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox High-Contrast",
+			"url" : "https://api.mapbox.com/v4/mapbox.high-contrast/{z}/{x}/{y}@2x.jpg90?access_token="
+		}
+	],
+	"Mapbox Topo":
+	[
+		{
+			"service" : "Mapbox Topo",
+			"url" : "https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}@2x.pngraw?access_token="
+		}
+	]
+}
