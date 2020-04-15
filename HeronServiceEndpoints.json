@@ -52,6 +52,10 @@
 		{
 			"service" : "Mapbox High-Contrast",
 			"url" : "https://api.mapbox.com/v4/mapbox.high-contrast/{z}/{x}/{y}@2x.jpg90?access_token="
+		},
+		{
+			"service" : "Mapbox Landsat Live",
+			"url" : "https://api.mapbox.com/v4/mapbox.landsat-live/{z}/{x}/{y}@2x.jpg90?access_token="
 		}
 	],
 	"Mapbox Topo":
