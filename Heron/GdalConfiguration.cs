@@ -55,7 +55,7 @@ namespace RESTful
         static GdalConfiguration()
         {
             var ghLibDir = Grasshopper.Folders.DefaultAssemblyFolder;
-            var executingDirectory = Path.Combine(ghLibDir, "HeronTest");
+            var executingDirectory = Path.Combine(ghLibDir, "Heron");
 
             if (string.IsNullOrEmpty(executingDirectory))
                 throw new InvalidOperationException("cannot get executing directory");

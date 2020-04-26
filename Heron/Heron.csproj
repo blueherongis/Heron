@@ -156,7 +156,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>Move /Y "$(TargetPath)" "%25appdata%25\Grasshopper\Libraries\Heron\$(ProjectName).gha"</PostBuildEvent>
+    <PostBuildEvent>robocopy "$(ProjectDir)bin\$(ConfigurationName)" "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron" /E /xf *.pdb
+Move /Y "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron\$(ProjectName).dll" "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron\$(ProjectName).gha"</PostBuildEvent>
   </PropertyGroup>
   <Import Project="..\packages\RhinoCommon.6.24.20079.23341\build\net45\RhinoCommon.targets" Condition="Exists('..\packages\RhinoCommon.6.24.20079.23341\build\net45\RhinoCommon.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
