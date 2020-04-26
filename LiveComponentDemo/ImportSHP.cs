@@ -27,6 +27,7 @@ using OSGeo.OGR;
 
 
 
+
 namespace Heron
 {
     public class ImportSHP : GH_Component
@@ -60,7 +61,9 @@ namespace Heron
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            
+            ///string path = "C:\\Users\\kai\\Documents\\GitHub\\Heron\\packages\\GDAL.Native.2.4.4\\build";
+            string path = "C:\\Users\\kai\\AppData\\Roaming\\Grasshopper\\Libraries";
+            OSGeo.GDAL.Gdal.SetConfigOption("GDAL_DATA", path + @"\gdal\data");
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
 
@@ -72,7 +75,7 @@ namespace Heron
             OSGeo.OGR.Ogr.RegisterAll();
             OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("ESRI Shapefile");
             OSGeo.OGR.DataSource ds = OSGeo.OGR.Ogr.Open(shpFileLoc, 0);
-
+            
             List<OSGeo.OGR.Layer> layerset = new List<OSGeo.OGR.Layer>();
             List<int> fc = new List<int>();
 
@@ -85,9 +88,13 @@ namespace Heron
                     Console.WriteLine("FAILURE: Couldn't fetch advertised layer " + iLayer);
                     System.Environment.Exit(-1);
                 }
-                fc.Add(layer.GetFeatureCount(1));
+                long count = layer.GetFeatureCount(1);
+                int featureCount = Convert.ToInt32(count);
+                fc.Add(featureCount);
                 layerset.Add(layer);
             }
+
+            
 
             //Get OGR envelope of Shapefile
             OSGeo.OGR.Envelope ext = new OSGeo.OGR.Envelope();
@@ -119,13 +126,13 @@ namespace Heron
             Point3d extPTmin = new Point3d(extMinPT[0], extMinPT[1], extMinPT[2]);
             Point3d extPTmax = new Point3d(extMaxPT[0], extMaxPT[1], extMaxPT[2]);
             Rectangle3d rec = new Rectangle3d(Plane.WorldXY, ConvertToXYZ(extPTmin), ConvertToXYZ(extPTmax));
-
+ 
             //Declare trees
             GH_Structure<GH_String> fset = new GH_Structure<GH_String>();
             GH_Structure<GH_Point> gset = new GH_Structure<GH_Point>();
             GH_Structure<GH_String> layname = new GH_Structure<GH_String>();
             OSGeo.OGR.FeatureDefn def = layerset[0].GetLayerDefn();
-
+          
             //Loop through input boundaries
                 for (int i = 0; i < boundary.Count; i++)
                 {
