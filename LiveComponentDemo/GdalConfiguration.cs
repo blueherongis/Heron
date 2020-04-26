@@ -54,12 +54,11 @@ namespace RESTful
         /// </summary>
         static GdalConfiguration()
         {
-            var executingAssemblyFile = new Uri(Assembly.GetExecutingAssembly().GetName().CodeBase).LocalPath;
-            var executingDirectory = Path.GetDirectoryName(executingAssemblyFile);
+            var ghLibDir = Grasshopper.Folders.DefaultAssemblyFolder;
+            var executingDirectory = Path.Combine(ghLibDir, "HeronTest");
 
             if (string.IsNullOrEmpty(executingDirectory))
                 throw new InvalidOperationException("cannot get executing directory");
-
 
             var gdalPath = Path.Combine(executingDirectory, "gdal");
             var nativePath = Path.Combine(gdalPath, GetPlatform());

@@ -24,8 +24,7 @@ using GH_IO.Serialization;
 using OSGeo.GDAL;
 using OSGeo.OSR;
 using OSGeo.OGR;
-
-
+using RESTful;
 
 namespace Heron
 {
@@ -67,9 +66,10 @@ namespace Heron
             string shpFileLoc = "";
             DA.GetData<string>("Shapefile Location", ref shpFileLoc);
 
-            //int SRef = 3857;
-
-            OSGeo.OGR.Ogr.RegisterAll();
+            ////int SRef = 3857;
+            GdalConfiguration.ConfigureOgr();
+            GdalConfiguration.ConfigureGdal();
+            
             OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("ESRI Shapefile");
             OSGeo.OGR.DataSource ds = OSGeo.OGR.Ogr.Open(shpFileLoc, 0);
 
