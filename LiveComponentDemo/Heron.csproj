@@ -76,6 +76,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Convert.cs" />
     <Compile Include="HeronInfo.cs" />
     <Compile Include="ImportSHP.cs" />
     <Compile Include="ImportTopo.cs">

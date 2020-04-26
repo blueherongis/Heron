@@ -68,6 +68,8 @@ namespace Heron
             bool run = false;
             DA.GetData<bool>("run", ref run);
 
+            ///TODO: implement SetCRS here.
+            ///Option to set CRS here to user-defined.  Needs a SetCRS global variable.
             int SRef = 3857;
 
             GH_Structure<GH_String> mapquery = new GH_Structure<GH_String>();
@@ -83,11 +85,11 @@ namespace Heron
             {
 
                 GH_Path cpath = new GH_Path(i);
-                Point3d min = ConvertToWSG(boundary[i].GetBoundingBox(true).Min);
-                Point3d max = ConvertToWSG(boundary[i].GetBoundingBox(true).Max);
+                Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Min);
+                Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Max);
 
                 string restquery = URL +
-                  "query?where=&text=&objectIds=&time=&geometry=" + ConvertLat(min.X, SRef) + "%2C" + ConvertLon(min.Y, SRef) + "%2C" + ConvertLat(max.X, SRef) + "%2C" + ConvertLon(max.Y, SRef) +
+                  "query?where=&text=&objectIds=&time=&geometry=" + Heron.Convert.ConvertLat(min.X, SRef) + "%2C" + Heron.Convert.ConvertLon(min.Y, SRef) + "%2C" + Heron.Convert.ConvertLat(max.X, SRef) + "%2C" + Heron.Convert.ConvertLon(max.Y, SRef) +
                   "&geometryType=esriGeometryEnvelope&inSR=" + SRef +
                   "&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=*&returnGeometry=true&maxAllowableOffset=&geometryPrecision=" +
                   "&outSR=" + SRef +
@@ -130,7 +132,7 @@ namespace Heron
                         {
                             double xx = (double)j[i]["features"][m]["geometry"][gt][0][k][0];
                             double yy = (double)j[i]["features"][m]["geometry"][gt][0][k][1];
-                            restpoints.Append(new GH_Point(ConvertXY(xx, yy, SRef)), path);
+                            restpoints.Append(new GH_Point(Heron.Convert.ConvertXY(xx, yy, SRef)), path);
                         }
                     }
 
@@ -174,84 +176,6 @@ namespace Heron
                 return "Something went wrong getting data from the Service";
             }
             return result;
-        }
-
-        //Conversion from WSG84 to Google/Bing from
-        //http://alastaira.wordpress.com/2011/01/23/the-google-maps-bing-maps-spherical-mercator-projection/
-
-        public static double ConvertLon(double lon, int spatRef)
-        {
-            double clon = lon;
-            if (spatRef == 3857)
-            {
-                double y = Math.Log(Math.Tan((90 + lon) * Math.PI / 360)) / (Math.PI / 180);
-                y = y * 20037508.34 / 180;
-                clon = y;
-            }
-            return clon;
-        }
-
-        public static double ConvertLat(double lat, int spatRef)
-        {
-            double clat = lat;
-            if (spatRef == 3857)
-            {
-                double x = lat * 20037508.34 / 180;
-                clat = x;
-            }
-            return clat;
-        }
-
-
-        //Using Rhino's EarthAnchorPoint to Transform.  GetModelToEarthTransform() translates to WSG84.
-        //https://github.com/gHowl/gHowlComponents/blob/master/gHowl/gHowl/GEO/XYZtoGeoComponent.cs
-        //https://github.com/mcneel/rhinocommon/blob/master/dotnet/opennurbs/opennurbs_3dm_settings.cs  search for "model_to_earth"
-
-        public static Point3d ConvertToWSG(Point3d xyz)
-        {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-            Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
-            ptON = xf * ptON;
-            return ptON;
-        }
-
-        public static Point3d ConvertToXYZ(Point3d wsg)
-        {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-
-            //http://www.grasshopper3d.com/forum/topics/matrix-datatype-in-rhinocommon
-            //Thanks Andrew
-            Transform Inversexf = new Transform();
-            xf.TryGetInverse(out Inversexf);
-            Point3d ptMod = new Point3d(wsg.X, wsg.Y, wsg.Z);
-            ptMod = Inversexf * ptMod / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-            return ptMod;
-        }
-
-        public static Point3d ConvertXY(double x, double y, int spatRef)
-        {
-            double lon = x;
-            double lat = y;
-
-            if (spatRef == 3857)
-            {
-                lon = (x / 20037508.34) * 180;
-                lat = (y / 20037508.34) * 180;
-                lat = 180 / Math.PI * (2 * Math.Atan(Math.Exp(lat * Math.PI / 180)) - Math.PI / 2);
-            }
-
-            Point3d coord = new Point3d();
-            coord.X = lon;
-            coord.Y = lat;
-
-            return ConvertToXYZ(coord);
         }
 
 

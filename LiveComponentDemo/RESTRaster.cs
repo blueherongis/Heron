@@ -79,6 +79,8 @@ namespace Heron
             bool run = false;
             DA.GetData<bool>("run", ref run);
 
+            ///TODO: implement SetCRS here.
+            ///Option to set CRS here to user-defined.  Needs a SetCRS global variable.
             int SRef = 3857;
 
 
@@ -101,10 +103,10 @@ namespace Heron
                 GH_Path path = new GH_Path(i);
 
                 //Get image frame for given boundary
-                BoundingBox imageBox = bbox(boundary[i]);
+                BoundingBox imageBox = boundary[i].GetBoundingBox(false);
 
-                Point3d min = ConvertWSG(imageBox.Min);
-                Point3d max = ConvertWSG(imageBox.Max);
+                Point3d min = Heron.Convert.ToWGS(imageBox.Min);
+                Point3d max = Heron.Convert.ToWGS(imageBox.Max);
                 List<Point3d> imageCorners = imageBox.GetCorners().ToList();
                 imageCorners.Add(imageCorners[0]);
                 Polyline bpoly = new Polyline(imageCorners);
@@ -112,9 +114,8 @@ namespace Heron
                 imgFrame.Append(new GH_ObjectWrapper(bpoly), path);
 
                 //Query the REST service
-
                 string restquery = URL +
-                  "bbox=" + ConvertLat(min.X, SRef) + "%2C" + ConvertLon(min.Y, SRef) + "%2C" + ConvertLat(max.X, SRef) + "%2C" + ConvertLon(max.Y, SRef) +
+                  "bbox=" + Heron.Convert.ConvertLat(min.X, SRef) + "%2C" + Heron.Convert.ConvertLon(min.Y, SRef) + "%2C" + Heron.Convert.ConvertLat(max.X, SRef) + "%2C" + Heron.Convert.ConvertLon(max.Y, SRef) +
                   "&bboxSR=" + SRef +
                   size + //"&layers=&layerdefs=" +
                   "&imageSR=" + SRef + //"&transparent=false&dpi=&time=&layerTimeOptions=" +
@@ -134,69 +135,6 @@ namespace Heron
             DA.SetDataTree(2, mapquery);
 
 
-        }
-
-
-
-        //Conversion from WSG84 to Google/Bing from
-        //http://alastaira.wordpress.com/2011/01/23/the-google-maps-bing-maps-spherical-mercator-projection/
-
-        public static double ConvertLon(double lon, int spatRef)
-        {
-            double clon = lon;
-            if (spatRef == 3857)
-            {
-                double y = Math.Log(Math.Tan((90 + lon) * Math.PI / 360)) / (Math.PI / 180);
-                y = y * 20037508.34 / 180;
-                clon = y;
-            }
-            return clon;
-        }
-
-        public static double ConvertLat(double lat, int spatRef)
-        {
-            double clat = lat;
-            if (spatRef == 3857)
-            {
-                double x = lat * 20037508.34 / 180;
-                clat = x;
-            }
-            return clat;
-        }
-
-        //Using Rhino's EarthAnchorPoint to Transform.  GetModelToEarthTransform() translates to WSG84.
-        //https://github.com/gHowl/gHowlComponents/blob/master/gHowl/gHowl/GEO/XYZtoGeoComponent.cs
-        //https://github.com/mcneel/rhinocommon/blob/master/dotnet/opennurbs/opennurbs_3dm_settings.cs  search for "model_to_earth"
-
-        public static Point3d ConvertWSG(Point3d xyz)
-        {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-            Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
-            ptON = xf * ptON;
-            return ptON;
-        }
-
-        public static BoundingBox bbox(Curve crv)
-        {
-            double bWidth = crv.GetBoundingBox(true).GetEdges()[0].Length;
-            double bHeight = crv.GetBoundingBox(true).GetEdges()[1].Length;
-            double side;
-            if (bWidth > bHeight)
-            {
-                side = bWidth;
-            }
-            else
-            {
-                side = bHeight;
-            }
-
-            Vector3d mVec = new Vector3d(side, side, 0);
-
-            return new BoundingBox(crv.GetBoundingBox(true).Min, (crv.GetBoundingBox(true).Min + mVec));
         }
 
 

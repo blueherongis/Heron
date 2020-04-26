@@ -100,7 +100,7 @@ namespace Heron
                 GH_Path path = xyz.Paths[a];
                 foreach (GH_Point pt in branch)
                 {
-                    Point3d geopt = ConvertToWSG(pt.Value);
+                    Point3d geopt = Heron.Convert.ToWGS(pt.Value);
                     string webrequest = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson";
                     
                     //Synchronous method
@@ -147,18 +147,6 @@ namespace Heron
 
         }
 
-        public static Point3d ConvertToWSG(Point3d xyz)
-        {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-            Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
-            ptON = xf * ptON;
-            return ptON;
-            
-        }
 
         public static string GetData(string qst)
         {

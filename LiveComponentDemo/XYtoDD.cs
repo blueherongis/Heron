@@ -47,27 +47,25 @@ namespace Heron
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
             pManager.AddNumberParameter("Latitude", "LAT", "Decimal Degree Latitude", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Longitude", "LON", "Decimal Degree Longitude", GH_ParamAccess.item);           
+            pManager.AddNumberParameter("Longitude", "LON", "Decimal Degree Longitude", GH_ParamAccess.item);
+            pManager.AddTransformParameter("Transform", "xForm", "The transform from XYZ to WGS", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            Point3d xyPt = new Point3d();
-            DA.GetData<Point3d>("xyPoint", ref xyPt);
-            DA.SetData("Latitude", ConvertToWSG(xyPt).Y);
-            DA.SetData("Longitude", ConvertToWSG(xyPt).X);
-        }
+            ///Dump out the transform first
+            DA.SetData("Transform", Heron.Convert.ToWGSxf());
 
-        public static Point3d ConvertToWSG(Point3d xyz)
-        {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-            Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
-            ptON = xf * ptON;
-            return ptON;
+            /// First, we need to retrieve all data from the input parameters.
+            /// We'll start by declaring variables and assigning them starting values.
+            Point3d xyPt = new Point3d();
+
+            /// When data cannot be extracted from a parameter, we should abort this method.
+            if (!DA.GetData<Point3d>("xyPoint", ref xyPt)) return;
+
+            /// Finally assign the output parameters.
+            DA.SetData("Latitude", Heron.Convert.ToWGS(xyPt).Y);
+            DA.SetData("Longitude", Heron.Convert.ToWGS(xyPt).X);
         }
 
         protected override System.Drawing.Bitmap Icon

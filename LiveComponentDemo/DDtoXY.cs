@@ -44,36 +44,46 @@ namespace Heron
         {
             pManager.AddNumberParameter("Latitude", "LAT", "Decimal Degree Latitude", GH_ParamAccess.item);
             pManager.AddNumberParameter("Longitude", "LON", "Decimal Degree Longitude", GH_ParamAccess.item);
+            pManager[0].Optional = true;
+            pManager[1].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
             pManager.AddPointParameter("xyPoint", "xyPoint", "Longitude/Latitude translated to X/Y", GH_ParamAccess.item);
-            
+            pManager.AddTransformParameter("Transform", "xForm", "The transform from WGS to XYZ", GH_ParamAccess.item);
+
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
+            ///Dump out the transform first
+            DA.SetData("Transform", Heron.Convert.ToXYZxf());
+
+            /// Then, we need to retrieve all data from the input parameters.
+            /// We'll start by declaring variables and assigning them starting values.
             double lat = -1;
             double lon = -1;
-            DA.GetData<double>("Latitude", ref lat);
-            DA.GetData<double>("Longitude", ref lon);
+            
+            /// Then we need to access the input parameters individually. 
+            /// When data cannot be extracted from a parameter, we should abort this method.
+            if (!DA.GetData("Latitude", ref lat)) return;
+            if (!DA.GetData("Longitude", ref lon)) return;
 
-
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-
-            //http://www.grasshopper3d.com/forum/topics/matrix-datatype-in-rhinocommon
-            //Thanks Andrew
-
-            Transform Inversexf = new Transform();
-            xf.TryGetInverse(out Inversexf);
-            Point3d ptMod = new Point3d(lon, lat, 0);
-            ptMod = Inversexf * ptMod / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-
-            DA.SetData("xyPoint", ptMod);
+            /// We should now validate the data and warn the user if invalid data is supplied.
+            if (lat < -90.0 || lat > 90.0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Latitude should be between -90.0 deg and 90.0 deg");
+                return;
+            }
+            if (lon < -180.0 || lon > 180.0)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Longitude should be between -180.0 deg and 180.0 deg");
+                return;
+            }
+            
+            /// Finally assign the point to the output parameter.
+            DA.SetData("xyPoint", Heron.Convert.ToXYZ(new Point3d(lon, lat, 0)));
         }
 
         protected override System.Drawing.Bitmap Icon

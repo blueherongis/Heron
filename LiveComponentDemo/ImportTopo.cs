@@ -100,7 +100,7 @@ namespace Heron
             double eY = adfGeoTransform[3] + adfGeoTransform[4] * width + adfGeoTransform[5] * height;
             Point3d dsMin = new Point3d(oX, eY, 0);
             Point3d dsMax = new Point3d(eX, oY, 0);
-            Rectangle3d dsbox = new Rectangle3d(Plane.WorldXY, ConvertToXYZ(dsMin), ConvertToXYZ(dsMax));
+            Rectangle3d dsbox = new Rectangle3d(Plane.WorldXY, Heron.Convert.ToXYZ(dsMin), Heron.Convert.ToXYZ(dsMax));
 
             //Declare trees
             GH_Structure<GH_Point> pointcloud = new GH_Structure<GH_Point>();
@@ -113,8 +113,8 @@ namespace Heron
                 if (dsbox.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Min) && (dsbox.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Max)))
                 {
                     
-                    Point3d min = ConvertToWSG(boundary[i].GetBoundingBox(true).Corner(true, false, true));
-                    Point3d max = ConvertToWSG(boundary[i].GetBoundingBox(true).Corner(false, true, true));
+                    Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Corner(true, false, true));
+                    Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Corner(false, true, true));
                     GH_Path path = new GH_Path(i);
 
                     // http://gis.stackexchange.com/questions/46893/how-do-i-get-the-pixel-value-of-a-gdal-raster-under-an-ogr-point-without-numpy
@@ -122,10 +122,10 @@ namespace Heron
                     double ur, uc, lr, lc;
                     Gdal.ApplyGeoTransform(invTransform, min.X, min.Y, out uc, out ur);
                     Gdal.ApplyGeoTransform(invTransform, max.X, max.Y, out lc, out lr);
-                    int Urow = Convert.ToInt32(ur);
-                    int Ucol = Convert.ToInt32(uc);
-                    int Lrow = Convert.ToInt32(lr) + 1;
-                    int Lcol = Convert.ToInt32(lc) + 1;
+                    int Urow = System.Convert.ToInt32(ur);
+                    int Ucol = System.Convert.ToInt32(uc);
+                    int Lrow = System.Convert.ToInt32(lr) + 1;
+                    int Lcol = System.Convert.ToInt32(lc) + 1;
                     rCount.Append(new GH_Integer(Lrow - Urow), path);
                     cCount.Append(new GH_Integer(Lcol - Ucol), path);
                     Mesh mesh = new Mesh();
@@ -150,7 +150,7 @@ namespace Heron
                             double grow = adfGeoTransform[3] + adfGeoTransform[4] * col + adfGeoTransform[5] * row;
 
                             Point3d pt = new Point3d(gcol, grow, pixel);
-                            verts.Add(ConvertToXYZ(pt));
+                            verts.Add(Heron.Convert.ToXYZ(pt));
                         }
 
                         /*Parallel.For(Urow, Lrow - 1, rowP =>
@@ -166,7 +166,7 @@ namespace Heron
                                 double grow = adfGeoTransform[3] + adfGeoTransform[4] * col + adfGeoTransform[5] * rowP;
 
                                 Point3d pt = new Point3d(gcol, grow, pixel);
-                                vertsParallel[] = ConvertToXYZ(pt);
+                                vertsParallel[] = Heron.Convert.ToXYZ(pt);
                             });
                          * */
                          
@@ -198,84 +198,6 @@ namespace Heron
             }
             DA.SetDataTree(0, tMesh);
             DA.SetData(1, dsbox);
-        }
-
-        //Conversion from WSG84 to Google/Bing from
-        //http://alastaira.wordpress.com/2011/01/23/the-google-maps-bing-maps-spherical-mercator-projection/
-
-        public static double ConvertLon(double lon, int spatRef)
-        {
-            double clon = lon;
-            if (spatRef == 3857)
-            {
-                double y = Math.Log(Math.Tan((90 + lon) * Math.PI / 360)) / (Math.PI / 180);
-                y = y * 20037508.34 / 180;
-                clon = y;
-            }
-            return clon;
-        }
-
-        public static double ConvertLat(double lat, int spatRef)
-        {
-            double clat = lat;
-            if (spatRef == 3857)
-            {
-                double x = lat * 20037508.34 / 180;
-                clat = x;
-            }
-            return clat;
-        }
-
-
-        //Using Rhino's EarthAnchorPoint to Transform.  GetModelToEarthTransform() translates to WSG84.
-        //https://github.com/gHowl/gHowlComponents/blob/master/gHowl/gHowl/GEO/XYZtoGeoComponent.cs
-        //https://github.com/mcneel/rhinocommon/blob/master/dotnet/opennurbs/opennurbs_3dm_settings.cs  search for "model_to_earth"
-
-        public static Point3d ConvertToWSG(Point3d xyz)
-        {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-            Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
-            ptON = xf * ptON;
-            return ptON;
-        }
-
-        public static Point3d ConvertToXYZ(Point3d wsg)
-        {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-
-            //http://www.grasshopper3d.com/forum/topics/matrix-datatype-in-rhinocommon
-            //Thanks Andrew
-            Transform Inversexf = new Transform();
-            xf.TryGetInverse(out Inversexf);
-            Point3d ptMod = new Point3d(wsg.X, wsg.Y, wsg.Z);
-            ptMod = Inversexf * ptMod / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-            return ptMod;
-        }
-
-        public static Point3d ConvertXY(double x, double y, int spatRef)
-        {
-            double lon = x;
-            double lat = y;
-
-            if (spatRef == 3857)
-            {
-                lon = (x / 20037508.34) * 180;
-                lat = (y / 20037508.34) * 180;
-                lat = 180 / Math.PI * (2 * Math.Atan(Math.Exp(lat * Math.PI / 180)) - Math.PI / 2);
-            }
-
-            Point3d coord = new Point3d();
-            coord.X = lon;
-            coord.Y = lat;
-
-            return ConvertToXYZ(coord);
         }
 
 

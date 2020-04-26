@@ -86,7 +86,7 @@ namespace Heron
                     System.Environment.Exit(-1);
                 }
                 long count = layer.GetFeatureCount(1);
-                int featureCount = Convert.ToInt32(count);
+                int featureCount = System.Convert.ToInt32(count);
                 fc.Add(featureCount);
                 layerset.Add(layer);
             }
@@ -120,7 +120,7 @@ namespace Heron
             coordTransform.TransformPoint(extMaxPT);
             Point3d extPTmin = new Point3d(extMinPT[0], extMinPT[1], extMinPT[2]);
             Point3d extPTmax = new Point3d(extMaxPT[0], extMaxPT[1], extMaxPT[2]);
-            Rectangle3d rec = new Rectangle3d(Plane.WorldXY, ConvertToXYZ(extPTmin), ConvertToXYZ(extPTmax));
+            Rectangle3d rec = new Rectangle3d(Plane.WorldXY, Heron.Convert.ToXYZ(extPTmin), Heron.Convert.ToXYZ(extPTmax));
 
             //Declare trees
             GH_Structure<GH_String> fset = new GH_Structure<GH_String>();
@@ -135,8 +135,8 @@ namespace Heron
                     {
 
                         //Create bounding box for clipping geometry
-                        Point3d min = ConvertToWSG(boundary[i].GetBoundingBox(true).Min);
-                        Point3d max = ConvertToWSG(boundary[i].GetBoundingBox(true).Max);
+                        Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Min);
+                        Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Max);
                         double[] minpT = new double[3];
                         double[] maxpT = new double[3];
 
@@ -189,7 +189,7 @@ namespace Heron
                                     pt3D.Y = pT[1];
                                     pt3D.Z = pT[2];
 
-                                    gset.Append(new GH_Point(ConvertToXYZ(pt3D)), new GH_Path(i, m));
+                                    gset.Append(new GH_Point(Heron.Convert.ToXYZ(pt3D)), new GH_Path(i, m));
                                     //End loop through geometry points
 
                                     // Get Feature Values
@@ -233,7 +233,7 @@ namespace Heron
                                         pt3D.Y = pT[1];
                                         pt3D.Z = pT[2];
 
-                                        gset.Append(new GH_Point(ConvertToXYZ(pt3D)), new GH_Path(i, m, gi));
+                                        gset.Append(new GH_Point(Heron.Convert.ToXYZ(pt3D)), new GH_Path(i, m, gi));
                                         //End loop through geometry points
 
                                         // Get Feature Values
@@ -285,84 +285,6 @@ namespace Heron
             DA.SetDataTree(5, fset);
             DA.SetDataTree(6, gset);
 
-        }
-
-        //Conversion from WSG84 to Google/Bing from
-        //http://alastaira.wordpress.com/2011/01/23/the-google-maps-bing-maps-spherical-mercator-projection/
-
-        public static double ConvertLon(double lon, int spatRef)
-        {
-            double clon = lon;
-            if (spatRef == 3857)
-            {
-                double y = Math.Log(Math.Tan((90 + lon) * Math.PI / 360)) / (Math.PI / 180);
-                y = y * 20037508.34 / 180;
-                clon = y;
-            }
-            return clon;
-        }
-
-        public static double ConvertLat(double lat, int spatRef)
-        {
-            double clat = lat;
-            if (spatRef == 3857)
-            {
-                double x = lat * 20037508.34 / 180;
-                clat = x;
-            }
-            return clat;
-        }
-
-
-        //Using Rhino's EarthAnchorPoint to Transform.  GetModelToEarthTransform() translates to WSG84.
-        //https://github.com/gHowl/gHowlComponents/blob/master/gHowl/gHowl/GEO/XYZtoGeoComponent.cs
-        //https://github.com/mcneel/rhinocommon/blob/master/dotnet/opennurbs/opennurbs_3dm_settings.cs  search for "model_to_earth"
-
-        public static Point3d ConvertToWSG(Point3d xyz)
-        {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-            Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
-            ptON = xf * ptON;
-            return ptON;
-        }
-
-        public static Point3d ConvertToXYZ(Point3d wsg)
-        {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-
-            //http://www.grasshopper3d.com/forum/topics/matrix-datatype-in-rhinocommon
-            //Thanks Andrew
-            Transform Inversexf = new Transform();
-            xf.TryGetInverse(out Inversexf);
-            Point3d ptMod = new Point3d(wsg.X, wsg.Y, wsg.Z);
-            ptMod = Inversexf * ptMod / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, UnitSystem.Meters);
-            return ptMod;
-        }
-
-        public static Point3d ConvertXY(double x, double y, int spatRef)
-        {
-            double lon = x;
-            double lat = y;
-
-            if (spatRef == 3857)
-            {
-                lon = (x / 20037508.34) * 180;
-                lat = (y / 20037508.34) * 180;
-                lat = 180 / Math.PI * (2 * Math.Atan(Math.Exp(lat * Math.PI / 180)) - Math.PI / 2);
-            }
-
-            Point3d coord = new Point3d();
-            coord.X = lon;
-            coord.Y = lat;
-
-            return ConvertToXYZ(coord);
         }
 
 
