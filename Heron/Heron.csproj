@@ -77,6 +77,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Convert.cs" />
+    <Compile Include="GdalConfiguration.cs" />
     <Compile Include="HeronInfo.cs" />
     <Compile Include="ImportSHP.cs" />
     <Compile Include="ImportTopo.cs">
@@ -153,12 +154,10 @@
   <ItemGroup>
     <None Include="Resources\xytodd.bmp" />
   </ItemGroup>
-  <ItemGroup>
-    <Content Include="GdalConfiguration.vb" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>Move /Y "$(TargetPath)" "$(USERPROFILE)\AppData\Roaming\Grasshopper\Libraries\HeronTest\$(ProjectName).gha"</PostBuildEvent>
+    <PostBuildEvent>robocopy "$(ProjectDir)bin\$(ConfigurationName)" "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron" /E /xf *.pdb
+Move /Y "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron\$(ProjectName).dll" "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron\$(ProjectName).gha"</PostBuildEvent>
   </PropertyGroup>
   <Import Project="..\packages\RhinoCommon.6.24.20079.23341\build\net45\RhinoCommon.targets" Condition="Exists('..\packages\RhinoCommon.6.24.20079.23341\build\net45\RhinoCommon.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
