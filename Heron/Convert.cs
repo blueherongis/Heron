@@ -38,6 +38,9 @@ namespace Heron
             xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
             Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
             ptON = xf * ptON;
+
+            ///TODO: Make translation of ptON here using SetCRS global variable (WGS84 -> CRS)
+
             return ptON;
         }
 
@@ -48,7 +51,7 @@ namespace Heron
             Rhino.UnitSystem us = new Rhino.UnitSystem();
             Transform xf = eap.GetModelToEarthTransform(us);
 
-            //scale the transform to the model units
+            ///scale the transform to the model units
             Transform xfScaled = Transform.Multiply(xf, Transform.Scale(new Point3d(0.0, 0.0, 0.0), Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters)));
 
             return xfScaled;
@@ -56,6 +59,9 @@ namespace Heron
 
         public static Point3d ToXYZ(Point3d wgs)
         {
+
+            ///TODO: make translation of wgs here using SetCRS (CRS -> WGS84)
+
             EarthAnchorPoint eap = new EarthAnchorPoint();
             eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
             Rhino.UnitSystem us = new Rhino.UnitSystem();
@@ -65,6 +71,7 @@ namespace Heron
             //Thanks Andrew
             Transform Inversexf = new Transform();
             xf.TryGetInverse(out Inversexf);
+
             wgs = Inversexf * wgs / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
             return wgs;
         }
