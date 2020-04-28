@@ -80,6 +80,7 @@
     <Compile Include="GdalConfiguration.cs" />
     <Compile Include="HeronInfo.cs" />
     <Compile Include="ImportSHP.cs" />
+    <Compile Include="ImportVector.cs" />
     <Compile Include="ImportTopo.cs">
       <SubType>Code</SubType>
     </Compile>
