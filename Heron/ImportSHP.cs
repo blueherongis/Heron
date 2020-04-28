@@ -36,6 +36,11 @@ namespace Heron
         
         }
 
+        ///Retiring this component in favor of ImportVector
+        public override Grasshopper.Kernel.GH_Exposure Exposure
+        {
+            get { return GH_Exposure.hidden; }
+        }
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
