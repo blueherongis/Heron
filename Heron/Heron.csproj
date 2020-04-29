@@ -94,6 +94,7 @@
     </Compile>
     <Compile Include="RESTLayer.cs" />
     <Compile Include="RESTRevGeo.cs" />
+    <Compile Include="RESTTopo.cs" />
     <Compile Include="RESTVector.cs">
       <SubType>Code</SubType>
     </Compile>
