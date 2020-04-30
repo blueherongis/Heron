@@ -29,10 +29,10 @@ using OSGeo.OGR;
 
 namespace Heron
 {
-    public class ImportVector : GH_Component
+    public class ImportVector : HeronComponent
     {
         //Class Constructor
-        public ImportVector() : base("Import Vector", "ImportVector", "Import vector GIS data clipped to a boundary, including SHP, GeoJSON, OSM, KML, MVT and GDB folders.", "Heron", "GIS Tools")
+        public ImportVector() : base("Import Vector", "ImportVector", "Import vector GIS data clipped to a boundary, including SHP, GeoJSON, OSM, KML, MVT and GDB folders.", "GIS Tools")
         {
 
         }

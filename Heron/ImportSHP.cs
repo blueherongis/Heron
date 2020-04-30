@@ -28,12 +28,12 @@ using RESTful;
 
 namespace Heron
 {
-    public class ImportSHP : GH_Component
+    public class ImportSHP : HeronComponent
     {
         //Class Constructor
-        public ImportSHP() : base("Import SHP","ImportSHP","Import a Shapefile clipped to a boundary","Heron","GIS Tools")
-        { 
-        
+        public ImportSHP() : base("Import SHP", "ImportSHP", "Import a Shapefile clipped to a boundary", "GIS Tools")
+        {
+
         }
 
         ///Retiring this component in favor of ImportVector
@@ -46,8 +46,8 @@ namespace Heron
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
             pManager.AddTextParameter("Shapefile Location", "shpLocation", "Filepath for the *.shp input", GH_ParamAccess.item);
-            pManager[0].Optional=true;
-            
+            pManager[0].Optional = true;
+
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -59,12 +59,12 @@ namespace Heron
             pManager.AddTextParameter("Fields", "fields", "Fields of data associated with the Shapefile features", GH_ParamAccess.list);
             pManager.AddTextParameter("Values", "values", "Field values for each feature", GH_ParamAccess.tree);
             pManager.AddPointParameter("FeaturePoints", "featurePoints", "Point geometry describing each feature", GH_ParamAccess.tree);
-            
+
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            
+
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
 
@@ -74,7 +74,7 @@ namespace Heron
             ////int SRef = 3857;
             GdalConfiguration.ConfigureOgr();
             GdalConfiguration.ConfigureGdal();
-            
+
             OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("ESRI Shapefile");
             OSGeo.OGR.DataSource ds = OSGeo.OGR.Ogr.Open(shpFileLoc, 0);
 
@@ -134,59 +134,103 @@ namespace Heron
             OSGeo.OGR.FeatureDefn def = layerset[0].GetLayerDefn();
 
             //Loop through input boundaries
-                for (int i = 0; i < boundary.Count; i++)
+            for (int i = 0; i < boundary.Count; i++)
+            {
+                if (rec.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Min) && (rec.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Max)))
                 {
-                    if (rec.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Min) && (rec.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Max)))
+
+                    //Create bounding box for clipping geometry
+                    Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Min);
+                    Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Max);
+                    double[] minpT = new double[3];
+                    double[] maxpT = new double[3];
+
+                    minpT[0] = min.X;
+                    minpT[1] = min.Y;
+                    minpT[2] = min.Z;
+                    maxpT[0] = max.X;
+                    maxpT[1] = max.Y;
+                    maxpT[2] = max.Z;
+                    revTransform.TransformPoint(minpT);
+                    revTransform.TransformPoint(maxpT);
+
+                    OSGeo.OGR.Geometry bbox = OSGeo.OGR.Geometry.CreateFromWkt("POLYGON((" + min.X + " " + min.Y + ", " + min.X + " " + max.Y + ", " + max.X + " " + max.Y + ", " + max.X + " " + min.Y + ", " + min.X + " " + min.Y + "))");
+                    OSGeo.OGR.Geometry ebbox = OSGeo.OGR.Geometry.CreateFromWkt("POLYGON((" + minpT[0] + " " + minpT[1] + ", " + minpT[0] + " " + maxpT[1] + ", " + maxpT[0] + " " + maxpT[1] + ", " + maxpT[0] + " " + minpT[1] + ", " + minpT[0] + " " + minpT[1] + "))");
+
+                    //Clip Shapefile
+                    //http://pcjericks.github.io/py-gdalogr-cookbook/vector_layers.html
+                    OSGeo.OGR.Layer clipped_layer = layerset[0];
+                    clipped_layer.SetSpatialFilter(ebbox);
+
+                    //Loop through geometry
+                    OSGeo.OGR.Feature feat;
+                    def = clipped_layer.GetLayerDefn();
+
+                    int m = 0;
+                    while ((feat = layerset[0].GetNextFeature()) != null)
                     {
-
-                        //Create bounding box for clipping geometry
-                        Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Min);
-                        Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Max);
-                        double[] minpT = new double[3];
-                        double[] maxpT = new double[3];
-
-                        minpT[0] = min.X;
-                        minpT[1] = min.Y;
-                        minpT[2] = min.Z;
-                        maxpT[0] = max.X;
-                        maxpT[1] = max.Y;
-                        maxpT[2] = max.Z;
-                        revTransform.TransformPoint(minpT);
-                        revTransform.TransformPoint(maxpT);
-
-                        OSGeo.OGR.Geometry bbox = OSGeo.OGR.Geometry.CreateFromWkt("POLYGON((" + min.X + " " + min.Y + ", " + min.X + " " + max.Y + ", " + max.X + " " + max.Y + ", " + max.X + " " + min.Y + ", " + min.X + " " + min.Y + "))");
-                        OSGeo.OGR.Geometry ebbox = OSGeo.OGR.Geometry.CreateFromWkt("POLYGON((" + minpT[0] + " " + minpT[1] + ", " + minpT[0] + " " + maxpT[1] + ", " + maxpT[0] + " " + maxpT[1] + ", " + maxpT[0] + " " + minpT[1] + ", " + minpT[0] + " " + minpT[1] + "))");
-
-                        //Clip Shapefile
-                        //http://pcjericks.github.io/py-gdalogr-cookbook/vector_layers.html
-                        OSGeo.OGR.Layer clipped_layer = layerset[0];
-                        clipped_layer.SetSpatialFilter(ebbox);
-
-                        //Loop through geometry
-                        OSGeo.OGR.Feature feat;
-                        def = clipped_layer.GetLayerDefn();
-
-                        int m = 0;
-                        while ((feat = layerset[0].GetNextFeature()) != null)
+                        if (feat.GetGeometryRef() != null)
                         {
-                            if (feat.GetGeometryRef() != null)
-                            {
 
-                                //Get geometry points and field values
-                                OSGeo.OGR.Geometry geom = feat.GetGeometryRef();
-                                OSGeo.OGR.Geometry sub_geom;
+                            //Get geometry points and field values
+                            OSGeo.OGR.Geometry geom = feat.GetGeometryRef();
+                            OSGeo.OGR.Geometry sub_geom;
 
-                                //Start get points if open polylines and points
-                                for (int gpc = 0; gpc < geom.GetPointCount(); gpc++)
-                                { //Loop through geometry points
-                                    double[] pT = new double[3];
-                                    pT[0] = geom.GetX(gpc);
-                                    pT[1] = geom.GetY(gpc);
-                                    pT[2] = geom.GetZ(gpc);
-                                    if (Double.IsNaN(geom.GetZ(gpc)))
+                            //Start get points if open polylines and points
+                            for (int gpc = 0; gpc < geom.GetPointCount(); gpc++)
+                            { //Loop through geometry points
+                                double[] pT = new double[3];
+                                pT[0] = geom.GetX(gpc);
+                                pT[1] = geom.GetY(gpc);
+                                pT[2] = geom.GetZ(gpc);
+                                if (Double.IsNaN(geom.GetZ(gpc)))
+                                {
+                                    pT[2] = 0;
+                                }
+                                coordTransform.TransformPoint(pT);
+
+                                Point3d pt3D = new Point3d();
+                                pt3D.X = pT[0];
+                                pt3D.Y = pT[1];
+                                pt3D.Z = pT[2];
+
+                                gset.Append(new GH_Point(Heron.Convert.ToXYZ(pt3D)), new GH_Path(i, m));
+                                //End loop through geometry points
+
+                                // Get Feature Values
+                                if (fset.PathExists(new GH_Path(i, m)))
+                                {
+                                    fset.get_Branch(new GH_Path(i, m)).Clear();
+                                }
+                                for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                                {
+                                    OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
+                                    if (feat.IsFieldSet(iField))
                                     {
-                                        pT[2] = 0;
-                                    }                              
+                                        fset.Append(new GH_String(feat.GetFieldAsString(iField)), new GH_Path(i, m));
+                                    }
+                                    else
+                                    {
+                                        fset.Append(new GH_String("null"), new GH_Path(i, m));
+                                    }
+                                }
+                                //End Get Feature Values
+                            }
+                            //End getting points if open polylines or points
+
+                            //Start getting points if closed polylines and multipolygons
+                            for (int gi = 0; gi < geom.GetGeometryCount(); gi++)
+                            {
+                                sub_geom = geom.GetGeometryRef(gi);
+                                List<Point3d> geom_list = new List<Point3d>();
+
+                                for (int ptnum = 0; ptnum < sub_geom.GetPointCount(); ptnum++)
+                                {
+                                    //Loop through geometry points
+                                    double[] pT = new double[3];
+                                    pT[0] = sub_geom.GetX(ptnum);
+                                    pT[1] = sub_geom.GetY(ptnum);
+                                    pT[2] = sub_geom.GetZ(ptnum);
                                     coordTransform.TransformPoint(pT);
 
                                     Point3d pt3D = new Point3d();
@@ -194,7 +238,7 @@ namespace Heron
                                     pt3D.Y = pT[1];
                                     pt3D.Z = pT[2];
 
-                                    gset.Append(new GH_Point(Heron.Convert.ToXYZ(pt3D)), new GH_Path(i, m));
+                                    gset.Append(new GH_Point(Heron.Convert.ToXYZ(pt3D)), new GH_Path(i, m, gi));
                                     //End loop through geometry points
 
                                     // Get Feature Values
@@ -216,72 +260,28 @@ namespace Heron
                                     }
                                     //End Get Feature Values
                                 }
-                                //End getting points if open polylines or points
-
-                                //Start getting points if closed polylines and multipolygons
-                                for (int gi = 0; gi < geom.GetGeometryCount(); gi++)
-                                {
-                                    sub_geom = geom.GetGeometryRef(gi);
-                                    List<Point3d> geom_list = new List<Point3d>();
-
-                                    for (int ptnum = 0; ptnum < sub_geom.GetPointCount(); ptnum++)
-                                    {
-                                        //Loop through geometry points
-                                        double[] pT = new double[3];
-                                        pT[0] = sub_geom.GetX(ptnum);
-                                        pT[1] = sub_geom.GetY(ptnum);
-                                        pT[2] = sub_geom.GetZ(ptnum);
-                                        coordTransform.TransformPoint(pT);
-                            
-                                        Point3d pt3D = new Point3d();
-                                        pt3D.X = pT[0];
-                                        pt3D.Y = pT[1];
-                                        pt3D.Z = pT[2];
-
-                                        gset.Append(new GH_Point(Heron.Convert.ToXYZ(pt3D)), new GH_Path(i, m, gi));
-                                        //End loop through geometry points
-
-                                        // Get Feature Values
-                                        if (fset.PathExists(new GH_Path(i, m)))
-                                        {
-                                            fset.get_Branch(new GH_Path(i, m)).Clear();
-                                        }
-                                        for (int iField = 0; iField < feat.GetFieldCount(); iField++)
-                                        {
-                                            OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
-                                            if (feat.IsFieldSet(iField))
-                                            {
-                                                fset.Append(new GH_String(feat.GetFieldAsString(iField)), new GH_Path(i, m));
-                                            }
-                                            else
-                                            {
-                                                fset.Append(new GH_String("null"), new GH_Path(i, m));
-                                            }
-                                        }
-                                        //End Get Feature Values
-                                    }
-                                    //End getting points from closed polylines
-                                }
-                                m++;
+                                //End getting points from closed polylines
                             }
-                            feat.Dispose();
+                            m++;
                         }
-                    }
-                    else
-                    {
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more boundaries may be outside the bounds of the Shapefile dataset.");
-                        //return;
+                        feat.Dispose();
                     }
                 }
-            
-                //Get the field names
-                List<string> fieldnames = new List<string>();
-                for (int iAttr = 0; iAttr < def.GetFieldCount(); iAttr++)
+                else
                 {
-                    OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iAttr);
-                    fieldnames.Add(fdef.GetNameRef());
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more boundaries may be outside the bounds of the Shapefile dataset.");
+                    //return;
                 }
-            
+            }
+
+            //Get the field names
+            List<string> fieldnames = new List<string>();
+            for (int iAttr = 0; iAttr < def.GetFieldCount(); iAttr++)
+            {
+                OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iAttr);
+                fieldnames.Add(fdef.GetNameRef());
+            }
+
             DA.SetData(0, def.GetName());
             DA.SetDataList(1, fc);
             DA.SetData(2, rec);

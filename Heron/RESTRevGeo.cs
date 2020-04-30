@@ -34,19 +34,19 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class RESTRevGeo : GH_Component
+    public class RESTRevGeo : HeronComponent
     {
         //Class Constructor
-        public RESTRevGeo() : base("ESRI REST Service Reverse Geocode","RESTRevGeo","Get the closest addresses to XY coordinates","Heron","GIS REST")
-        { 
-        
+        public RESTRevGeo() : base("ESRI REST Service Reverse Geocode", "RESTRevGeo", "Get the closest addresses to XY coordinates", "GIS REST")
+        {
+
         }
 
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddPointParameter("XY", "xyPoint", "Points for which to find addresses", GH_ParamAccess.tree);
-            
+
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -59,7 +59,7 @@ namespace Heron
             pManager.AddTextParameter("Country", "Country", "Country", GH_ParamAccess.tree);
             pManager.AddTextParameter("LAT", "LAT", "Latitude", GH_ParamAccess.tree);
             pManager.AddTextParameter("LON", "LON", "Longitude", GH_ParamAccess.tree);
-            
+
         }
 
         public delegate JObject jsonDelegate(string delegString);
@@ -74,7 +74,7 @@ namespace Heron
         GH_Structure<GH_String> latTree = new GH_Structure<GH_String>();
         GH_Structure<GH_String> lonTree = new GH_Structure<GH_String>();
          * */
-        
+
         //add "async" after override to make asynchronous
         protected override void SolveInstance(IGH_DataAccess DA)
         {
@@ -102,11 +102,11 @@ namespace Heron
                 {
                     Point3d geopt = Heron.Convert.ToWGS(pt.Value);
                     string webrequest = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson";
-                    
+
                     //Synchronous method
                     string output = GetData("http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson");
                     JObject ja = JObject.Parse(output);
-                    
+
                     //Delegate method
                     //IAsyncResult jaInvoke = del.BeginInvoke(webrequest, null, null);
                     //JObject ja = del.EndInvoke(jaInvoke);
@@ -115,14 +115,14 @@ namespace Heron
                     //JObject ja = await GetAsync("http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson");
 
 
-                            addressTree.Append(new GH_String(ja["address"]["Address"].ToString()), path);
-                            neighborhoodTree.Append(new GH_String(ja["address"]["Neighborhood"].ToString()), path);
-                            cityTree.Append(new GH_String(ja["address"]["City"].ToString()), path);
-                            regionTree.Append(new GH_String(ja["address"]["Region"].ToString()), path);
-                            postalTree.Append(new GH_String(ja["address"]["Postal"].ToString()), path);
-                            countryTree.Append(new GH_String(ja["address"]["CountryCode"].ToString()), path);
-                            latTree.Append(new GH_String(ja["location"]["y"].ToString()), path);
-                            lonTree.Append(new GH_String(ja["location"]["x"].ToString()), path);
+                    addressTree.Append(new GH_String(ja["address"]["Address"].ToString()), path);
+                    neighborhoodTree.Append(new GH_String(ja["address"]["Neighborhood"].ToString()), path);
+                    cityTree.Append(new GH_String(ja["address"]["City"].ToString()), path);
+                    regionTree.Append(new GH_String(ja["address"]["Region"].ToString()), path);
+                    postalTree.Append(new GH_String(ja["address"]["Postal"].ToString()), path);
+                    countryTree.Append(new GH_String(ja["address"]["CountryCode"].ToString()), path);
+                    latTree.Append(new GH_String(ja["location"]["y"].ToString()), path);
+                    lonTree.Append(new GH_String(ja["location"]["x"].ToString()), path);
 
                 }
             }

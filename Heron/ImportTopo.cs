@@ -29,12 +29,12 @@ using OSGeo.OGR;
 
 namespace Heron
 {
-    public class ImportTopo : GH_Component
+    public class ImportTopo : HeronComponent
     {
         //Class Constructor
-        public ImportTopo() : base("Import Topo","ImportTopo","Create a topographic mesh from an IMG, HGT, ASCII file clipped to a boundary","Heron","GIS Tools")
-        { 
-        
+        public ImportTopo() : base("Import Topo", "ImportTopo", "Create a topographic mesh from an IMG, HGT, ASCII file clipped to a boundary", "GIS Tools")
+        {
+
         }
 
 
@@ -49,14 +49,14 @@ namespace Heron
         {
             pManager.AddMeshParameter("topoMesh", "topoMesh", "Resultant topographic mesh from IMG or HGT file", GH_ParamAccess.tree);
             pManager.AddRectangleParameter("topoExtent", "topoExtent", "Bounding box for the entire IMG or HGT file", GH_ParamAccess.item);
-            
+
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
-            
+
             string IMG_file = "";
             DA.GetData<string>("IMG Location", ref IMG_file);
             /*  
@@ -112,7 +112,7 @@ namespace Heron
 
                 else
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Data source SRS: EPSG:"+sr.GetAttrValue("AUTHORITY",1));
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Data source SRS: EPSG:" + sr.GetAttrValue("AUTHORITY", 1));
                 }
             }
 
@@ -139,7 +139,7 @@ namespace Heron
 
             ///Transform to WGS84
             double[] extMinPT = new double[3] { oX, eY, 0 };
-            double[] extMaxPT = new double[3] { eX, oY, 0};
+            double[] extMaxPT = new double[3] { eX, oY, 0 };
             coordTransform.TransformPoint(extMinPT);
             coordTransform.TransformPoint(extMaxPT);
             Point3d dsMin = new Point3d(extMinPT[0], extMinPT[1], extMinPT[2]);
@@ -159,7 +159,7 @@ namespace Heron
             {
                 if (dsbox.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Min) && (dsbox.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Max)))
                 {
-                    
+
                     Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Corner(true, false, true));
                     Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Corner(false, true, true));
 
@@ -211,7 +211,7 @@ namespace Heron
                             double[] wgsPT = new double[3] { gcol, grow, pixel };
                             coordTransform.TransformPoint(wgsPT);
                             Point3d pt = new Point3d(wgsPT[0], wgsPT[1], wgsPT[2]);
-                            
+
                             //Point3d pt = new Point3d(gcol, grow, pixel);
                             verts.Add(Heron.Convert.ToXYZ(pt));
                         }
@@ -232,7 +232,7 @@ namespace Heron
                                 vertsParallel[] = Heron.Convert.ToXYZ(pt);
                             });
                          * */
-                         
+
                     }
 
                     //Create meshes

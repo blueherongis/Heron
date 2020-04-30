@@ -31,12 +31,12 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class XYtoDD : GH_Component
+    public class XYtoDD : HeronComponent
     {
         //Class Constructor
-        public XYtoDD() : base("XY to Decimal Degrees","XYtoDD","Convert X/Y to Decimal Degrees Longitude/Latitude","Heron","GIS Tools")
-        { 
-        
+        public XYtoDD() : base("XY to Decimal Degrees", "XYtoDD", "Convert X/Y to Decimal Degrees Longitude/Latitude", "GIS Tools")
+        {
+
         }
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)

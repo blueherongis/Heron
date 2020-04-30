@@ -13,7 +13,7 @@ using Rhino.Geometry;
 
 namespace Heron
 {
-    public class RESTTopo : GH_Component
+    public class RESTTopo : HeronComponent
     {
         /// <summary>
         /// Initializes a new instance of the MyComponent1 class.
@@ -25,7 +25,7 @@ namespace Heron
                 "Shuttle Radar Topography Mission (SRTM GL3 90m and SRTM GL1 30m), " +
                 "Advanced Land Observing Satellite (ALOS World 3D - 30m) and " +
                 "Global Multi-Resolution Topography (GMRT including bathymetry). Sources are opentopography.org and gmrt.org.",
-              "Heron", "GIS REST")
+               "GIS REST")
         {
         }
 
@@ -72,7 +72,7 @@ namespace Heron
 
             Dictionary<string, TopoServices> tServices = GetTopoServices();
 
-            GH_Structure <GH_String> demList = new GH_Structure<GH_String>();
+            GH_Structure<GH_String> demList = new GH_Structure<GH_String>();
             GH_Structure<GH_String> demQuery = new GH_Structure<GH_String>();
 
             for (int i = 0; i < boundary.Count; i++)
@@ -191,7 +191,7 @@ namespace Heron
             public string URL { get; set; }
         }
 
-        public static Dictionary<string,TopoServices> GetTopoServices()
+        public static Dictionary<string, TopoServices> GetTopoServices()
         {
             Dictionary<string, TopoServices> services = new Dictionary<string, TopoServices>()
             {
@@ -205,8 +205,8 @@ namespace Heron
             };
             return services;
         }
-       
-        
+
+
 
         private string topoService = "SRTM GL1 (30m)";
 

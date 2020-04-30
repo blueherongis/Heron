@@ -31,12 +31,12 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class RESTRaster : GH_Component
+    public class RESTRaster : HeronComponent
     {
         //Class Constructor
-        public RESTRaster() : base("Get REST Raster","RESTRaster","Get raster imagery from ArcGIS REST Services","Heron","GIS REST")
-        { 
-        
+        public RESTRaster() : base("Get REST Raster", "RESTRaster", "Get raster imagery from ArcGIS REST Services", "GIS REST")
+        {
+
         }
 
 
@@ -48,7 +48,7 @@ namespace Heron
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item);
             pManager.AddTextParameter("REST URL", "URL", "ArcGIS REST Service website to query", GH_ParamAccess.item);
             pManager.AddBooleanParameter("run", "get", "Go ahead and download imagery from the Service", GH_ParamAccess.item, false);
-            
+
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -56,7 +56,7 @@ namespace Heron
             pManager.AddTextParameter("image", "Image", "File location of downloaded image", GH_ParamAccess.tree);
             pManager.AddCurveParameter("imageFrame", "imageFrame", "Bounding box of image for mapping to geometry", GH_ParamAccess.tree);
             pManager.AddTextParameter("RESTQuery", "RESTQuery", "Full text of REST query", GH_ParamAccess.tree);
-            
+
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -126,7 +126,7 @@ namespace Heron
                     webClient.DownloadFile(restquery, fileloc + prefix + "_" + i + ".jpg");
                     webClient.Dispose();
                 }
-                mapList.Append(new GH_String(fileloc + prefix +"_" + i + ".jpg"), path);
+                mapList.Append(new GH_String(fileloc + prefix + "_" + i + ".jpg"), path);
                 mapquery.Append(new GH_String(restquery), path);
             }
 
