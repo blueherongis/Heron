@@ -32,7 +32,7 @@ namespace Heron
     public class ImportTopo : GH_Component
     {
         //Class Constructor
-        public ImportTopo() : base("Import Topo","ImportTopo","Create a topographic mesh from an IMG or HGT file clipped to a boundary","Heron","GIS Tools")
+        public ImportTopo() : base("Import Topo","ImportTopo","Create a topographic mesh from an IMG, HGT, ASCII file clipped to a boundary","Heron","GIS Tools")
         { 
         
         }
@@ -112,7 +112,7 @@ namespace Heron
 
                 else
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, ds.GetProjection());
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Data source SRS: EPSG:"+sr.GetAttrValue("AUTHORITY",1));
                 }
             }
 
