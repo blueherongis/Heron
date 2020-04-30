@@ -59,23 +59,24 @@ namespace Heron
             
             string IMG_file = "";
             DA.GetData<string>("IMG Location", ref IMG_file);
-          /*  
-            //Does not work with HGT files
-           * 
-            byte[] imageBuffer;
+            /*  
+              //Does not work with HGT files
+             * 
+              byte[] imageBuffer;
 
-            using (FileStream fs = new FileStream(IMG_file, FileMode.Open, FileAccess.Read))
-            {
-                using (BinaryReader br = new BinaryReader(fs))
-                {
-                    long numBytes = new FileInfo(IMG_file).Length;
-                    imageBuffer = br.ReadBytes((int)numBytes);
-                    br.Close();
-                    fs.Close();
-                }
-            }
-            */
+              using (FileStream fs = new FileStream(IMG_file, FileMode.Open, FileAccess.Read))
+              {
+                  using (BinaryReader br = new BinaryReader(fs))
+                  {
+                      long numBytes = new FileInfo(IMG_file).Length;
+                      imageBuffer = br.ReadBytes((int)numBytes);
+                      br.Close();
+                      fs.Close();
+                  }
+              }
+              */
 
+            RESTful.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
 
             //string memFilename = "/vsimem/inmemfile";
@@ -83,6 +84,43 @@ namespace Heron
 
             Dataset ds = Gdal.Open(IMG_file, Access.GA_ReadOnly);
             OSGeo.GDAL.Driver drv = ds.GetDriver();
+
+
+            if (ds == null)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
+                return;
+            }
+
+
+            ///Get the spatial reference of the input raster file and set to WGS84 if not known
+            ///Set up transform from source to WGS84
+            OSGeo.OSR.SpatialReference sr = new SpatialReference(Osr.SRS_WKT_WGS84);
+            if (ds.GetProjection() == null)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) is missing.  CRS set automatically set to WGS84.");
+            }
+
+            else
+            {
+                sr = new SpatialReference(ds.GetProjection());
+                if (sr.Validate() != 0)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) is unknown or unsupported.  CRS set automatically set to WGS84.");
+                    sr.SetWellKnownGeogCS("WGS84");
+                }
+
+                else
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, ds.GetProjection());
+                }
+            }
+
+            //OSGeo.OSR.SpatialReference sr = new SpatialReference(ds.GetProjection());
+            OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
+            dst.SetWellKnownGeogCS("WGS84");
+            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(sr, dst);
+            OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(dst, sr);
 
             double[] adfGeoTransform = new double[6];
             double[] invTransform = new double[6];
@@ -98,8 +136,17 @@ namespace Heron
             double oY = adfGeoTransform[3] + adfGeoTransform[4] * 0 + adfGeoTransform[5] * 0;
             double eX = adfGeoTransform[0] + adfGeoTransform[1] * width + adfGeoTransform[2] * height;
             double eY = adfGeoTransform[3] + adfGeoTransform[4] * width + adfGeoTransform[5] * height;
-            Point3d dsMin = new Point3d(oX, eY, 0);
-            Point3d dsMax = new Point3d(eX, oY, 0);
+
+            ///Transform to WGS84
+            double[] extMinPT = new double[3] { oX, eY, 0 };
+            double[] extMaxPT = new double[3] { eX, oY, 0};
+            coordTransform.TransformPoint(extMinPT);
+            coordTransform.TransformPoint(extMaxPT);
+            Point3d dsMin = new Point3d(extMinPT[0], extMinPT[1], extMinPT[2]);
+            Point3d dsMax = new Point3d(extMaxPT[0], extMaxPT[1], extMaxPT[2]);
+
+            //Point3d dsMin = new Point3d(oX, eY, 0);
+            //Point3d dsMax = new Point3d(eX, oY, 0);
             Rectangle3d dsbox = new Rectangle3d(Plane.WorldXY, Heron.Convert.ToXYZ(dsMin), Heron.Convert.ToXYZ(dsMax));
 
             //Declare trees
@@ -115,13 +162,24 @@ namespace Heron
                     
                     Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Corner(true, false, true));
                     Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Corner(false, true, true));
+
+                    ///Transform to source SRS
+                    double[] minR = new double[3] { min.X, min.Y, min.Z };
+                    double[] maxR = new double[3] { max.X, max.Y, max.Z };
+                    revTransform.TransformPoint(minR);
+                    revTransform.TransformPoint(maxR);
+
                     GH_Path path = new GH_Path(i);
 
                     // http://gis.stackexchange.com/questions/46893/how-do-i-get-the-pixel-value-of-a-gdal-raster-under-an-ogr-point-without-numpy
 
                     double ur, uc, lr, lc;
-                    Gdal.ApplyGeoTransform(invTransform, min.X, min.Y, out uc, out ur);
-                    Gdal.ApplyGeoTransform(invTransform, max.X, max.Y, out lc, out lr);
+
+                    Gdal.ApplyGeoTransform(invTransform, minR[0], minR[1], out uc, out ur);
+                    Gdal.ApplyGeoTransform(invTransform, maxR[0], maxR[1], out lc, out lr);
+                    //Gdal.ApplyGeoTransform(invTransform, min.X, min.Y, out uc, out ur);
+                    //Gdal.ApplyGeoTransform(invTransform, max.X, max.Y, out lc, out lr);
+
                     int Urow = System.Convert.ToInt32(ur);
                     int Ucol = System.Convert.ToInt32(uc);
                     int Lrow = System.Convert.ToInt32(lr) + 1;
@@ -149,7 +207,12 @@ namespace Heron
                             double gcol = adfGeoTransform[0] + adfGeoTransform[1] * col + adfGeoTransform[2] * row;
                             double grow = adfGeoTransform[3] + adfGeoTransform[4] * col + adfGeoTransform[5] * row;
 
-                            Point3d pt = new Point3d(gcol, grow, pixel);
+                            ///convert to WGS84
+                            double[] wgsPT = new double[3] { gcol, grow, pixel };
+                            coordTransform.TransformPoint(wgsPT);
+                            Point3d pt = new Point3d(wgsPT[0], wgsPT[1], wgsPT[2]);
+                            
+                            //Point3d pt = new Point3d(gcol, grow, pixel);
                             verts.Add(Heron.Convert.ToXYZ(pt));
                         }
 
