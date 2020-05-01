@@ -44,11 +44,11 @@ namespace Heron
 
             string view = "";
             DA.GetData<string>(0, ref view);
-
+            viewportName = view;
             ///Get viewport boundary
-            Rhino.Display.RhinoView[] rvList = Rhino.RhinoDoc.ActiveDoc.Views.GetViewList(true,false);
+            Rhino.Display.RhinoView[] rvList = Rhino.RhinoDoc.ActiveDoc.Views.GetViewList(true, false);
             Rhino.Display.RhinoView rv = Rhino.RhinoDoc.ActiveDoc.Views.Find(view, true);
-            
+
             if (!rvList.Contains(rv))
             {
                 rv = Rhino.RhinoDoc.ActiveDoc.Views.ActiveView;
@@ -99,6 +99,29 @@ namespace Heron
             ///make sure zoom doesn't get too ridiculous levels
             DA.SetData(0, pL);
             DA.SetData(1, Math.Min(z, 21));
+        }
+
+        public override bool IsPreviewCapable => true;
+
+        private int updateFrequencyMS = 300;
+        private Point3d lastCameraLocation = default(Point3d);
+        private string viewportName = null;
+
+        public override void DrawViewportWires(IGH_PreviewArgs args)
+        {
+            if (args.Display.Viewport.Name == viewportName)
+            {
+                var delta = args.Display.Viewport.CameraLocation.DistanceToSquared(lastCameraLocation);
+                if (delta > 1) // if it's moved
+                {
+                    lastCameraLocation = args.Display.Viewport.CameraLocation;
+                    OnPingDocument().ScheduleSolution(updateFrequencyMS, (doc) =>
+                    {
+                        ExpireSolution(false);
+                    });
+                }
+            }
+            base.DrawViewportWires(args);
         }
 
         /// <summary>
