@@ -124,7 +124,7 @@ namespace Heron
                 ///TODO: look into scaling boundary to get buffer tiles
 
                 ///file path for final image
-                string imgPath = fileloc + prefix + "_" + i + ".png";
+                string imgPath = fileloc + prefix + "_" + i + ".jpg";
 
                 ///location of final image file
                 mapList.Append(new GH_String(imgPath), path);
@@ -182,8 +182,10 @@ namespace Heron
                     {
                         using (Bitmap imageT = new Bitmap(imgPath))
                         {
-
-                            string imgComment = imageT.GetCommentsFromPNG();
+                            ///getting commments currently only working for JPG
+                            ///TODO: get this to work for any image type or
+                            ///find another way to check if the cached image covers the boundary.
+                            string imgComment = imageT.GetCommentsFromJPG();
 
                             imageT.Dispose();
 
