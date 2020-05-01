@@ -80,6 +80,10 @@
 			"url" : "https://tiles.wmflabs.org/osm-no-labels/{z}/{x}/{y}.png"
 		},
 		{
+			"service" : "Hillshading",
+			"url" : "http://tiles.wmflabs.org/hillshading/{z}/{x}/{y}.png"
+		},
+		{
 			"service" : "Stamen Toner",
 			"url" : "http://a.tile.stamen.com/toner/{z}/{x}/{y}.png"
 		},
@@ -98,6 +102,18 @@
 		{
 			"service" : "Humanitarian",
 			"url" : "http://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "Carto Light",
+			"url" : "https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "Carto Dark",
+			"url" : "https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "OpenTopoMap",
+			"url" : "https://a.tile.opentopomap.org/{z}/{x}/{y}.png"
 		}
 	]
 }
