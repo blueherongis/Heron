@@ -64,5 +64,40 @@
 			"service" : "Mapbox Topo",
 			"url" : "https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}@2x.pngraw?access_token="
 		}
+	],
+		"Slippy Maps":
+	[
+		{
+			"service" : "OSM Basemap",
+			"url" : "http://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "OSM Black & White",
+			"url" : "https://tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "OSM No Labels",
+			"url" : "https://tiles.wmflabs.org/osm-no-labels/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "Stamen Toner",
+			"url" : "http://a.tile.stamen.com/toner/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "Stamen Watercolor",
+			"url" : "http://c.tile.stamen.com/watercolor/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "Stamen Terrain",
+			"url" : "http://c.tile.stamen.com/terrain/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "Open Cycle Map",
+			"url" : "http://a.tile.opencyclemap.org/cycle/{z}/{x}/{y}.png"
+		},
+		{
+			"service" : "Humanitarian",
+			"url" : "http://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
+		}
 	]
 }
