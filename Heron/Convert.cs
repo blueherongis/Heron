@@ -395,8 +395,78 @@ namespace Heron
             u = u.Replace("{z}", z.ToString());
             return u;
         }
+
+        ///Get list of mapping service Endpoints
+        public static string GetEnpoints()
+        {
+            string jsonString = "";
+            using (System.Net.WebClient wc = new System.Net.WebClient())
+            {
+                string URI = "https://raw.githubusercontent.com/blueherongis/Heron/master/HeronServiceEndpoints.json";
+                jsonString = wc.DownloadString(URI);
+            }
+
+            return jsonString;
+        }
+
+        ///Check if cached images exist in cache folder
+        public static bool CheckCacheImagesExist(List<string> fileLocs)
+        {
+            foreach (string fileLoc in fileLocs)
+            {
+                if (!File.Exists(fileLoc))
+                    return false;
+            }
+            return true;
+        }
+
         //////////////////////////////////////////////////////
 
+    }
+
+    public static class BitmapExtension
+    {
+        public static void AddCommentsToJPG(this Bitmap bitmap, string comment)
+        {
+            //add tile range meta data to image comments
+            //doesn't work for png, need to find a common ID between jpg and png
+            //https://stackoverflow.com/questions/18820525/how-to-get-and-set-propertyitems-for-an-image/25162782#25162782
+            var newItem = (System.Drawing.Imaging.PropertyItem)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(System.Drawing.Imaging.PropertyItem));
+            newItem.Id = 40094;
+            newItem.Type = 1;
+            newItem.Value = Encoding.Unicode.GetBytes(comment);
+            newItem.Len = newItem.Value.Length;
+            bitmap.SetPropertyItem(newItem);
+        }
+
+        public static string GetCommentsFromJPG(this Bitmap bitmap)
+        {
+            //doesn't work for png
+            System.Drawing.Imaging.PropertyItem prop = bitmap.GetPropertyItem(40094);
+            string comment = Encoding.Unicode.GetString(prop.Value);
+            return comment;
+        }
+
+        public static void AddCommentsToPNG(this Bitmap bitmap, string comment)
+        {
+            //add tile range meta data to image comments
+            //doesn't work for png, need to find a common ID between jpg and png
+            //https://stackoverflow.com/questions/18820525/how-to-get-and-set-propertyitems-for-an-image/25162782#25162782
+            var newItem = (System.Drawing.Imaging.PropertyItem)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(System.Drawing.Imaging.PropertyItem));
+            newItem.Id = 40092;
+            newItem.Type = 1;
+            newItem.Value = Encoding.Unicode.GetBytes(comment);
+            newItem.Len = newItem.Value.Length;
+            bitmap.SetPropertyItem(newItem);
+        }
+
+        public static string GetCommentsFromPNG(this Bitmap bitmap)
+        {
+            //doesn't work for png
+            System.Drawing.Imaging.PropertyItem prop = bitmap.GetPropertyItem(40092);
+            string comment = Encoding.Unicode.GetString(prop.Value);
+            return comment;
+        }
     }
 
 }
