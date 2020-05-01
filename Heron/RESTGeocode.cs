@@ -28,19 +28,19 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class RESTGeocode : GH_Component
+    public class RESTGeocode : HeronComponent
     {
         //Class Constructor
-        public RESTGeocode() : base("ESRI REST Service Geocode","RESTGeocode","Get coordinates based on a Point-of-Interest or Address","Heron","GIS REST")
-        { 
-        
+        public RESTGeocode() : base("ESRI REST Service Geocode", "RESTGeocode", "Get coordinates based on a Point-of-Interest or Address", "GIS REST")
+        {
+
         }
 
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("Addresses", "addresses", "POI or Address string(s) to geocode", GH_ParamAccess.tree);
-            
+
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -48,7 +48,7 @@ namespace Heron
             pManager.AddTextParameter("Candidates", "Candidates", "List of Candidate locations", GH_ParamAccess.tree);
             pManager.AddTextParameter("Latitude", "LAT", "Latitude of Candidate location", GH_ParamAccess.tree);
             pManager.AddTextParameter("Longitude", "LON", "Longitude of Candidate location", GH_ParamAccess.tree);
-            
+
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -84,7 +84,7 @@ namespace Heron
                         {
                             if (ja["candidates"][i]["score"].Value<int>() > 99)
                             {
-                                addr.Append(new GH_String(ja["candidates"][i]["address"].ToString()), new GH_Path(path[count],i));
+                                addr.Append(new GH_String(ja["candidates"][i]["address"].ToString()), new GH_Path(path[count], i));
                                 addr.Append(new GH_String("LON: " + ja["candidates"][i]["location"]["x"].ToString()), new GH_Path(path[count], i));
                                 addr.Append(new GH_String("LAT: " + ja["candidates"][i]["location"]["y"].ToString()), new GH_Path(path[count], i));
                                 lony.Append(new GH_String(ja["candidates"][i]["location"]["y"].ToString()), new GH_Path(path[count], i));

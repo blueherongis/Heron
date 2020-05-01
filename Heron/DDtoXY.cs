@@ -31,12 +31,12 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class DDtoXY : GH_Component
+    public class DDtoXY : HeronComponent
     {
         //Class Constructor
-        public DDtoXY() : base("Decimal Degrees to XY","DDtoXY","Convert Decimal Degrees Longitude/Latitude to X/Y","Heron","GIS Tools")
-        { 
-        
+        public DDtoXY() : base("Decimal Degrees to XY", "DDtoXY", "Convert Decimal Degrees Longitude/Latitude to X/Y", "GIS Tools")
+        {
+
         }
 
 
@@ -64,7 +64,7 @@ namespace Heron
             /// We'll start by declaring variables and assigning them starting values.
             double lat = -1;
             double lon = -1;
-            
+
             /// Then we need to access the input parameters individually. 
             /// When data cannot be extracted from a parameter, we should abort this method.
             if (!DA.GetData("Latitude", ref lat)) return;
@@ -81,7 +81,7 @@ namespace Heron
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Longitude should be between -180.0 deg and 180.0 deg");
                 return;
             }
-            
+
             /// Finally assign the point to the output parameter.
             DA.SetData("xyPoint", Heron.Convert.ToXYZ(new Point3d(lon, lat, 0)));
         }

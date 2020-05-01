@@ -31,12 +31,12 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class RESTVector : GH_Component
+    public class RESTVector : HeronComponent
     {
         //Class Constructor
-        public RESTVector() : base("Get REST Vector","RESTVector","Get vector data from ArcGIS REST Services","Heron","GIS REST")
-        { 
-        
+        public RESTVector() : base("Get REST Vector", "RESTVector", "Get vector data from ArcGIS REST Services", "GIS REST")
+        {
+
         }
 
 
@@ -45,7 +45,7 @@ namespace Heron
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
             pManager.AddTextParameter("REST URL", "URL", "ArcGIS REST Service website to query", GH_ParamAccess.item);
             pManager.AddBooleanParameter("run", "get", "Go ahead to download vector data from the Service", GH_ParamAccess.item, false);
-            
+
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -111,7 +111,7 @@ namespace Heron
                     GH_Path path = new GH_Path(i, m);
 
                     //need to be able to escape this if no "geometry" property
-                    if (j[i].Property("features.["+m+"].geometry") != null)
+                    if (j[i].Property("features.[" + m + "].geometry") != null)
                     {
                         //choose type of geometry to read
                         JsonReader jreader = j[i]["features"][m]["geometry"].CreateReader();
@@ -156,7 +156,7 @@ namespace Heron
             DA.SetDataTree(3, mapquery);
 
         }
-        
+
         //Return JSON from webquery
         public static string GetData(string qst)
         {
