@@ -35,7 +35,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
-            pManager.AddTextParameter("File Location", "fileLocation", "Folder to place image files", GH_ParamAccess.item, @"C:\temp\");
+            pManager.AddTextParameter("File Location", "fileLocation", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item, topoService);
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
