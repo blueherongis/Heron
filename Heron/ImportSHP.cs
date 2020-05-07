@@ -125,7 +125,7 @@ namespace Heron
             coordTransform.TransformPoint(extMaxPT);
             Point3d extPTmin = new Point3d(extMinPT[0], extMinPT[1], extMinPT[2]);
             Point3d extPTmax = new Point3d(extMaxPT[0], extMaxPT[1], extMaxPT[2]);
-            Rectangle3d rec = new Rectangle3d(Plane.WorldXY, Heron.Convert.ToXYZ(extPTmin), Heron.Convert.ToXYZ(extPTmax));
+            Rectangle3d rec = new Rectangle3d(Plane.WorldXY, Heron.Convert.WGSToWorld(extPTmin), Heron.Convert.WGSToWorld(extPTmax));
 
             //Declare trees
             GH_Structure<GH_String> fset = new GH_Structure<GH_String>();
@@ -140,8 +140,8 @@ namespace Heron
                 {
 
                     //Create bounding box for clipping geometry
-                    Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Min);
-                    Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Max);
+                    Point3d min = Heron.Convert.WorldToWGS(boundary[i].GetBoundingBox(true).Min);
+                    Point3d max = Heron.Convert.WorldToWGS(boundary[i].GetBoundingBox(true).Max);
                     double[] minpT = new double[3];
                     double[] maxpT = new double[3];
 
@@ -194,7 +194,7 @@ namespace Heron
                                 pt3D.Y = pT[1];
                                 pt3D.Z = pT[2];
 
-                                gset.Append(new GH_Point(Heron.Convert.ToXYZ(pt3D)), new GH_Path(i, m));
+                                gset.Append(new GH_Point(Heron.Convert.WGSToWorld(pt3D)), new GH_Path(i, m));
                                 //End loop through geometry points
 
                                 // Get Feature Values
@@ -238,7 +238,7 @@ namespace Heron
                                     pt3D.Y = pT[1];
                                     pt3D.Z = pT[2];
 
-                                    gset.Append(new GH_Point(Heron.Convert.ToXYZ(pt3D)), new GH_Path(i, m, gi));
+                                    gset.Append(new GH_Point(Heron.Convert.WGSToWorld(pt3D)), new GH_Path(i, m, gi));
                                     //End loop through geometry points
 
                                     // Get Feature Values

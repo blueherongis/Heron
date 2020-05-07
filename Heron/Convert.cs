@@ -16,80 +16,47 @@ using System.Threading.Tasks;
 using Rhino.Geometry;
 using Rhino.DocObjects;
 using OSGeo.OGR;
+using Rhino;
 
 namespace Heron
 {
     class Convert
     {
-
+        private static RhinoDoc ActiveDoc => RhinoDoc.ActiveDoc;
+        private static EarthAnchorPoint EarthAnchorPoint => ActiveDoc.EarthAnchorPoint;
         //////////////////////////////////////////////////////
         ///Basic Rhino transforms
         ///Using Rhino's EarthAnchorPoint to Transform.  GetModelToEarthTransform() translates to WGS84.
         ///https://github.com/gHowl/gHowlComponents/blob/master/gHowl/gHowl/GEO/XYZtoGeoComponent.cs
         ///https://github.com/mcneel/rhinocommon/blob/master/dotnet/opennurbs/opennurbs_3dm_settings.cs  search for "model_to_earth"
-
-        public static Point3d ToWGS(Point3d xyz)
+        public static Point3d WorldToWGS(Point3d xyz)
         {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-
-            xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
-            Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
-            ptON = xf * ptON;
-
-            ///TODO: Make translation of ptON here using SetCRS global variable (WGS84 -> CRS)
-
-            return ptON;
+            var point = new Point3d(xyz);
+            point.Transform(WorldToWGSTransform());
+            return point;
         }
 
-        public static Transform ToWGSxf()
+        public static Transform WorldToWGSTransform()
         {
-            EarthAnchorPoint eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-
-            ///scale the transform to the model units
-            Transform xfScaled = Transform.Multiply(xf, Transform.Scale(new Point3d(0.0, 0.0, 0.0), Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters)));
-
-            return xfScaled;
+            return EarthAnchorPoint.GetModelToEarthTransform(ActiveDoc.ModelUnitSystem);
         }
 
-        public static Point3d ToXYZ(Point3d wgs)
+        public static Point3d WGSToWorld(Point3d wgs)
         {
-
+            var transformedPoint = new Point3d(wgs);
+            transformedPoint.Transform(WGSToWorldTransform());
+            return transformedPoint;
             ///TODO: make translation of wgs here using SetCRS (CRS -> WGS84)
 
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-
-            //http://www.grasshopper3d.com/forum/topics/matrix-datatype-in-rhinocommon
-            //Thanks Andrew
-            Transform Inversexf = new Transform();
-            xf.TryGetInverse(out Inversexf);
-
-            wgs = Inversexf * wgs / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
-            return wgs;
         }
 
-        public static Transform ToXYZxf()
+        public static Transform WGSToWorldTransform()
         {
-            EarthAnchorPoint eap = new EarthAnchorPoint();
-            eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
-            Rhino.UnitSystem us = new Rhino.UnitSystem();
-            Transform xf = eap.GetModelToEarthTransform(us);
-
-            //scale the transform to the model units
-            Transform xfScaled = Transform.Multiply(xf, Transform.Scale(new Point3d(0.0, 0.0, 0.0), Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters)));
-
-            //http://www.grasshopper3d.com/forum/topics/matrix-datatype-in-rhinocommon
-            //Thanks Andrew
-            Transform Inversexf = new Transform();
-            xfScaled.TryGetInverse(out Inversexf);
-            return Inversexf;
+            var worldToWgs = WorldToWGSTransform();
+            if(worldToWgs.TryGetInverse(out Transform transform)) {
+                return transform;
+            }
+            return Transform.Unset;
         }
         //////////////////////////////////////////////////////
 
@@ -140,7 +107,7 @@ namespace Heron
             coord.X = lon;
             coord.Y = lat;
 
-            return Heron.Convert.ToXYZ(coord);
+            return Heron.Convert.WGSToWorld(coord);
         }
 
         //////////////////////////////////////////////////////
@@ -152,7 +119,7 @@ namespace Heron
         public static Point3d OgrPointToPoint3d(OSGeo.OGR.Geometry ogrPoint)
         {
             Point3d pt3d = new Point3d(ogrPoint.GetX(0), ogrPoint.GetY(0), ogrPoint.GetZ(0));
-            return Convert.ToXYZ(pt3d);
+            return Convert.WGSToWorld(pt3d);
         }
 
         public static List<Point3d> OgrMultiPointToPoint3d(OSGeo.OGR.Geometry ogrMultiPoint)
@@ -164,7 +131,7 @@ namespace Heron
                 sub_geom = ogrMultiPoint.GetGeometryRef(i);
                 for (int ptnum = 0; ptnum < sub_geom.GetPointCount(); ptnum++)
                 {
-                    ptList.Add(Convert.ToXYZ(new Point3d(sub_geom.GetX(0), sub_geom.GetY(0), sub_geom.GetZ(0))));
+                    ptList.Add(Convert.WGSToWorld(new Point3d(sub_geom.GetX(0), sub_geom.GetY(0), sub_geom.GetZ(0))));
                 }
             }
             return ptList;
@@ -176,7 +143,7 @@ namespace Heron
             List<Point3d> ptList = new List<Point3d>();
             for (int i = 0; i < linestring.GetPointCount(); i++)
             {
-                ptList.Add(Convert.ToXYZ(new Point3d(linestring.GetX(i), linestring.GetY(i), linestring.GetZ(i))));
+                ptList.Add(Convert.WGSToWorld(new Point3d(linestring.GetX(i), linestring.GetY(i), linestring.GetZ(i))));
             }
             Polyline pL = new Polyline(ptList);
 
@@ -301,7 +268,7 @@ namespace Heron
 
 
         //download all tiles within bbox
-        public static List<int> DegToNum (double lat_deg, double lon_deg, int zoom)
+        public static List<int> DegToNum(double lat_deg, double lon_deg, int zoom)
         {
             double lat_rad = Rhino.RhinoMath.ToRadians(lat_deg);
             int n = (1 << zoom);
@@ -341,8 +308,8 @@ namespace Heron
         //get the range of tiles that intersect with the bounding box of the polygon
         public static List<List<int>> GetTileRange(BoundingBox bnds, int zoom)
         {
-            Point3d bndsMin = Convert.ToWGS(bnds.Min);
-            Point3d bndsMax = Convert.ToWGS(bnds.Max);
+            Point3d bndsMin = Convert.WorldToWGS(bnds.Min);
+            Point3d bndsMax = Convert.WorldToWGS(bnds.Max);
             double xm = bndsMin.X;
             double xmx = bndsMax.X;
             double ym = bndsMin.Y;
@@ -364,11 +331,11 @@ namespace Heron
             double ym = se[0];
             double ymx = nw[0];
             Polyline tile_bound = new Polyline();
-            tile_bound.Add(Convert.ToXYZ(new Point3d(xm, ym,0)));
-            tile_bound.Add(Convert.ToXYZ(new Point3d(xmx, ym,0)));
-            tile_bound.Add(Convert.ToXYZ(new Point3d(xmx, ymx,0)));
-            tile_bound.Add(Convert.ToXYZ(new Point3d(xm, ymx,0)));
-            tile_bound.Add(Convert.ToXYZ(new Point3d(xm, ym,0)));
+            tile_bound.Add(Convert.WGSToWorld(new Point3d(xm, ym, 0)));
+            tile_bound.Add(Convert.WGSToWorld(new Point3d(xmx, ym, 0)));
+            tile_bound.Add(Convert.WGSToWorld(new Point3d(xmx, ymx, 0)));
+            tile_bound.Add(Convert.WGSToWorld(new Point3d(xm, ymx, 0)));
+            tile_bound.Add(Convert.WGSToWorld(new Point3d(xm, ym, 0)));
             return tile_bound;
         }
 

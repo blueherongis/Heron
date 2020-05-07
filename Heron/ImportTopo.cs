@@ -147,7 +147,7 @@ namespace Heron
 
             //Point3d dsMin = new Point3d(oX, eY, 0);
             //Point3d dsMax = new Point3d(eX, oY, 0);
-            Rectangle3d dsbox = new Rectangle3d(Plane.WorldXY, Heron.Convert.ToXYZ(dsMin), Heron.Convert.ToXYZ(dsMax));
+            Rectangle3d dsbox = new Rectangle3d(Plane.WorldXY, Heron.Convert.WGSToWorld(dsMin), Heron.Convert.WGSToWorld(dsMax));
 
             //Declare trees
             GH_Structure<GH_Point> pointcloud = new GH_Structure<GH_Point>();
@@ -160,8 +160,8 @@ namespace Heron
                 if (dsbox.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Min) && (dsbox.BoundingBox.Contains(boundary[i].GetBoundingBox(true).Max)))
                 {
 
-                    Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Corner(true, false, true));
-                    Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Corner(false, true, true));
+                    Point3d min = Heron.Convert.WorldToWGS(boundary[i].GetBoundingBox(true).Corner(true, false, true));
+                    Point3d max = Heron.Convert.WorldToWGS(boundary[i].GetBoundingBox(true).Corner(false, true, true));
 
                     ///Transform to source SRS
                     double[] minR = new double[3] { min.X, min.Y, min.Z };
@@ -213,7 +213,7 @@ namespace Heron
                             Point3d pt = new Point3d(wgsPT[0], wgsPT[1], wgsPT[2]);
 
                             //Point3d pt = new Point3d(gcol, grow, pixel);
-                            verts.Add(Heron.Convert.ToXYZ(pt));
+                            verts.Add(Heron.Convert.WGSToWorld(pt));
                         }
 
                         /*Parallel.For(Urow, Lrow - 1, rowP =>

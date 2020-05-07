@@ -58,7 +58,7 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             ///Dump out the transform first
-            DA.SetData("Transform", Heron.Convert.ToXYZxf());
+            DA.SetData("Transform", Heron.Convert.WGSToWorldTransform());
 
             /// Then, we need to retrieve all data from the input parameters.
             /// We'll start by declaring variables and assigning them starting values.
@@ -83,7 +83,7 @@ namespace Heron
             }
 
             /// Finally assign the point to the output parameter.
-            DA.SetData("xyPoint", Heron.Convert.ToXYZ(new Point3d(lon, lat, 0)));
+            DA.SetData("xyPoint", Heron.Convert.WGSToWorld(new Point3d(lon, lat, 0)));
         }
 
         protected override System.Drawing.Bitmap Icon

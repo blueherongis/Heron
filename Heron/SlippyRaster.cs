@@ -102,6 +102,7 @@ namespace Heron
  
             bool run = false;
             DA.GetData<bool>("Run", ref run);
+            if (!run) return;
 
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
             GH_Structure<GH_Curve> imgFrame = new GH_Structure<GH_Curve>();

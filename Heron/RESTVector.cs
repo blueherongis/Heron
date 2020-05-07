@@ -85,8 +85,8 @@ namespace Heron
             {
 
                 GH_Path cpath = new GH_Path(i);
-                Point3d min = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Min);
-                Point3d max = Heron.Convert.ToWGS(boundary[i].GetBoundingBox(true).Max);
+                Point3d min = Heron.Convert.WorldToWGS(boundary[i].GetBoundingBox(true).Min);
+                Point3d max = Heron.Convert.WorldToWGS(boundary[i].GetBoundingBox(true).Max);
 
                 string restquery = URL +
                   "query?where=&text=&objectIds=&time=&geometry=" + Heron.Convert.ConvertLat(min.X, SRef) + "%2C" + Heron.Convert.ConvertLon(min.Y, SRef) + "%2C" + Heron.Convert.ConvertLat(max.X, SRef) + "%2C" + Heron.Convert.ConvertLon(max.Y, SRef) +

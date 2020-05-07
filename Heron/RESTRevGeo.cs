@@ -100,7 +100,7 @@ namespace Heron
                 GH_Path path = xyz.Paths[a];
                 foreach (GH_Point pt in branch)
                 {
-                    Point3d geopt = Heron.Convert.ToWGS(pt.Value);
+                    Point3d geopt = Heron.Convert.WorldToWGS(pt.Value);
                     string webrequest = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson";
 
                     //Synchronous method
