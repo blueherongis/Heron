@@ -189,7 +189,7 @@ namespace Heron
                 coordTransform.TransformPoint(extMaxPT);
                 Point3d extPTmin = new Point3d(extMinPT[0], extMinPT[1], extMinPT[2]);
                 Point3d extPTmax = new Point3d(extMaxPT[0], extMaxPT[1], extMaxPT[2]);
-                Rectangle3d rec = new Rectangle3d(Plane.WorldXY, Heron.Convert.WGSToWorld(extPTmin), Heron.Convert.WGSToWorld(extPTmax));
+                Rectangle3d rec = new Rectangle3d(Plane.WorldXY, Heron.Convert.WGSToXYZ(extPTmin), Heron.Convert.WGSToXYZ(extPTmax));
                 recs.Append(new GH_Rectangle(rec), new GH_Path(iLayer));
 
 
@@ -239,8 +239,8 @@ namespace Heron
                     else
                     {
                         ///Create bounding box for clipping geometry
-                        Point3d min = Heron.Convert.WorldToWGS(boundary[i].GetBoundingBox(true).Min);
-                        Point3d max = Heron.Convert.WorldToWGS(boundary[i].GetBoundingBox(true).Max);
+                        Point3d min = Heron.Convert.XYZToWGS(boundary[i].GetBoundingBox(true).Min);
+                        Point3d max = Heron.Convert.XYZToWGS(boundary[i].GetBoundingBox(true).Max);
                         double[] minpT = new double[3];
                         double[] maxpT = new double[3];
 
@@ -299,7 +299,7 @@ namespace Heron
                                     pt3D.Y = pT[1];
                                     pt3D.Z = pT[2];
 
-                                    gset.Append(new GH_Point(Heron.Convert.WGSToWorld(pt3D)), new GH_Path(i, iLayer, m));
+                                    gset.Append(new GH_Point(Heron.Convert.WGSToXYZ(pt3D)), new GH_Path(i, iLayer, m));
                                     ///End loop through geometry points
 
                                     /// Get Feature Values
@@ -354,7 +354,7 @@ namespace Heron
                                                 pt3D.Y = pT[1];
                                                 pt3D.Z = pT[2];
 
-                                                gset.Append(new GH_Point(Heron.Convert.WGSToWorld(pt3D)), new GH_Path(i, iLayer, m, gi, n));
+                                                gset.Append(new GH_Point(Heron.Convert.WGSToXYZ(pt3D)), new GH_Path(i, iLayer, m, gi, n));
                                                 ///End loop through geometry points
                                             }
                                             subsub_geom.Dispose();
@@ -376,7 +376,7 @@ namespace Heron
                                             pt3D.Y = pT[1];
                                             pt3D.Z = pT[2];
 
-                                            gset.Append(new GH_Point(Heron.Convert.WGSToWorld(pt3D)), new GH_Path(i, iLayer, m, gi));
+                                            gset.Append(new GH_Point(Heron.Convert.WGSToXYZ(pt3D)), new GH_Path(i, iLayer, m, gi));
                                             ///End loop through geometry points
                                         }
                                     }
