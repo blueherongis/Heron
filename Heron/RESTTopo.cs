@@ -92,8 +92,8 @@ namespace Heron
                 Curve offsetB = boundary[i].Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
 
                 //Get dem frame for given boundary
-                Point3d min = Heron.Convert.ToWGS(offsetB.GetBoundingBox(true).Min);
-                Point3d max = Heron.Convert.ToWGS(offsetB.GetBoundingBox(true).Max);
+                Point3d min = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Min);
+                Point3d max = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Max);
 
                 //Query opentopography.org
                 //DEM types

@@ -105,8 +105,8 @@ namespace Heron
                 //Get image frame for given boundary
                 BoundingBox imageBox = boundary[i].GetBoundingBox(false);
 
-                Point3d min = Heron.Convert.ToWGS(imageBox.Min);
-                Point3d max = Heron.Convert.ToWGS(imageBox.Max);
+                Point3d min = Heron.Convert.XYZToWGS(imageBox.Min);
+                Point3d max = Heron.Convert.XYZToWGS(imageBox.Max);
                 List<Point3d> imageCorners = imageBox.GetCorners().ToList();
                 imageCorners.Add(imageCorners[0]);
                 Polyline bpoly = new Polyline(imageCorners);
