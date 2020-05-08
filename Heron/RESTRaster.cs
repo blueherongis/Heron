@@ -31,7 +31,7 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class RESTRaster : HeronComponent
+    public class RESTRaster : HeronRasterPreviewComponent
     {
         //Class Constructor
         public RESTRaster() : base("Get REST Raster", "RESTRaster", "Get raster imagery from ArcGIS REST Services", "GIS REST")
@@ -86,7 +86,7 @@ namespace Heron
 
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
             GH_Structure<GH_String> mapquery = new GH_Structure<GH_String>();
-            GH_Structure<GH_ObjectWrapper> imgFrame = new GH_Structure<GH_ObjectWrapper>();
+            GH_Structure<GH_Rectangle> imgFrame = new GH_Structure<GH_Rectangle>();
 
             FileInfo file = new FileInfo(fileloc);
             file.Directory.Create();
@@ -107,11 +107,9 @@ namespace Heron
 
                 Point3d min = Heron.Convert.XYZToWGS(imageBox.Min);
                 Point3d max = Heron.Convert.XYZToWGS(imageBox.Max);
-                List<Point3d> imageCorners = imageBox.GetCorners().ToList();
-                imageCorners.Add(imageCorners[0]);
-                Polyline bpoly = new Polyline(imageCorners);
+                Rectangle3d rect = BBoxToRect(imageBox);
 
-                imgFrame.Append(new GH_ObjectWrapper(bpoly), path);
+                imgFrame.Append(new GH_Rectangle(rect), path);
 
                 //Query the REST service
                 string restquery = URL +
@@ -126,7 +124,9 @@ namespace Heron
                     webClient.DownloadFile(restquery, fileloc + prefix + "_" + i + ".jpg");
                     webClient.Dispose();
                 }
-                mapList.Append(new GH_String(fileloc + prefix + "_" + i + ".jpg"), path);
+                var bitmapPath = fileloc + prefix + "_" + i + ".jpg";
+                mapList.Append(new GH_String(bitmapPath), path);
+                AddPreviewItem(bitmapPath, rect);
                 mapquery.Append(new GH_String(restquery), path);
             }
 
@@ -136,7 +136,6 @@ namespace Heron
 
 
         }
-
 
         protected override System.Drawing.Bitmap Icon
         {

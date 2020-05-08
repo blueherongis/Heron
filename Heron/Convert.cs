@@ -306,7 +306,7 @@ namespace Heron
         }
 
         //get the range of tiles that intersect with the bounding box of the polygon
-        public static List<List<int>> GetTileRange(BoundingBox bnds, int zoom)
+        public static (Interval XRange, Interval YRange) GetTileRange(BoundingBox bnds, int zoom)
         {
             Point3d bndsMin = Convert.XYZToWGS(bnds.Min);
             Point3d bndsMax = Convert.XYZToWGS(bnds.Max);
@@ -316,9 +316,9 @@ namespace Heron
             double ymx = bndsMax.Y;
             List<int> starting = Convert.DegToNum(ymx, xm, zoom);
             List<int> ending = Convert.DegToNum(ym, xmx, zoom);
-            List<int> x_range = new List<int> { starting[0], ending[0] };
-            List<int> y_range = new List<int> { starting[1], ending[1] };
-            return new List<List<int>> { x_range, y_range };
+            var x_range = new Interval(starting[0], ending[0]);
+            var y_range = new Interval(starting[1], ending[1]);
+            return (x_range, y_range);
         }
 
         //get the tile as a polyline object

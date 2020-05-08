@@ -34,7 +34,7 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class SlippyRaster : HeronComponent
+    public class SlippyRaster : HeronRasterPreviewComponent
     {
         /// <summary>
         /// Initializes a new instance of the SlippyRaster class.
@@ -47,15 +47,15 @@ namespace Heron
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
 
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
-            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution, but takes longer to download. Max zoom is typically 19.", GH_ParamAccess.item,14);
-            pManager.AddTextParameter("File Location", "fileLoc", "Folder to place image files", GH_ParamAccess.item,@"C:\temp\");
+            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution, but takes longer to download. Max zoom is typically 19.", GH_ParamAccess.item, 14);
+            pManager.AddTextParameter("File Location", "fileLoc", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item, slippySource);
             //pManager.AddTextParameter("Slippy Raster URL", "slippyURL", "Slippy raster service to query", GH_ParamAccess.item);
-            pManager.AddTextParameter("Slippy Access Header", "userAgent", "A user-agent header is sometimes required for access to Slippy resources, especially OSM. This can be any string.", GH_ParamAccess.item,"");
+            pManager.AddTextParameter("Slippy Access Header", "userAgent", "A user-agent header is sometimes required for access to Slippy resources, especially OSM. This can be any string.", GH_ParamAccess.item, "");
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
             Message = SlippySource;
@@ -66,7 +66,7 @@ namespace Heron
         /// <summary>
         /// Registers all the output parameters for this component.
         /// </summary>
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Image File", "Image", "File location of downloaded image", GH_ParamAccess.tree);
             pManager.AddCurveParameter("Image Frame", "imageFrame", "Bounding box of image for mapping to geometry", GH_ParamAccess.tree);
@@ -82,36 +82,36 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             List<Curve> boundary = new List<Curve>();
-            DA.GetDataList<Curve>(0, boundary);
+            DA.GetDataList(0, boundary);
 
             int zoom = -1;
-            DA.GetData<int>(1, ref zoom);
+            DA.GetData(1, ref zoom);
 
             string fileloc = "";
-            DA.GetData<string>(2, ref fileloc);
+            DA.GetData(2, ref fileloc);
             if (!fileloc.EndsWith(@"\")) fileloc = fileloc + @"\";
 
             string prefix = "";
-            DA.GetData<string>(3, ref prefix);
+            DA.GetData(3, ref prefix);
 
             string URL = slippyURL;
             //DA.GetData<string>(4, ref URL);
 
             string userAgent = "";
-            DA.GetData<string>(4, ref userAgent);
- 
+            DA.GetData(4, ref userAgent);
+
             bool run = false;
             DA.GetData<bool>("Run", ref run);
 
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
-            GH_Structure<GH_Curve> imgFrame = new GH_Structure<GH_Curve>();
+            GH_Structure<GH_Rectangle> imgFrame = new GH_Structure<GH_Rectangle>();
             GH_Structure<GH_Integer> tCount = new GH_Structure<GH_Integer>();
 
 
-            for (int i = 0; i <boundary.Count; i++)
+            for (int i = 0; i < boundary.Count; i++)
             {
                 GH_Path path = new GH_Path(i);
-                
+
 
                 ///Get image frame for given boundary and  make sure it's valid
                 if (!boundary[i].GetBoundingBox(true).IsValid)
@@ -141,17 +141,21 @@ namespace Heron
                 List<Point3d> boxPtList = new List<Point3d>();
 
                 ///get the tile coordinates for all tiles within boundary
-                List<List<int>> ranges = new List<List<int>>();
-                ranges = Convert.GetTileRange(boundaryBox, zoom);
-
+                var ranges = Convert.GetTileRange(boundaryBox, zoom);
                 List<List<int>> tileList = new List<List<int>>();
-                List<int> x_range = ranges[0];
-                List<int> y_range = ranges[1];
+                var x_range = ranges.XRange;
+                var y_range = ranges.YRange;
+
+                if(x_range.Length > 100 || y_range.Length > 100)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "This tile range is too big. Check your units.");
+                    return;
+                }
 
                 ///cycle through tiles to get bounding box
-                for (int y = y_range[0]; y <= y_range[1]; y++)
+                for (int y = (int)y_range.Min; y <= y_range.Max; y++)
                 {
-                    for (int x = x_range[0]; x <= x_range[1]; x++)
+                    for (int x = (int)x_range.Min; x <= x_range.Max; x++)
                     {
                         ///add bounding box of tile to list
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
@@ -160,12 +164,12 @@ namespace Heron
                 }
 
                 ///bounding box of tile boundaries
-                BoundingBox bboxPts = new BoundingBox(boxPtList);
+                BoundingBox bbox = new BoundingBox(boxPtList);
 
-                ///convert bounding box to polyline
-                List<Point3d> imageCorners = bboxPts.GetCorners().ToList();
-                imageCorners.Add(imageCorners[0]);
-                imgFrame.Append(new GH_Curve(new Rhino.Geometry.Polyline(imageCorners).ToNurbsCurve()), path);
+                var rect = BBoxToRect(bbox);
+                imgFrame.Append(new GH_Rectangle(rect), path);
+
+                AddPreviewItem(imgPath, boundary[i], rect);
 
                 ///tile range as string for (de)serialization of TileCacheMeta
                 string tileRangeString = zoom.ToString()
@@ -190,7 +194,7 @@ namespace Heron
                             imageT.Dispose();
 
                             ///check to see if tilerange in comments matches current tilerange
-                            if (imgComment== (slippySource.Replace(" ", "") + tileRangeString))
+                            if (imgComment == (slippySource.Replace(" ", "") + tileRangeString))
                             {
                                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using existing image.");
                                 continue;
@@ -208,12 +212,12 @@ namespace Heron
                 ///download all tiles within boundary
                 ///merge tiles into one bitmap
                 ///API to query
-  
+
 
                 ///Do the work of assembling image
                 ///setup final image container bitmap
-                int fImageW = (x_range[1] - x_range[0] + 1) * 256;
-                int fImageH = (y_range[1] - y_range[0] + 1) * 256;
+                int fImageW = ((int)x_range.Length + 1) * 256;
+                int fImageH = ((int)y_range.Length + 1) * 256;
                 Bitmap finalImage = new Bitmap(fImageW, fImageH);
 
 
@@ -225,18 +229,18 @@ namespace Heron
                     using (Graphics g = Graphics.FromImage(finalImage))
                     {
                         g.Clear(Color.Black);
-                        for (int y = y_range[0]; y <= y_range[1]; y++)
+                        for (int y = (int)y_range.Min; y <= (int)y_range.Max; y++)
                         {
-                            for (int x = x_range[0]; x <= x_range[1]; x++)
+                            for (int x = (int)x_range.Min; x <= (int)x_range.Max; x++)
                             {
                                 //create tileCache name 
-                                string tileCache = slippySource.Replace(" ","") + zoom + x + y + ".png";
-                                string tileCahceLoc = cacheLoc + tileCache;
-                                
+                                string tileCache = slippySource.Replace(" ", "") + zoom + x + y + ".png";
+                                string tileCacheLoc = cacheLoc + tileCache;
+
                                 //check cache folder to see if tile image exists locally
-                                if (File.Exists(tileCahceLoc))
+                                if (File.Exists(tileCacheLoc))
                                 {
-                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCahceLoc));
+                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCacheLoc));
                                     ///add tmp image to final
                                     g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
                                     tmpImage.Dispose();
@@ -246,14 +250,14 @@ namespace Heron
                                 {
                                     tileList.Add(new List<int> { zoom, y, x });
                                     string urlAuth = Convert.GetZoomURL(x, y, zoom, slippyURL);
-                                    
+
                                     System.Net.WebClient client = new System.Net.WebClient();
 
                                     ///insert header if required
                                     client.Headers.Add("user-agent", userAgent);
 
-                                    client.DownloadFile(urlAuth, tileCahceLoc);
-                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCahceLoc));
+                                    client.DownloadFile(urlAuth, tileCacheLoc);
+                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCacheLoc));
                                     client.Dispose();
 
                                     //add tmp image to final
@@ -318,7 +322,7 @@ namespace Heron
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
 
-            if (slippySourceList =="")
+            if (slippySourceList == "")
             {
                 slippySourceList = Convert.GetEnpoints();
             }
@@ -339,14 +343,14 @@ namespace Heron
 
                 root.DropDownItems.Add(serviceName);
             }
-         
+
             menu.Items.Add(root);
-          
+
             base.AppendAdditionalComponentMenuItems(menu);
-            
+
         }
 
-        private void ServiceItemOnClick (object sender, EventArgs e)
+        private void ServiceItemOnClick(object sender, EventArgs e)
         {
             ToolStripMenuItem item = sender as ToolStripMenuItem;
             if (item == null)
@@ -367,9 +371,9 @@ namespace Heron
             ExpireSolution(true);
         }
 
-        
 
-       
+
+
 
         ///Sticky parameters
         ///https://developer.rhino3d.com/api/grasshopper/html/5f6a9f31-8838-40e6-ad37-a407be8f2c15.htm
@@ -419,7 +423,7 @@ namespace Heron
             }
         }
 
-        public override bool Write(GH_IO.Serialization.GH_IWriter writer)
+        public override bool Write(GH_IWriter writer)
         {
             writer.SetString("TileCacheMeta", TileCacheMeta);
             writer.SetString("SlippySourceList", SlippySourceList);
@@ -443,7 +447,7 @@ namespace Heron
         /// <summary>
         /// Provides an Icon for the component.
         /// </summary>
-        protected override System.Drawing.Bitmap Icon
+        protected override Bitmap Icon
         {
             get
             {
