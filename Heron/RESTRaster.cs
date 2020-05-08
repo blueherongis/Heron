@@ -105,8 +105,8 @@ namespace Heron
                 //Get image frame for given boundary
                 BoundingBox imageBox = boundary[i].GetBoundingBox(false);
 
-                Point3d min = Heron.Convert.WorldToWGS(imageBox.Min);
-                Point3d max = Heron.Convert.WorldToWGS(imageBox.Max);
+                Point3d min = Heron.Convert.XYZToWGS(imageBox.Min);
+                Point3d max = Heron.Convert.XYZToWGS(imageBox.Max);
                 Rectangle3d rect = BBoxToRect(imageBox);
 
                 imgFrame.Append(new GH_Rectangle(rect), path);

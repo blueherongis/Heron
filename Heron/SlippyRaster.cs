@@ -101,8 +101,7 @@ namespace Heron
             DA.GetData(4, ref userAgent);
 
             bool run = false;
-            DA.GetData("Run", ref run);
-            if (!run) return;
+            DA.GetData<bool>("Run", ref run);
 
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
             GH_Structure<GH_Rectangle> imgFrame = new GH_Structure<GH_Rectangle>();
