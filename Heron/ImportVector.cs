@@ -42,7 +42,10 @@ namespace Heron
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
             pManager.AddTextParameter("Vector Data Location", "fileLoc", "File path for the vector data input", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Crop file", "cropIt", "Crop the file to boundary?", GH_ParamAccess.item, true);
             pManager[0].Optional = true;
+            pManager[2].Optional = true;
+
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -60,11 +63,15 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
 
+            ///Gather GHA inputs
             List<Curve> boundary = new List<Curve>();
-            DA.GetDataList<Curve>(0, boundary);
+            DA.GetDataList<Curve>("Boundary", boundary);
 
             string shpFileLoc = "";
             DA.GetData<string>("Vector Data Location", ref shpFileLoc);
+
+            bool cropIt = true;
+            DA.GetData<Boolean>("Crop file", ref cropIt);
 
             ///GDAL setup
             ///Some preliminary testing has been done to read SHP, GeoJSON, OSM, KML, MVT, GML and GDB
@@ -193,6 +200,17 @@ namespace Heron
                 recs.Append(new GH_Rectangle(rec), new GH_Path(iLayer));
 
 
+                if (boundary.Count == 0 && cropIt == true)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Define a boundary or set cropIt to False");
+                }
+
+                else if (boundary.Count == 0 && cropIt == false)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Clipping boundary has not been defined. File extents will be used instead");
+                    boundary.Add(rec.ToNurbsCurve());
+                }
+
                 ///Loop through input boundaries
                 for (int i = 0; i < boundary.Count; i++)
                 {
@@ -227,6 +245,7 @@ namespace Heron
                         }
                     }
 
+
                     else if (boundary[i] == null) AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Clipping boundary " + i + " not set.");
 
                     else if (!boundary[i].IsValid) AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Clipping boundary " + i + "  is not valid.");
@@ -236,7 +255,7 @@ namespace Heron
                         AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more boundaries may be outside the bounds of the vector datasource.");
                     }
 
-                    else
+                    else 
                     {
                         ///Create bounding box for clipping geometry
                         Point3d min = Heron.Convert.XYZToWGS(boundary[i].GetBoundingBox(true).Min);
@@ -261,7 +280,11 @@ namespace Heron
                         ///http://pcjericks.github.io/py-gdalogr-cookbook/vector_layers.html
                         ///TODO: allow for polyline/curve as clipper, not just bounding box
                         OSGeo.OGR.Layer clipped_layer = layer;
-                        clipped_layer.SetSpatialFilter(ebbox);
+
+                        if (cropIt)
+                        {
+                            clipped_layer.SetSpatialFilter(ebbox);
+                        }
 
                         ///Loop through geometry
                         OSGeo.OGR.Feature feat;
