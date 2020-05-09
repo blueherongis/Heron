@@ -1,29 +1,10 @@
-﻿using System;
-using System.IO;
-using System.Xml;
-using System.Xml.Linq;
-using System.Linq;
-using System.Data;
-using System.Drawing;
-using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using Grasshopper;
-using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
-using Rhino;
-using Rhino.Geometry;
-using Rhino.DocObjects;
-using Rhino.Collections;
-using GH_IO;
-using GH_IO.Serialization;
-using OSGeo.GDAL;
 using OSGeo.OSR;
-using OSGeo.OGR;
+using Rhino.Geometry;
+using System;
+using System.Collections.Generic;
 
 
 
@@ -42,10 +23,10 @@ namespace Heron
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
             pManager.AddTextParameter("Vector Data Location", "fileLoc", "File path for the vector data input", GH_ParamAccess.item);
+            pManager.AddTextParameter("User Spatial Reference System", "userSRS", "Custom SRS", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Crop file", "cropIt", "Crop the file to boundary?", GH_ParamAccess.item, true);
             pManager[0].Optional = true;
             pManager[2].Optional = true;
-
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -57,6 +38,9 @@ namespace Heron
             pManager.AddTextParameter("Fields", "fields", "Fields of data associated with the Shapefile features", GH_ParamAccess.tree);
             pManager.AddTextParameter("Values", "values", "Field values for each feature", GH_ParamAccess.tree);
             pManager.AddPointParameter("FeaturePoints", "featurePoints", "Point geometry describing each feature", GH_ParamAccess.tree);
+
+            pManager.AddPointParameter("FeaturePointsUser", "featurePointsUser", "Point geometry describing each feature", GH_ParamAccess.tree);
+            pManager.AddCurveParameter("shpExtentUser", "shpExtentUser", "Bounding box of all Shapefile features", GH_ParamAccess.tree);
 
         }
 
@@ -70,8 +54,13 @@ namespace Heron
             string shpFileLoc = "";
             DA.GetData<string>("Vector Data Location", ref shpFileLoc);
 
+
             bool cropIt = true;
             DA.GetData<Boolean>("Crop file", ref cropIt);
+
+            string userSRStext = "WGS84";
+            DA.GetData<string>(2, ref userSRStext);
+
 
             ///GDAL setup
             ///Some preliminary testing has been done to read SHP, GeoJSON, OSM, KML, MVT, GML and GDB
@@ -116,7 +105,10 @@ namespace Heron
             GH_Structure<GH_String> fset = new GH_Structure<GH_String>();
             GH_Structure<GH_Point> gset = new GH_Structure<GH_Point>();
 
-         
+            GH_Structure<GH_Point> gsetUser = new GH_Structure<GH_Point>();
+            GH_Structure<GH_Rectangle> recsUser = new GH_Structure<GH_Rectangle>();
+
+
             ///Loop through each layer. Layers usually occur in Geodatabase GDB format. SHP usually has only one layer.
             for (int iLayer = 0; iLayer < ds.GetLayerCount(); iLayer++)
             {
@@ -135,31 +127,25 @@ namespace Heron
                 layname.Append(new GH_String(layer.GetName()), new GH_Path(iLayer));
 
 
-                ///Get OGR envelope of the data in the layer
-                OSGeo.OGR.Envelope ext = new OSGeo.OGR.Envelope();
-                layer.GetExtent(ext, 1);
-                Point3d extMin = new Point3d();
-                Point3d extMax = new Point3d();
-                extMin.X = ext.MinX;
-                extMin.Y = ext.MinY;
-                extMax.X = ext.MaxX;
-                extMax.Y = ext.MaxY;
-
-
                 ///Get the spatial reference of the input vector file and set to WGS84 if not known
-                OSGeo.OSR.SpatialReference sr = new SpatialReference(Osr.SRS_WKT_WGS84);
+                OSGeo.OSR.SpatialReference sourceSRS = new SpatialReference(Osr.SRS_WKT_WGS84);
                 string sRef = "";
 
                 if (layer.GetSpatialRef() == null)
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) is missing.  CRS set automatically set to WGS84.");
-                    sr.ImportFromXML(shpFileLoc);
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) is missing.  CRS set automatically set to WGS84. Mapbox to 3857");
+                    //sr.ImportFromXML(shpFileLoc);
+                    //sr.ImportFromEPSG(3857);
+                    //sr.SetWellKnownGeogCS("EPSG:3857");
+                    sourceSRS.SetFromUserInput("WGS84"); ///this seems to work where SetWellKnownGeogCS doesn't
+
                     string pretty = "";
-                    sr.ExportToPrettyWkt(out pretty, 0);
+                    sourceSRS.ExportToPrettyWkt(out pretty, 0);
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, pretty);
-                    sr.SetWellKnownGeogCS("WGS84");
+                    //sr.SetWellKnownGeogCS("WGS84");
+                    //sr.SetWellKnownGeogCS("EPSG:3857");
                     sRef = "Coordinate Reference System (CRS) is missing.  CRS set automatically set to WGS84.";
-                    //sr.ImportFromEPSG(2263);
+                    
 
                 }
                 else
@@ -167,14 +153,14 @@ namespace Heron
                     if (layer.GetSpatialRef().Validate() != 0)
                     {
                         AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) is unknown or unsupported.  CRS set automatically set to WGS84.");
-                        sr.SetWellKnownGeogCS("WGS84");
+                        sourceSRS.SetWellKnownGeogCS("WGS84");
                         sRef = "Coordinate Reference System (CRS) is unknown or unsupported.  SRS set automatically set to WGS84.";
                     }
                     else
                     {
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) set from layer" + iLayer + ".");
-                        sr = layer.GetSpatialRef();
-                        sr.ExportToWkt(out sRef);
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) set from layer " + layer.GetName() + ".");
+                        sourceSRS = layer.GetSpatialRef();
+                        sourceSRS.ExportToWkt(out sRef);
                     }
                 }
 
@@ -183,22 +169,48 @@ namespace Heron
 
                 ///Set transform from input spatial reference to Rhino spatial reference
                 ///TODO: look into adding a step for transforming to CRS set in SetCRS 
-                OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
-                dst.SetWellKnownGeogCS("WGS84");
-                OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(sr, dst);
-                OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(dst, sr);
+                OSGeo.OSR.SpatialReference rhinoSRS = new OSGeo.OSR.SpatialReference("");
+                rhinoSRS.SetWellKnownGeogCS("WGS84");
 
+                ///TODO: verify the userSRS is valid
+                ///TODO: use this as override of global SetSRS
+                OSGeo.OSR.SpatialReference userSRS = new OSGeo.OSR.SpatialReference("");
+                userSRS.SetFromUserInput(userSRStext);
 
-                ///Get bounding box of data in layer
-                double[] extMinPT = new double[3] { extMin.X, extMin.Y, extMin.Z };
-                double[] extMaxPT = new double[3] { extMax.X, extMax.Y, extMax.Z };
-                coordTransform.TransformPoint(extMinPT);
-                coordTransform.TransformPoint(extMaxPT);
+                ///This transform moves and scales the points required in going from userSRS to XYZ
+                Transform shift = Heron.Convert.GetModelToUserSRSTransform(userSRS);
+
+                OSGeo.OSR.CoordinateTransformation coordTransformSourceToRhino = new OSGeo.OSR.CoordinateTransformation(sourceSRS, rhinoSRS);
+                OSGeo.OSR.CoordinateTransformation coordTransformRhinoToUser = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, userSRS);
+                OSGeo.OSR.CoordinateTransformation coordTransformSourceToUser = new OSGeo.OSR.CoordinateTransformation(sourceSRS, userSRS);
+
+                OSGeo.OSR.CoordinateTransformation revTransformUserToRhino = new OSGeo.OSR.CoordinateTransformation(userSRS, rhinoSRS);
+                OSGeo.OSR.CoordinateTransformation revTransformRhinoToSource = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, sourceSRS);
+                OSGeo.OSR.CoordinateTransformation revTransformUserToSource = new OSGeo.OSR.CoordinateTransformation(userSRS, sourceSRS);
+
+                ///Get OGR envelope of the data in the layer in the sourceSRS
+                OSGeo.OGR.Envelope ext = new OSGeo.OGR.Envelope();
+                layer.GetExtent(ext, 1);
+                Point3d extMinSource = new Point3d();
+                Point3d extMaxSource = new Point3d();
+                extMinSource.X = ext.MinX;
+                extMinSource.Y = ext.MinY;
+                extMaxSource.X = ext.MaxX;
+                extMaxSource.Y = ext.MaxY;
+
+                ///Get bounding box of data in layer for coordinate transformation in Rhino SRS
+                double[] extMinPT = new double[3] { extMinSource.X, extMinSource.Y, extMinSource.Z };
+                double[] extMaxPT = new double[3] { extMaxSource.X, extMaxSource.Y, extMaxSource.Z };
+
+                ///Transform corners of extents from Source to Rhino SRS
+                coordTransformSourceToRhino.TransformPoint(extMinPT);
+                coordTransformSourceToRhino.TransformPoint(extMaxPT);
+
+                ///Get extents in Rhino SRS
                 Point3d extPTmin = new Point3d(extMinPT[0], extMinPT[1], extMinPT[2]);
                 Point3d extPTmax = new Point3d(extMaxPT[0], extMaxPT[1], extMaxPT[2]);
                 Rectangle3d rec = new Rectangle3d(Plane.WorldXY, Heron.Convert.WGSToXYZ(extPTmin), Heron.Convert.WGSToXYZ(extPTmax));
                 recs.Append(new GH_Rectangle(rec), new GH_Path(iLayer));
-
 
                 if (boundary.Count == 0 && cropIt == true)
                 {
@@ -210,6 +222,22 @@ namespace Heron
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Clipping boundary has not been defined. File extents will be used instead");
                     boundary.Add(rec.ToNurbsCurve());
                 }
+
+                ///Get bounding box of data in layer for coordinate transformation in User SRS
+                ///TODO: currently the extents are showing odd results that don't seem to be shifting properly
+                double[] extMinPTUser = new double[3] { extMinSource.X, extMinSource.Y, extMinSource.Z };
+                double[] extMaxPTUser = new double[3] { extMaxSource.X, extMaxSource.Y, extMaxSource.Z };
+
+                ///Transform corners of extents from Source to User SRS
+                coordTransformSourceToUser.TransformPoint(extMinPTUser);
+                coordTransformSourceToUser.TransformPoint(extMaxPTUser);
+
+                ///Get extents in User SRS
+                Point3d extPTminUser = new Point3d(extMinPTUser[0], extMinPTUser[1], extMinPTUser[2]);
+                Point3d extPTmaxUser = new Point3d(extMaxPTUser[0], extMaxPTUser[1], extMaxPTUser[2]);
+                Rectangle3d recUser = new Rectangle3d(Plane.WorldXY, Heron.Convert.UserSRSToXYZ(extPTminUser, shift), Heron.Convert.UserSRSToXYZ(extPTmaxUser, shift));
+                recsUser.Append(new GH_Rectangle(recUser), new GH_Path(iLayer));
+
 
                 ///Loop through input boundaries
                 for (int i = 0; i < boundary.Count; i++)
@@ -269,8 +297,13 @@ namespace Heron
                         maxpT[0] = max.X;
                         maxpT[1] = max.Y;
                         maxpT[2] = max.Z;
-                        revTransform.TransformPoint(minpT);
-                        revTransform.TransformPoint(maxpT);
+
+                        revTransformRhinoToSource.TransformPoint(minpT);
+                        revTransformRhinoToSource.TransformPoint(maxpT);
+
+                        ///TODO: allow boundary to be converted to userSRS 
+                        //revTransformUserToRhino.TransformPoint(minpT);
+                        //revTransformUserToRhino.TransformPoint(maxpT);
 
                         ///Convert to OGR geometry
                         ///TODO: add conversion from GH geometry to OGR to Convert class
@@ -297,16 +330,21 @@ namespace Heron
                             OSGeo.OGR.Geometry geom = feat.GetGeometryRef();
                             OSGeo.OGR.Geometry sub_geom;
 
+                            OSGeo.OGR.Geometry geomUser = feat.GetGeometryRef().Clone();// geom.Clone();
+                            OSGeo.OGR.Geometry sub_geomUser;
+
                             ///reproject geometry to WGS84
                             ///TODO: look into using the SetCRS global variable here
-                            geom.Transform(coordTransform);
+                            geom.Transform(coordTransformSourceToRhino);
+
+                            geomUser.Transform(coordTransformSourceToUser);
 
                             if (feat.GetGeometryRef() != null)
                             {
                                 ///Start get points if open polylines and points
                                 for (int gpc = 0; gpc < geom.GetPointCount(); gpc++)
                                 { 
-                                    ///Loop through geometry points
+                                    ///Loop through geometry points for Rhino SRS
                                     double[] pT = new double[3];
                                     pT[0] = geom.GetX(gpc);
                                     pT[1] = geom.GetY(gpc);
@@ -315,7 +353,6 @@ namespace Heron
                                     {
                                         pT[2] = 0;
                                     }
-                                    //coordTransform.TransformPoint(pT);
 
                                     Point3d pt3D = new Point3d();
                                     pt3D.X = pT[0];
@@ -323,7 +360,25 @@ namespace Heron
                                     pt3D.Z = pT[2];
 
                                     gset.Append(new GH_Point(Heron.Convert.WGSToXYZ(pt3D)), new GH_Path(i, iLayer, m));
+
+                                    ///Loop through geometry points for User SRS
+                                    double[] pTUser = new double[3];
+                                    pTUser[0] = geomUser.GetX(gpc);
+                                    pTUser[1] = geomUser.GetY(gpc);
+                                    pTUser[2] = geomUser.GetZ(gpc);
+                                    if (Double.IsNaN(geomUser.GetZ(gpc)))
+                                    {
+                                        pTUser[2] = 0;
+                                    }
+
+                                    Point3d pt3DUser = new Point3d();
+                                    pt3DUser.X = pTUser[0];
+                                    pt3DUser.Y = pTUser[1];
+                                    pt3DUser.Z = pTUser[2];
+
+                                    gsetUser.Append(new GH_Point(Heron.Convert.UserSRSToXYZ(pt3DUser, shift)), new GH_Path(i, iLayer, m));
                                     ///End loop through geometry points
+
 
                                     /// Get Feature Values
                                     if (fset.PathExists(new GH_Path(i, iLayer, m)))
@@ -353,17 +408,19 @@ namespace Heron
                                 {
                                     sub_geom = geom.GetGeometryRef(gi);
                                     OSGeo.OGR.Geometry subsub_geom;
-                                    List<Point3d> geom_list = new List<Point3d>();
-                                    
-                                    ///trouble getting all points.  this is a troubleshoot
-                                    ///gset.Append(new GH_Point(new Point3d(0, 0, sub_geom.GetGeometryCount())), new GH_Path(i, iLayer, m, gi));
+                                    //List<Point3d> geom_list = new List<Point3d>();
 
+                                    sub_geomUser = geomUser.GetGeometryRef(gi);
+                                    OSGeo.OGR.Geometry subsub_geomUser;
+                                    
                                     if (sub_geom.GetGeometryCount() > 0)
                                     {
                                         for (int n = 0; n < sub_geom.GetGeometryCount(); n++)
                                         {
 
                                             subsub_geom = sub_geom.GetGeometryRef(n);
+                                            subsub_geomUser = sub_geomUser.GetGeometryRef(n);
+
                                             for (int ptnum = 0; ptnum < subsub_geom.GetPointCount(); ptnum++)
                                             {
                                                 ///Loop through geometry points
@@ -378,9 +435,23 @@ namespace Heron
                                                 pt3D.Z = pT[2];
 
                                                 gset.Append(new GH_Point(Heron.Convert.WGSToXYZ(pt3D)), new GH_Path(i, iLayer, m, gi, n));
+
+
+                                                double[] pTUser = new double[3];
+                                                pTUser[0] = subsub_geomUser.GetX(ptnum);
+                                                pTUser[1] = subsub_geomUser.GetY(ptnum);
+                                                pTUser[2] = subsub_geomUser.GetZ(ptnum);
+
+                                                Point3d pt3DUser = new Point3d();
+                                                pt3DUser.X = pTUser[0];
+                                                pt3DUser.Y = pTUser[1];
+                                                pt3DUser.Z = pTUser[2];
+
+                                                gsetUser.Append(new GH_Point(Heron.Convert.UserSRSToXYZ(pt3DUser,shift)), new GH_Path(i, iLayer, m, gi, n));
                                                 ///End loop through geometry points
                                             }
                                             subsub_geom.Dispose();
+                                            subsub_geomUser.Dispose();
                                         }
                                     }
 
@@ -400,11 +471,26 @@ namespace Heron
                                             pt3D.Z = pT[2];
 
                                             gset.Append(new GH_Point(Heron.Convert.WGSToXYZ(pt3D)), new GH_Path(i, iLayer, m, gi));
+
+
+                                            double[] pTUser = new double[3];
+                                            pTUser[0] = sub_geomUser.GetX(ptnum);
+                                            pTUser[1] = sub_geomUser.GetY(ptnum);
+                                            pTUser[2] = sub_geomUser.GetZ(ptnum);
+
+                                            Point3d pt3DUser = new Point3d();
+                                            pt3DUser.X = pTUser[0];
+                                            pt3DUser.Y = pTUser[1];
+                                            pt3DUser.Z = pTUser[2];
+
+                                            gsetUser.Append(new GH_Point(Heron.Convert.UserSRSToXYZ(pt3DUser,shift)), new GH_Path(i, iLayer, m, gi));
                                             ///End loop through geometry points
                                         }
                                     }
 
                                     sub_geom.Dispose();
+                                    sub_geomUser.Dispose();
+
 
                                     /// Get Feature Values
                                     if (fset.PathExists(new GH_Path(i, iLayer, m)))
@@ -429,6 +515,8 @@ namespace Heron
                                 //m++;
                             }
                             m++;
+                            geom.Dispose();
+                            geomUser.Dispose();
                             feat.Dispose();
                         }///end while loop through features
 
@@ -449,6 +537,9 @@ namespace Heron
             DA.SetDataTree(4, fnames);
             DA.SetDataTree(5, fset);
             DA.SetDataTree(6, gset);
+
+            DA.SetDataTree(7, gsetUser);
+            DA.SetDataTree(8, recsUser);
 
         }
 

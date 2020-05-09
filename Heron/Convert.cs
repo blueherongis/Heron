@@ -46,8 +46,6 @@ namespace Heron
             var transformedPoint = new Point3d(wgs);
             transformedPoint.Transform(WGSToXYZTransform());
             return transformedPoint;
-            ///TODO: make translation of wgs here using SetCRS (CRS -> WGS84)
-
         }
 
         public static Transform WGSToXYZTransform()
@@ -58,6 +56,39 @@ namespace Heron
             }
             return Transform.Unset;
         }
+
+        public static Transform GetModelToUserSRSTransform(OSGeo.OSR.SpatialReference userSRS)
+        {
+            ///TODO: Check what units the userSRS is in and coordinate with the scaling function.  Currently only accounts for a userSRS in meters.
+            ///TODO: translate or scale GCS (decimal degrees) to something like a Projectected Coordinate System.  Need to go dd to xy
+            double eapLat = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLatitude;
+            double eapLon = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLongitude;
+            double eapElev = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointElevation;
+
+            OSGeo.OSR.SpatialReference rhinoSRS = new OSGeo.OSR.SpatialReference("");
+            rhinoSRS.SetWellKnownGeogCS("WGS84");
+
+            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, userSRS);
+            double[] userAnchorPointDD = new double[3] { eapLon, eapLat, eapElev };
+            coordTransform.TransformPoint(userAnchorPointDD);
+            Point3d userAnchorPointdPT = new Point3d(userAnchorPointDD[0], userAnchorPointDD[1], userAnchorPointDD[2]);
+
+            ///leave the shift from userSRS EAP to 0,0 open to rotation based on SRS north direction
+            Transform shift = Transform.ChangeBasis(Plane.WorldXY, new Plane(userAnchorPointdPT, Plane.WorldXY.XAxis, Plane.WorldXY.YAxis));
+            Transform scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters)));
+            Transform shiftScale = Transform.Multiply(scale, shift);
+
+            return shiftScale;
+        }
+
+        public static Point3d UserSRSToXYZ(Point3d userCoord, Transform shift)
+        {
+
+            userCoord = shift * userCoord;
+            return userCoord;
+        }
+
+
         //////////////////////////////////////////////////////
 
 
