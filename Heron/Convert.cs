@@ -30,6 +30,7 @@ namespace Heron
 
         public static Point3d ToWGS(Point3d xyz)
         {
+            /* replace transform with work in done ToWGSxf
             EarthAnchorPoint eap = new EarthAnchorPoint();
             eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
             Rhino.UnitSystem us = new Rhino.UnitSystem();
@@ -38,10 +39,28 @@ namespace Heron
             xyz = xyz * Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
             Point3d ptON = new Point3d(xyz.X, xyz.Y, xyz.Z);
             ptON = xf * ptON;
+            */
+
+            xyz = Heron.Convert.ToWGSxf() * xyz;
+
 
             ///TODO: Make translation of ptON here using SetCRS global variable (WGS84 -> CRS)
+            /*
+            OSGeo.OSR.SpatialReference userSRS = new OSGeo.OSR.SpatialReference("");
+            userSRS.SetFromUserInput("EPSG:3857");
 
-            return ptON;
+            OSGeo.OSR.SpatialReference rhinoSRS = new OSGeo.OSR.SpatialReference("");
+            rhinoSRS.SetWellKnownGeogCS("WGS84");
+
+            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, userSRS);
+            double[] translatedDD = new double[3] { ptON.X, ptON.Y, ptON.Z };
+            coordTransform.TransformPoint(translatedDD);
+            Point3d translatedPT = new Point3d(translatedDD[0], translatedDD[1], translatedDD[2]);
+
+            //return translatedPT;
+            */
+
+            return xyz;
         }
 
         public static Transform ToWGSxf()
@@ -60,7 +79,21 @@ namespace Heron
         {
 
             ///TODO: make translation of wgs here using SetCRS (CRS -> WGS84)
+            /*
+            OSGeo.OSR.SpatialReference userSRS = new OSGeo.OSR.SpatialReference("");
+            userSRS.SetFromUserInput("EPSG:5070");
 
+            OSGeo.OSR.SpatialReference rhinoSRS = new OSGeo.OSR.SpatialReference("");
+            rhinoSRS.SetWellKnownGeogCS("WGS84");
+
+            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(userSRS, rhinoSRS);
+            double[] translatedDD = new double[3] { wgs.X, wgs.Y, wgs.Z };
+            coordTransform.TransformPoint(translatedDD);
+            Point3d translatedPT = new Point3d(translatedDD[0], translatedDD[1], translatedDD[2]);
+            wgs = translatedPT;
+            */
+
+            /*replace transform with work done in ToXYZ
             EarthAnchorPoint eap = new EarthAnchorPoint();
             eap = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint;
             Rhino.UnitSystem us = new Rhino.UnitSystem();
@@ -72,6 +105,10 @@ namespace Heron
             xf.TryGetInverse(out Inversexf);
 
             wgs = Inversexf * wgs / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
+            */
+
+
+            wgs = Heron.Convert.ToXYZxf() * wgs;
             return wgs;
         }
 
@@ -91,6 +128,57 @@ namespace Heron
             xfScaled.TryGetInverse(out Inversexf);
             return Inversexf;
         }
+
+        public static double FromMetersToDocUnits()
+        {
+            return Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
+        }
+
+        public static Transform FromMetersToDocUnitsXf()
+        {
+            Transform scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters));
+            return scale;
+        }
+
+        public static Transform GetModelToUserSRSTransform(OSGeo.OSR.SpatialReference userSRS)
+        {
+            ///TODO: Check what units the userSRS is in and coordinate with the scaling function
+            ///TODO: translate or scale GCS (decimal degrees) to something like a Projectected Coordinate System.  Need to go dd to xy
+            double eapLat = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLatitude;
+            double eapLon = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLongitude;
+            double eapElev = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointElevation;
+
+            OSGeo.OSR.SpatialReference rhinoSRS = new OSGeo.OSR.SpatialReference("");
+            rhinoSRS.SetWellKnownGeogCS("WGS84");
+
+            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, userSRS);
+            double[] translatedDD = new double[3] { eapLon, eapLat, eapElev };
+            coordTransform.TransformPoint(translatedDD);
+            Point3d translatedPT = new Point3d(translatedDD[0], translatedDD[1], translatedDD[2]);
+
+            //leave the shift from userSRS EAP to 0,0 open to rotation based on SRS north direction
+            Transform shift = Transform.ChangeBasis(Plane.WorldXY, new Plane(translatedPT, Plane.WorldXY.XAxis, Plane.WorldXY.YAxis));
+            Transform scale = Transform.Scale(new Point3d(0.0,0.0,0.0),(1/Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters)));
+            Transform shiftScale = Transform.Multiply(scale, shift);
+
+            return shiftScale;
+        }
+
+        public static Point3d ToXYZUser(Point3d userCoord, Transform shift)
+        {
+
+            userCoord = shift * userCoord;// / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
+
+            return userCoord;
+        }
+
+        public static Transform FromDocUnitsToMeters()
+        {
+            Transform Inversexf = new Transform();
+            FromDocUnitsToMeters().TryGetInverse(out Inversexf);
+            return Inversexf;
+        }
+
         //////////////////////////////////////////////////////
 
 
