@@ -35,7 +35,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
-            pManager.AddTextParameter("File Location", "fileLocation", "Folder to place image files", GH_ParamAccess.item, @"C:\temp\");
+            pManager.AddTextParameter("File Location", "fileLocation", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item, topoService);
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
@@ -92,8 +92,8 @@ namespace Heron
                 Curve offsetB = boundary[i].Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
 
                 //Get dem frame for given boundary
-                Point3d min = Heron.Convert.ToWGS(offsetB.GetBoundingBox(true).Min);
-                Point3d max = Heron.Convert.ToWGS(offsetB.GetBoundingBox(true).Max);
+                Point3d min = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Min);
+                Point3d max = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Max);
 
                 //Query opentopography.org
                 //DEM types

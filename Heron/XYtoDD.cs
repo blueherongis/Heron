@@ -54,7 +54,7 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             ///Dump out the transform first
-            DA.SetData("Transform", Heron.Convert.ToWGSxf());
+            DA.SetData("Transform", Heron.Convert.XYZToWGSTransform());
 
             /// First, we need to retrieve all data from the input parameters.
             /// We'll start by declaring variables and assigning them starting values.
@@ -64,8 +64,8 @@ namespace Heron
             if (!DA.GetData<Point3d>("xyPoint", ref xyPt)) return;
 
             /// Finally assign the output parameters.
-            DA.SetData("Latitude", Heron.Convert.ToWGS(xyPt).Y);
-            DA.SetData("Longitude", Heron.Convert.ToWGS(xyPt).X);
+            DA.SetData("Latitude", Heron.Convert.XYZToWGS(xyPt).Y);
+            DA.SetData("Longitude", Heron.Convert.XYZToWGS(xyPt).X);
         }
 
         protected override System.Drawing.Bitmap Icon
