@@ -12,11 +12,14 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-
+using Rhino;
 using Rhino.Geometry;
 using Rhino.DocObjects;
+
 using OSGeo.OGR;
-using Rhino;
+using OSGeo.GDAL;
+using OSGeo.OSR;
+
 
 namespace Heron
 {
@@ -57,35 +60,82 @@ namespace Heron
             return Transform.Unset;
         }
 
-        public static Transform GetModelToUserSRSTransform(OSGeo.OSR.SpatialReference userSRS)
+        public static Transform GetUserSRSToModelTransform(OSGeo.OSR.SpatialReference userSRS)
         {
             ///TODO: Check what units the userSRS is in and coordinate with the scaling function.  Currently only accounts for a userSRS in meters.
             ///TODO: translate or scale GCS (decimal degrees) to something like a Projectected Coordinate System.  Need to go dd to xy
-            double eapLat = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLatitude;
-            double eapLon = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLongitude;
-            double eapElev = Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointElevation;
+
+            ///transform rhino EAP from rhinoSRS to userSRS
+            double eapLat = EarthAnchorPoint.EarthBasepointLatitude;
+            double eapLon = EarthAnchorPoint.EarthBasepointLongitude;
+            double eapElev = EarthAnchorPoint.EarthBasepointElevation;
+            Plane eapPlane = EarthAnchorPoint.GetEarthAnchorPlane(out Vector3d eapNorth);
 
             OSGeo.OSR.SpatialReference rhinoSRS = new OSGeo.OSR.SpatialReference("");
             rhinoSRS.SetWellKnownGeogCS("WGS84");
 
             OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, userSRS);
-            double[] userAnchorPointDD = new double[3] { eapLon, eapLat, eapElev };
-            coordTransform.TransformPoint(userAnchorPointDD);
-            Point3d userAnchorPointdPT = new Point3d(userAnchorPointDD[0], userAnchorPointDD[1], userAnchorPointDD[2]);
+            OSGeo.OGR.Geometry userAnchorPointDD = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLon,eapLat,eapElev));
 
-            ///leave the shift from userSRS EAP to 0,0 open to rotation based on SRS north direction
-            Transform shift = Transform.ChangeBasis(Plane.WorldXY, new Plane(userAnchorPointdPT, Plane.WorldXY.XAxis, Plane.WorldXY.YAxis));
+            userAnchorPointDD.Transform(coordTransform);
+
+            Point3d userAnchorPointPT = Heron.Convert.OgrPointToPoint3d(userAnchorPointDD);
+
+            ///setup userAnchorPoint plane for move and rotation
+            double eapLatNorth = EarthAnchorPoint.EarthBasepointLatitude + 0.5;
+            double eapLonEast = EarthAnchorPoint.EarthBasepointLongitude + 0.5;
+            OSGeo.OGR.Geometry userAnchorPointDDNorth = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLon, eapLatNorth, eapElev));
+            OSGeo.OGR.Geometry userAnchorPointDDEast = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLonEast, eapLat, eapElev));
+            userAnchorPointDDNorth.Transform(coordTransform);
+            userAnchorPointDDEast.Transform(coordTransform);
+            Point3d userAnchorPointPTNorth = Heron.Convert.OgrPointToPoint3d(userAnchorPointDDNorth);
+            Point3d userAnchorPointPTEast = Heron.Convert.OgrPointToPoint3d(userAnchorPointDDEast);
+            Vector3d userAnchorNorthVec = userAnchorPointPTNorth - userAnchorPointPT;
+            Vector3d userAnchorEastVec = userAnchorPointPTEast - userAnchorPointPT;
+
+            Plane userEapPlane = new Plane(userAnchorPointPT, userAnchorEastVec, userAnchorNorthVec);
+
+            ///if SRS is geographic (ie WGS84) use Rhino's internal projection
+            ///this is still buggy as it doesn't work with other geographic systems like NAD27
+            if ((userSRS.IsProjected()==0) && (userSRS.IsLocal()==0))
+            {
+                userAnchorPointPT = WGSToXYZTransform() * userAnchorPointPT;                
+            }
+
+            ///shift (move and rotate) from userSRS EAP to 0,0 based on SRS north direction
+            Transform shift = Transform.ChangeBasis(eapPlane, userEapPlane);
             Transform scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters)));
+            if (userSRS.GetLinearUnitsName()=="FEET")
+            {
+                scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Feet)));
+            }
+
             Transform shiftScale = Transform.Multiply(scale, shift);
 
             return shiftScale;
         }
 
-        public static Point3d UserSRSToXYZ(Point3d userCoord, Transform shift)
+        public static Transform GetModelToUserSRSTransform(OSGeo.OSR.SpatialReference userSRS)
+        {
+            var XYZToUserSRS = GetUserSRSToModelTransform(userSRS);
+            if (XYZToUserSRS.TryGetInverse(out Transform transform))
+            {
+                return transform;
+            }
+            return Transform.Unset;
+        }
+
+        public static Point3d UserSRSToXYZ(Point3d userCoord, Transform userToModelTransform)
         {
 
-            userCoord = shift * userCoord;
+            userCoord = userToModelTransform * userCoord;
             return userCoord;
+        }
+
+        public static Point3d XYZToUserSRS(Point3d xyzCoord, Transform modelToUserTransform)
+        {
+            xyzCoord = modelToUserTransform * xyzCoord;
+            return xyzCoord;
         }
 
 
@@ -150,7 +200,16 @@ namespace Heron
         public static Point3d OgrPointToPoint3d(OSGeo.OGR.Geometry ogrPoint)
         {
             Point3d pt3d = new Point3d(ogrPoint.GetX(0), ogrPoint.GetY(0), ogrPoint.GetZ(0));
-            return Convert.WGSToXYZ(pt3d);
+            ///convert should happen in the component or elsewhere, not here.  point should come in pre-converted to SRS
+            //return Convert.WGSToXYZ(pt3d);
+            return pt3d;
+        }
+
+        public static OSGeo.OGR.Geometry Point3dToOgrPoint(Point3d pt3d)
+        {
+            OSGeo.OGR.Geometry ogrPoint = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
+            ogrPoint.AddPoint(pt3d.X, pt3d.Y, pt3d.Z);
+            return ogrPoint;
         }
 
         public static List<Point3d> OgrMultiPointToPoint3d(OSGeo.OGR.Geometry ogrMultiPoint)

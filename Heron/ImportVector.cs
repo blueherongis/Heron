@@ -23,7 +23,7 @@ namespace Heron
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
             pManager.AddTextParameter("Vector Data Location", "fileLoc", "File path for the vector data input", GH_ParamAccess.item);
-            pManager.AddTextParameter("User Spatial Reference System", "userSRS", "Custom SRS", GH_ParamAccess.item);
+            pManager.AddTextParameter("User Spatial Reference System", "userSRS", "Custom SRS", GH_ParamAccess.item,"WGS84");
             pManager.AddBooleanParameter("Crop file", "cropIt", "Crop the file to boundary?", GH_ParamAccess.item, true);
             pManager[0].Optional = true;
             pManager[2].Optional = true;
@@ -158,9 +158,10 @@ namespace Heron
                     }
                     else
                     {
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) set from layer " + layer.GetName() + ".");
                         sourceSRS = layer.GetSpatialRef();
                         sourceSRS.ExportToWkt(out sRef);
+                        int sourceSRSInt = Int16.Parse(sourceSRS.GetAuthorityCode(null));
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Source Coordinate Reference System (CRS) from layer " + layer.GetName() + " is EPSG:"+ sourceSRSInt +".");
                     }
                 }
 
@@ -177,8 +178,9 @@ namespace Heron
                 OSGeo.OSR.SpatialReference userSRS = new OSGeo.OSR.SpatialReference("");
                 userSRS.SetFromUserInput(userSRStext);
 
-                ///This transform moves and scales the points required in going from userSRS to XYZ
-                Transform shift = Heron.Convert.GetModelToUserSRSTransform(userSRS);
+                ///This transform moves and scales the points required in going from userSRS to XYZ and vice versa
+                Transform userSRSToModel = Heron.Convert.GetUserSRSToModelTransform(userSRS);
+                Transform modelToUserSRS = Heron.Convert.GetModelToUserSRSTransform(userSRS);
 
                 OSGeo.OSR.CoordinateTransformation coordTransformSourceToRhino = new OSGeo.OSR.CoordinateTransformation(sourceSRS, rhinoSRS);
                 OSGeo.OSR.CoordinateTransformation coordTransformRhinoToUser = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, userSRS);
@@ -228,14 +230,14 @@ namespace Heron
                 double[] extMinPTUser = new double[3] { extMinSource.X, extMinSource.Y, extMinSource.Z };
                 double[] extMaxPTUser = new double[3] { extMaxSource.X, extMaxSource.Y, extMaxSource.Z };
 
-                ///Transform corners of extents from Source to User SRS
+                ///Transform corners of extents from Source to userSRS
                 coordTransformSourceToUser.TransformPoint(extMinPTUser);
                 coordTransformSourceToUser.TransformPoint(extMaxPTUser);
 
-                ///Get extents in User SRS
+                ///Get extents in userSRS
                 Point3d extPTminUser = new Point3d(extMinPTUser[0], extMinPTUser[1], extMinPTUser[2]);
                 Point3d extPTmaxUser = new Point3d(extMaxPTUser[0], extMaxPTUser[1], extMaxPTUser[2]);
-                Rectangle3d recUser = new Rectangle3d(Plane.WorldXY, Heron.Convert.UserSRSToXYZ(extPTminUser, shift), Heron.Convert.UserSRSToXYZ(extPTmaxUser, shift));
+                Rectangle3d recUser = new Rectangle3d(Plane.WorldXY, Heron.Convert.UserSRSToXYZ(extPTminUser, userSRSToModel), Heron.Convert.UserSRSToXYZ(extPTmaxUser, userSRSToModel));
                 recsUser.Append(new GH_Rectangle(recUser), new GH_Path(iLayer));
 
 
@@ -376,7 +378,14 @@ namespace Heron
                                     pt3DUser.Y = pTUser[1];
                                     pt3DUser.Z = pTUser[2];
 
-                                    gsetUser.Append(new GH_Point(Heron.Convert.UserSRSToXYZ(pt3DUser, shift)), new GH_Path(i, iLayer, m));
+                                    if ((userSRS.IsProjected() == 0) && (userSRS.IsLocal() == 0))
+                                    {
+                                        gsetUser.Append(new GH_Point(Heron.Convert.WGSToXYZ(pt3DUser)), new GH_Path(i, iLayer, m));
+                                    }
+                                    else
+                                    {
+                                        gsetUser.Append(new GH_Point(userSRSToModel * pt3DUser), new GH_Path(i, iLayer, m));
+                                    }
                                     ///End loop through geometry points
 
 
@@ -447,7 +456,15 @@ namespace Heron
                                                 pt3DUser.Y = pTUser[1];
                                                 pt3DUser.Z = pTUser[2];
 
-                                                gsetUser.Append(new GH_Point(Heron.Convert.UserSRSToXYZ(pt3DUser,shift)), new GH_Path(i, iLayer, m, gi, n));
+                                                if ((userSRS.IsProjected() == 0) && (userSRS.IsLocal() == 0))
+                                                {
+                                                    gsetUser.Append(new GH_Point(Heron.Convert.WGSToXYZ(pt3DUser)), new GH_Path(i, iLayer, m, gi, n));
+                                                }
+                                                else
+                                                {
+                                                    gsetUser.Append(new GH_Point(userSRSToModel * pt3DUser), new GH_Path(i, iLayer, m, gi, n));
+                                                }
+
                                                 ///End loop through geometry points
                                             }
                                             subsub_geom.Dispose();
@@ -483,7 +500,14 @@ namespace Heron
                                             pt3DUser.Y = pTUser[1];
                                             pt3DUser.Z = pTUser[2];
 
-                                            gsetUser.Append(new GH_Point(Heron.Convert.UserSRSToXYZ(pt3DUser,shift)), new GH_Path(i, iLayer, m, gi));
+                                            if ((userSRS.IsProjected() == 0) && (userSRS.IsLocal() == 0))
+                                            {
+                                                gsetUser.Append(new GH_Point(Heron.Convert.WGSToXYZ(pt3DUser)), new GH_Path(i, iLayer, m, gi));
+                                            }
+                                            else
+                                            {
+                                                gsetUser.Append(new GH_Point(userSRSToModel * pt3DUser), new GH_Path(i, iLayer, m, gi));
+                                            }
                                             ///End loop through geometry points
                                         }
                                     }
