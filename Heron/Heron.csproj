@@ -89,6 +89,8 @@
     <Compile Include="ImportTopo.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="MapboxRaster.cs" />
+    <Compile Include="MapboxTopo.cs" />
     <Compile Include="SlippyRaster.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

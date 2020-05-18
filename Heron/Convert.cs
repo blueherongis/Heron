@@ -507,7 +507,7 @@ namespace Heron
         public static void AddCommentsToPNG(this Bitmap bitmap, string comment)
         {
             //add tile range meta data to image comments
-            //doesn't work for png, need to find a common ID between jpg and png
+            //ID:40094 doesn't seem to work for png and 40092 only works for JPG
             //https://stackoverflow.com/questions/18820525/how-to-get-and-set-propertyitems-for-an-image/25162782#25162782
             var newItem = (System.Drawing.Imaging.PropertyItem)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(System.Drawing.Imaging.PropertyItem));
             newItem.Id = 40094;
