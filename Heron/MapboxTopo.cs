@@ -37,7 +37,7 @@ namespace Heron
         /// <summary>
         /// Initializes a new instance of the MapboxTopo class.
         /// </summary>
-        public MapboxTopo() : base("Mapbox Topography", "MapboxTopo", "Get mesh topography from a Mapbox service.", "Mapbox")
+        public MapboxTopo() : base("Mapbox Topography", "MapboxTopo", "Get mesh topography from a Mapbox service.", "GIS API")
         {
 
         }
