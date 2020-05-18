@@ -97,7 +97,7 @@ namespace Heron
 
                 mapquery.Append(new GH_String(restquery), cpath);
 
-                string result = GetData(restquery);
+                string result = Heron.Convert.HttpToJson(restquery);
 
 
                 jT.Append(new GH_ObjectWrapper(JsonConvert.DeserializeObject<JObject>(result)), cpath);
@@ -156,28 +156,6 @@ namespace Heron
             DA.SetDataTree(3, mapquery);
 
         }
-
-        //Return JSON from webquery
-        public static string GetData(string qst)
-        {
-            System.Net.HttpWebRequest req = System.Net.WebRequest.Create(qst) as System.Net.HttpWebRequest;
-            string result = null;
-            try
-            {
-                using (System.Net.HttpWebResponse resp = req.GetResponse() as System.Net.HttpWebResponse)
-                {
-                    System.IO.StreamReader reader = new System.IO.StreamReader(resp.GetResponseStream());
-                    result = reader.ReadToEnd();
-                    reader.Close();
-                }
-            }
-            catch
-            {
-                return "Something went wrong getting data from the Service";
-            }
-            return result;
-        }
-
 
 
         protected override System.Drawing.Bitmap Icon
