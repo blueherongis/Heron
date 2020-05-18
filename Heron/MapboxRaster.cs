@@ -34,33 +34,31 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class SlippyRaster : HeronRasterPreviewComponent
+    public class MapboxRaster : HeronRasterPreviewComponent
     {
         /// <summary>
-        /// Initializes a new instance of the SlippyRaster class.
+        /// Initializes a new instance of the MapboxRaster class.
         /// </summary>
-        public SlippyRaster()
-          : base("Slippy Raster", "Slippy Raster", "Get raster imagery from an tile-based map service", "GIS API")
+        public MapboxRaster() : base("Mapbox Raster", "MapboxRaster", "Get raster imagery from a Mapbox service", "GIS API")
         {
         }
 
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
-        protected override void RegisterInputParams(GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
 
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
-            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution, but takes longer to download. Max zoom is typically 19.", GH_ParamAccess.item, 14);
+            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution, but takes longer to download. Max zoom is typically 19.", GH_ParamAccess.item,14);
             pManager.AddTextParameter("File Location", "fileLoc", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item);
-            //pManager.AddTextParameter("Slippy Raster URL", "slippyURL", "Slippy raster service to query", GH_ParamAccess.item);
-            pManager.AddTextParameter("Slippy Access Header", "userAgent", "A user-agent header is sometimes required for access to Slippy resources, especially OSM. This can be any string.", GH_ParamAccess.item, "");
+            pManager.AddTextParameter("Mapbox Access Token", "mbToken", "Mapbox Access Token string for access to Mapbox resources. Or set an Environment Variable 'HERONMAPOXTOKEN' with your token as the string.", GH_ParamAccess.item,"");
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
             pManager[3].Optional = true;
 
-            Message = SlippySource;
+            Message = MapboxSource;
 
 
         }
@@ -68,13 +66,14 @@ namespace Heron
         /// <summary>
         /// Registers all the output parameters for this component.
         /// </summary>
-        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Image File", "Image", "File location of downloaded image", GH_ParamAccess.tree);
             pManager.AddCurveParameter("Image Frame", "imageFrame", "Bounding box of image for mapping to geometry", GH_ParamAccess.tree);
-            pManager.AddIntegerParameter("Tile Count", "tileCount", "Number of image tiles to combine resulting from Slippy query", GH_ParamAccess.tree);
-
-            pManager.AddTextParameter("Slippy Attribution", "slippyAtt", "Slippy word mark and text attribution if required by service", GH_ParamAccess.list);
+            pManager.AddIntegerParameter("Tile Count", "tileCount", "Number of image tiles to combine resulting from Mapbox query", GH_ParamAccess.tree);
+            //https://www.mapbox.com/help/how-attribution-works/
+            //https://www.mapbox.com/api-documentation/#retrieve-an-html-slippy-map Retrieve TileJSON metadata
+            pManager.AddTextParameter("Mapbox Attribution", "mbAtt", "Mapbox word mark and text attribution required by Mapbox", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -84,27 +83,42 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             List<Curve> boundary = new List<Curve>();
-            DA.GetDataList(0, boundary);
+            DA.GetDataList<Curve>(0, boundary);
 
             int zoom = -1;
-            DA.GetData(1, ref zoom);
+            DA.GetData<int>(1, ref zoom);
 
             string fileloc = "";
-            DA.GetData(2, ref fileloc);
+            DA.GetData<string>(2, ref fileloc);
             if (!fileloc.EndsWith(@"\")) fileloc = fileloc + @"\";
 
             string prefix = "";
-            DA.GetData(3, ref prefix);
-            if (prefix == "")
+            DA.GetData<string>(3, ref prefix);
+            if (prefix=="")
             {
-                prefix = slippySource;
+                prefix = mbSource;
             }
 
-            string URL = slippyURL;
+            string URL = mbURL;
             //DA.GetData<string>(4, ref URL);
 
-            string userAgent = "";
-            DA.GetData(4, ref userAgent);
+            ///get a valid mapbox token to send along with query
+            string mbToken = "";
+            DA.GetData<string>(4, ref mbToken);
+            if (mbToken =="")
+            {
+                string hmbToken = System.Environment.GetEnvironmentVariable("HERONMAPBOXTOKEN");
+                if (hmbToken!=null)
+                {
+                    mbToken = hmbToken;
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using Mapbox token stored in Environment Variable HERONMAPBOXTOKEN.");
+                }
+                else
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "No Mapbox token is specified.  Please get a valid token from mapbox.com");
+                    return;
+                }
+            }
 
             bool run = false;
             DA.GetData<bool>("Run", ref run);
@@ -114,12 +128,12 @@ namespace Heron
             GH_Structure<GH_Integer> tCount = new GH_Structure<GH_Integer>();
 
 
-            for (int i = 0; i < boundary.Count; i++)
+            for (int i = 0; i <boundary.Count; i++)
             {
                 GH_Path path = new GH_Path(i);
+                
 
-
-                ///Get image frame for given boundary and  make sure it's valid
+                //Get image frame for given boundary and  make sure it's valid
                 if (!boundary[i].GetBoundingBox(true).IsValid)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Boundary is not valid.");
@@ -132,10 +146,10 @@ namespace Heron
                 ///file path for final image
                 string imgPath = fileloc + prefix + "_" + i + ".jpg";
 
-                ///location of final image file
+                //location of final image file
                 mapList.Append(new GH_String(imgPath), path);
 
-                ///create cache folder for images
+                //create cache folder for images
                 string cacheLoc = fileloc + @"HeronCache\";
                 List<string> cacheFileLocs = new List<string>();
                 if (!Directory.Exists(cacheLoc))
@@ -143,33 +157,33 @@ namespace Heron
                     Directory.CreateDirectory(cacheLoc);
                 }
 
-                ///tile bounding box array
+                //tile bounding box array
                 List<Point3d> boxPtList = new List<Point3d>();
 
-                ///get the tile coordinates for all tiles within boundary
+                //get the tile coordinates for all tiles within boundary
                 var ranges = Convert.GetTileRange(boundaryBox, zoom);
                 List<List<int>> tileList = new List<List<int>>();
                 var x_range = ranges.XRange;
                 var y_range = ranges.YRange;
 
-                if(x_range.Length > 100 || y_range.Length > 100)
+                if (x_range.Length > 100 || y_range.Length > 100)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "This tile range is too big. Check your units.");
                     return;
                 }
 
-                ///cycle through tiles to get bounding box
+                //cycle through tiles to get bounding box
                 for (int y = (int)y_range.Min; y <= y_range.Max; y++)
                 {
                     for (int x = (int)x_range.Min; x <= x_range.Max; x++)
                     {
-                        ///add bounding box of tile to list
+                        //add bounding box of tile to list
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
-                        cacheFileLocs.Add(cacheLoc + slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg");
+                        cacheFileLocs.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + x + y + ".jpg");
                     }
                 }
 
-                ///bounding box of tile boundaries
+                //bounding box of tile boundaries
                 BoundingBox bbox = new BoundingBox(boxPtList);
 
                 var rect = BBoxToRect(bbox);
@@ -200,7 +214,7 @@ namespace Heron
                             imageT.Dispose();
 
                             ///check to see if tilerange in comments matches current tilerange
-                            if (imgComment == (slippySource.Replace(" ", "") + tileRangeString))
+                            if (imgComment== (mbSource.Replace(" ", "") + tileRangeString))
                             {
                                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using existing image.");
                                 continue;
@@ -214,16 +228,17 @@ namespace Heron
 
 
 
-                ///Query Slippy URL
+                ///Query Mapbox URL
                 ///download all tiles within boundary
                 ///merge tiles into one bitmap
                 ///API to query
+                string mbURLauth = mbURL + mbToken;
 
 
                 ///Do the work of assembling image
                 ///setup final image container bitmap
-                int fImageW = ((int)x_range.Length + 1) * 256;
-                int fImageH = ((int)y_range.Length + 1) * 256;
+                int fImageW = ((int)x_range.Length + 1) * 512;
+                int fImageH = ((int)y_range.Length + 1) * 512;
                 Bitmap finalImage = new Bitmap(fImageW, fImageH);
 
 
@@ -239,53 +254,49 @@ namespace Heron
                         {
                             for (int x = (int)x_range.Min; x <= (int)x_range.Max; x++)
                             {
-                                //create tileCache name 
-                                string tileCache = slippySource.Replace(" ", "") + zoom + x + y + ".jpg";
-                                string tileCacheLoc = cacheLoc + tileCache;
-
-                                //check cache folder to see if tile image exists locally
-                                if (File.Exists(tileCacheLoc))
+                                ///create tileCache name 
+                                string tileCache = mbSource.Replace(" ","") + zoom + x + y + ".jpg";
+                                string tileCahceLoc = cacheLoc + tileCache;
+                                
+                                ///check cache folder to see if tile image exists locally
+                                if (File.Exists(tileCahceLoc))
                                 {
-                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCacheLoc));
+                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCahceLoc));
                                     ///add tmp image to final
-                                    g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
+                                    g.DrawImage(tmpImage, imgPosW * 512, imgPosH * 512);
                                     tmpImage.Dispose();
                                 }
 
                                 else
                                 {
                                     tileList.Add(new List<int> { zoom, y, x });
-                                    string urlAuth = Convert.GetZoomURL(x, y, zoom, slippyURL);
-
+                                    string urlAuth = Convert.GetZoomURL(x, y, zoom, mbURLauth);
+                                    
                                     System.Net.WebClient client = new System.Net.WebClient();
-
-                                    ///insert header if required
-                                    client.Headers.Add("user-agent", userAgent);
-
-                                    client.DownloadFile(urlAuth, tileCacheLoc);
-                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCacheLoc));
+                                    client.DownloadFile(urlAuth, tileCahceLoc);
+                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCahceLoc));
                                     client.Dispose();
 
-                                    //add tmp image to final
-                                    g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
+                                    ///add tmp image to final
+                                    g.DrawImage(tmpImage, imgPosW * 512, imgPosH * 512);
                                     tmpImage.Dispose();
                                 }
 
-                                //increment x insert position, goes left to right
+                                ///increment x insert position, goes left to right
                                 imgPosW++;
                             }
-                            //increment y insert position, goes top to bottom
+                            ///increment y insert position, goes top to bottom
                             imgPosH++;
                             imgPosW = 0;
 
                         }
-                        //garbage collection
+                        ///garbage collection
                         g.Dispose();
 
-                        //add tile range meta data to image comments
-                        finalImage.AddCommentsToJPG(slippySource.Replace(" ", "") + tileRangeString);
+                        ///add tile range meta data to image comments
+                        finalImage.AddCommentsToJPG(mbSource.Replace(" ", "") + tileRangeString);
 
-                        //save the image
+                        ///save the image
                         finalImage.Save(imgPath, System.Drawing.Imaging.ImageFormat.Jpeg);
                     }
                 }
@@ -300,13 +311,15 @@ namespace Heron
                 //write out new tile range metadata for serialization
                 TileCacheMeta = tileRangeString;
 
+                //AddPreviewItem(imgPath, boundary[i], rect);
+
             }
 
 
             DA.SetDataTree(0, mapList);
             DA.SetDataTree(1, imgFrame);
             DA.SetDataTree(2, tCount);
-            DA.SetDataList(3, "copyright Slippy");
+            DA.SetDataList(3, "copyright Mapbox");
 
         }
 
@@ -322,22 +335,22 @@ namespace Heron
 
         private bool IsServiceSelected(string serviceString)
         {
-            return serviceString.Equals(slippySource);
+            return serviceString.Equals(mbSource);
         }
 
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
 
-            if (slippySourceList == "")
+            if (mbSourceList =="")
             {
-                slippySourceList = Convert.GetEnpoints();
+                mbSourceList = Convert.GetEnpoints();
             }
 
-            JObject slippyJson = JObject.Parse(slippySourceList);
+            JObject mbJson = JObject.Parse(mbSourceList);
 
-            ToolStripMenuItem root = new ToolStripMenuItem("Pick Slippy Raster Service");
+            ToolStripMenuItem root = new ToolStripMenuItem("Pick Mapbox Raster Service");
 
-            foreach (var service in slippyJson["Slippy Maps"])
+            foreach (var service in mbJson["Mapbox Maps"])
             {
                 string sName = service["service"].ToString();
 
@@ -349,14 +362,14 @@ namespace Heron
 
                 root.DropDownItems.Add(serviceName);
             }
-
+         
             menu.Items.Add(root);
-
+          
             base.AppendAdditionalComponentMenuItems(menu);
-
+            
         }
 
-        private void ServiceItemOnClick(object sender, EventArgs e)
+        private void ServiceItemOnClick (object sender, EventArgs e)
         {
             ToolStripMenuItem item = sender as ToolStripMenuItem;
             if (item == null)
@@ -366,29 +379,29 @@ namespace Heron
             if (IsServiceSelected(code))
                 return;
 
-            RecordUndoEvent("SlippySource");
-            RecordUndoEvent("SlippyURL");
+            RecordUndoEvent("MapboxSource");
+            RecordUndoEvent("MapboxURL");
 
 
-            slippySource = code;
-            slippyURL = JObject.Parse(slippySourceList)["Slippy Maps"].SelectToken("[?(@.service == '" + slippySource + "')].url").ToString();
-            Message = slippySource;
+            mbSource = code;
+            mbURL = JObject.Parse(mbSourceList)["Mapbox Maps"].SelectToken("[?(@.service == '" + mbSource + "')].url").ToString();
+            Message = mbSource;
 
             ExpireSolution(true);
         }
 
+        
 
-
-
+       
 
         ///Sticky parameters
         ///https://developer.rhino3d.com/api/grasshopper/html/5f6a9f31-8838-40e6-ad37-a407be8f2c15.htm
         ///
 
         private string tCacheMeta = "";
-        private string slippySourceList = Convert.GetEnpoints();
-        private string slippySource = JObject.Parse(Convert.GetEnpoints())["Slippy Maps"][0]["service"].ToString();
-        private string slippyURL = JObject.Parse(Convert.GetEnpoints())["Slippy Maps"][0]["url"].ToString();
+        private string mbSourceList = Convert.GetEnpoints();
+        private string mbSource = JObject.Parse(Convert.GetEnpoints())["Mapbox Maps"][0]["service"].ToString();
+        private string mbURL = JObject.Parse(Convert.GetEnpoints())["Mapbox Maps"][0]["url"].ToString();
 
 
         public string TileCacheMeta
@@ -401,49 +414,49 @@ namespace Heron
             }
         }
 
-        public string SlippySourceList
+        public string MapboxSourceList
         {
-            get { return slippySourceList; }
+            get { return mbSourceList; }
             set
             {
-                slippySourceList = value;
+                mbSourceList = value;
             }
         }
 
-        public string SlippySource
+        public string MapboxSource
         {
-            get { return slippySource; }
+            get { return mbSource; }
             set
             {
-                slippySource = value;
-                Message = slippySource;
+                mbSource = value;
+                Message = mbSource;
             }
         }
 
-        public string SlippyURL
+        public string MapboxURL
         {
-            get { return slippyURL; }
+            get { return mbURL; }
             set
             {
-                slippyURL = value;
+                mbURL = value;
             }
         }
 
-        public override bool Write(GH_IWriter writer)
+        public override bool Write(GH_IO.Serialization.GH_IWriter writer)
         {
             writer.SetString("TileCacheMeta", TileCacheMeta);
-            writer.SetString("SlippySourceList", SlippySourceList);
-            writer.SetString("SlippySource", SlippySource);
-            writer.SetString("SlippyURL", SlippyURL);
+            writer.SetString("MapboxSourceList", MapboxSourceList);
+            writer.SetString("MapboxSource", MapboxSource);
+            writer.SetString("MapboxURL", MapboxURL);
             return base.Write(writer);
         }
 
         public override bool Read(GH_IReader reader)
         {
             TileCacheMeta = reader.GetString("TileCacheMeta");
-            SlippySourceList = reader.GetString("SlippySourceList");
-            SlippySource = reader.GetString("SlippySource");
-            SlippyURL = reader.GetString("SlippyURL");
+            MapboxSourceList = reader.GetString("MapboxSourceList");
+            MapboxSource = reader.GetString("MapboxSource");
+            MapboxURL = reader.GetString("MapboxURL");
             return base.Read(reader);
         }
 
@@ -453,7 +466,7 @@ namespace Heron
         /// <summary>
         /// Provides an Icon for the component.
         /// </summary>
-        protected override Bitmap Icon
+        protected override System.Drawing.Bitmap Icon
         {
             get
             {
@@ -468,7 +481,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("AF7AB46C-16A0-4C81-9363-24A9F940CE39"); }
+            get { return new Guid("F8F9EBA4-26A7-4105-8282-8CF5252A7E03"); }
         }
     }
 }
