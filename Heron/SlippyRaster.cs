@@ -72,7 +72,7 @@ namespace Heron
         {
             pManager.AddTextParameter("Image File", "Image", "File location of downloaded image", GH_ParamAccess.tree);
             pManager.AddCurveParameter("Image Frame", "imageFrame", "Bounding box of image for mapping to geometry", GH_ParamAccess.tree);
-            pManager.AddIntegerParameter("Tile Count", "tileCount", "Number of image tiles to combine resulting from Slippy query", GH_ParamAccess.tree);
+            pManager.AddTextParameter("Tile Count", "tileCount", "Number of image tiles resulting from Slippy query", GH_ParamAccess.tree);
 
             pManager.AddTextParameter("Slippy Attribution", "slippyAtt", "Slippy word mark and text attribution if required by service", GH_ParamAccess.list);
         }
@@ -111,12 +111,14 @@ namespace Heron
 
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
             GH_Structure<GH_Rectangle> imgFrame = new GH_Structure<GH_Rectangle>();
-            GH_Structure<GH_Integer> tCount = new GH_Structure<GH_Integer>();
+            GH_Structure<GH_String> tCount = new GH_Structure<GH_String>();
 
 
             for (int i = 0; i < boundary.Count; i++)
             {
                 GH_Path path = new GH_Path(i);
+                int tileTotalCount = 0;
+                int tileDownloadedCount = 0;
 
 
                 ///Get image frame for given boundary and  make sure it's valid
@@ -154,7 +156,7 @@ namespace Heron
 
                 if(x_range.Length > 100 || y_range.Length > 100)
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "This tile range is too big. Check your units.");
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "This tile range is too big (more than 100 tiles in the x or y direction). Check your units.");
                     return;
                 }
 
@@ -166,8 +168,11 @@ namespace Heron
                         ///add bounding box of tile to list
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
                         cacheFileLocs.Add(cacheLoc + slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg");
+                        tileTotalCount = tileTotalCount + 1;
                     }
                 }
+
+                tCount.Insert(new GH_String(tileTotalCount + " tiles (" + tileDownloadedCount + " downloaded / " + (tileTotalCount - tileDownloadedCount) + " cached)"), path, 0);
 
                 ///bounding box of tile boundaries
                 BoundingBox bbox = new BoundingBox(boxPtList);
@@ -269,6 +274,7 @@ namespace Heron
                                     //add tmp image to final
                                     g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
                                     tmpImage.Dispose();
+                                    tileDownloadedCount = tileDownloadedCount + 1;
                                 }
 
                                 //increment x insert position, goes left to right
@@ -295,7 +301,7 @@ namespace Heron
 
 
                 //add to tile count total
-                tCount.Append(new GH_Integer(tileList.Count), path);
+                tCount.Insert(new GH_String(tileTotalCount + " tiles (" + tileDownloadedCount + " downloaded / " + (tileTotalCount - tileDownloadedCount) + " cached)"), path, 0);
 
                 //write out new tile range metadata for serialization
                 TileCacheMeta = tileRangeString;
