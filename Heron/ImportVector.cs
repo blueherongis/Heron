@@ -160,9 +160,17 @@ namespace Heron
                     {
                         sourceSRS = layer.GetSpatialRef();
                         sourceSRS.ExportToWkt(out sRef);
-                        int sourceSRSInt = Int16.Parse(sourceSRS.GetAuthorityCode(null));
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Source Coordinate Reference System (CRS) from layer " + layer.GetName() + " is EPSG:"+ sourceSRSInt +".");
-                    }
+                        try
+                        {
+                            int sourceSRSInt = Int16.Parse(sourceSRS.GetAuthorityCode(null));
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Source Coordinate Reference System (CRS) from layer " + layer.GetName() + " is EPSG:" + sourceSRSInt + ".");
+                        }
+                        catch
+                        {
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Failed to get Source Coordinate Reference System (CRS) from layer " + layer.GetName() + ".");
+                        }
+                        }
+                        
                 }
 
                 sRefs.Append(new GH_String(sRef), new GH_Path(iLayer));
