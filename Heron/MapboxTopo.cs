@@ -67,7 +67,7 @@ namespace Heron
         {
             pManager.AddTextParameter("Image File", "Image", "File location of downloaded image", GH_ParamAccess.tree);
             pManager.AddCurveParameter("Image Frame", "imageFrame", "Bounding box of image for mapping to geometry", GH_ParamAccess.tree);
-            pManager.AddIntegerParameter("Tile Count", "tileCount", "Number of image tiles to combine resulting from Mapbox query", GH_ParamAccess.tree);
+            pManager.AddTextParameter("Tile Count", "tileCount", "Number of image tiles resulting from Mapbox query", GH_ParamAccess.tree);
             pManager.AddMeshParameter("Topography Mesh", "topoMesh", "Topography mesh generated from the Mapbox topography image file service", GH_ParamAccess.tree);
             //https://www.mapbox.com/help/how-attribution-works/
             //https://www.mapbox.com/api-documentation/#retrieve-an-html-slippy-map Retrieve TileJSON metadata
@@ -123,13 +123,15 @@ namespace Heron
 
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
             GH_Structure<GH_Curve> imgFrame = new GH_Structure<GH_Curve>();
-            GH_Structure<GH_Integer> tCount = new GH_Structure<GH_Integer>();
+            GH_Structure<GH_String> tCount = new GH_Structure<GH_String>();
             GH_Structure<GH_Mesh> tMesh = new GH_Structure<GH_Mesh>();
 
             for (int i = 0; i < boundary.Count; i++)
             {
 
                 GH_Path path = new GH_Path(i);
+                int tileTotalCount = 0;
+                int tileDownloadedCount = 0;
 
                 ///Get image frame for given boundary
                 if (!boundary[i].GetBoundingBox(true).IsValid)
@@ -167,7 +169,7 @@ namespace Heron
 
                 if (x_range.Length > 100 || y_range.Length > 100)
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "This tile range is too big. Check your units.");
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "This tile range is too big (more than 100 tiles in the x or y direction). Check your units.");
                     return;
                 }
 
@@ -179,8 +181,11 @@ namespace Heron
                         //add bounding box of tile to list
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
                         cacheFileLocs.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + x + y + ".png");
+                        tileTotalCount = tileTotalCount + 1;
                     }
                 }
+
+                tCount.Insert(new GH_String(tileTotalCount + " tiles (" + tileDownloadedCount + " downloaded / " + (tileTotalCount - tileDownloadedCount) + " cached)"), path, 0);
 
                 //bounding box of tile boundaries
                 BoundingBox bboxPts = new BoundingBox(boxPtList);
@@ -282,6 +287,7 @@ namespace Heron
                                     //add tmp image to final
                                     g.DrawImage(tmpImage, imgPosW * 512, imgPosH * 512);
                                     tmpImage.Dispose();
+                                    tileDownloadedCount = tileDownloadedCount + 1;
                                 }
 
                                 //increment x insert position, goes left to right
@@ -307,7 +313,7 @@ namespace Heron
                 finalImage.Dispose();
 
                 //add to tile count total
-                tCount.Append(new GH_Integer(tileList.Count), path);
+                tCount.Insert(new GH_String(tileTotalCount + " tiles (" + tileDownloadedCount + " downloaded / " + (tileTotalCount - tileDownloadedCount) + " cached)"), path, 0);
 
 
                 Mesh nMesh = TopoMeshFromImage(imgPath, boundaryBox, zoom);
