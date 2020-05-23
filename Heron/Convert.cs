@@ -32,6 +32,12 @@ namespace Heron
         ///Using Rhino's EarthAnchorPoint to Transform.  GetModelToEarthTransform() translates to WGS84.
         ///https://github.com/gHowl/gHowlComponents/blob/master/gHowl/gHowl/GEO/XYZtoGeoComponent.cs
         ///https://github.com/mcneel/rhinocommon/blob/master/dotnet/opennurbs/opennurbs_3dm_settings.cs  search for "model_to_earth"
+        ///
+        ///This is the real sausce for Rhino projection method for decimal degress to xyz:
+        ///https://github.com/mcneel/opennurbs/blob/e15c463638f10a74c3f503c1dab0c59eb68fb781/opennurbs_3dm_settings.cpp#L3354
+        ///May be able to swap out the semimajor/semiminor axis radii used by default Rhino WGS84 to use other geographic coordinate systems
+        ///
+
         public static Point3d XYZToWGS(Point3d xyz)
         {
             var point = new Point3d(xyz);
@@ -95,20 +101,23 @@ namespace Heron
 
             Plane userEapPlane = new Plane(userAnchorPointPT, userAnchorEastVec, userAnchorNorthVec);
 
-            ///if SRS is geographic (ie WGS84) use Rhino's internal projection
-            ///this is still buggy as it doesn't work with other geographic systems like NAD27
-            if ((userSRS.IsProjected()==0) && (userSRS.IsLocal()==0))
-            {
-                userAnchorPointPT = WGSToXYZTransform() * userAnchorPointPT;                
-            }
-
             ///shift (move and rotate) from userSRS EAP to 0,0 based on SRS north direction
-            Transform shift = Transform.ChangeBasis(eapPlane, userEapPlane);
             Transform scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters)));
-            if (userSRS.GetLinearUnitsName()=="FEET")
+
+            if (userSRS.GetLinearUnitsName().ToUpper().Contains("FEET") || userSRS.GetLinearUnitsName().ToUpper().Contains("FOOT"))
             {
                 scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Feet)));
             }
+
+            ///if SRS is geographic (ie WGS84) use Rhino's internal projection
+            ///this is still buggy as it doesn't work with other geographic systems like NAD27
+            if ((userSRS.IsProjected() == 0) && (userSRS.IsLocal() == 0))
+            {
+                userEapPlane.Transform(WGSToXYZTransform());
+                scale = WGSToXYZTransform();
+            }
+
+            Transform shift = Transform.ChangeBasis(eapPlane, userEapPlane);
 
             Transform shiftScale = Transform.Multiply(scale, shift);
 
@@ -117,81 +126,16 @@ namespace Heron
 
         public static Transform GetModelToUserSRSTransform(OSGeo.OSR.SpatialReference userSRS)
         {
-            var XYZToUserSRS = GetUserSRSToModelTransform(userSRS);
-            if (XYZToUserSRS.TryGetInverse(out Transform transform))
+            var xyzToUserSRS = GetUserSRSToModelTransform(userSRS);
+            if (xyzToUserSRS.TryGetInverse(out Transform transform))
             {
                 return transform;
             }
             return Transform.Unset;
         }
 
-        public static Point3d UserSRSToXYZ(Point3d userCoord, Transform userToModelTransform)
-        {
-
-            userCoord = userToModelTransform * userCoord;
-            return userCoord;
-        }
-
-        public static Point3d XYZToUserSRS(Point3d xyzCoord, Transform modelToUserTransform)
-        {
-            xyzCoord = modelToUserTransform * xyzCoord;
-            return xyzCoord;
-        }
-
-
         //////////////////////////////////////////////////////
 
-
-
-        //////////////////////////////////////////////////////
-        ///Old transforms used in RESTRaster and RESTVector
-        ///These conversions should be replaced with ones that are GDAL based and more flexible with a global SetCRS parameter
-        ///Conversion from WSG84 to Google/Bing from
-        ///http://alastaira.wordpress.com/2011/01/23/the-google-maps-bing-maps-spherical-mercator-projection/
-
-        public static double ConvertLon(double lon, int spatRef)
-        {
-            double clon = lon;
-            if (spatRef == 3857)
-            {
-                double y = Math.Log(Math.Tan((90 + lon) * Math.PI / 360)) / (Math.PI / 180);
-                y = y * 20037508.34 / 180;
-                clon = y;
-            }
-            return clon;
-        }
-
-        public static double ConvertLat(double lat, int spatRef)
-        {
-            double clat = lat;
-            if (spatRef == 3857)
-            {
-                double x = lat * 20037508.34 / 180;
-                clat = x;
-            }
-            return clat;
-        }
-
-        public static Point3d ConvertXY(double x, double y, int spatRef)
-        {
-            double lon = x;
-            double lat = y;
-
-            if (spatRef == 3857)
-            {
-                lon = (x / 20037508.34) * 180;
-                lat = (y / 20037508.34) * 180;
-                lat = 180 / Math.PI * (2 * Math.Atan(Math.Exp(lat * Math.PI / 180)) - Math.PI / 2);
-            }
-
-            Point3d coord = new Point3d();
-            coord.X = lon;
-            coord.Y = lat;
-
-            return Heron.Convert.WGSToXYZ(coord);
-        }
-
-        //////////////////////////////////////////////////////
 
 
         //////////////////////////////////////////////////////
@@ -200,16 +144,8 @@ namespace Heron
         public static Point3d OgrPointToPoint3d(OSGeo.OGR.Geometry ogrPoint)
         {
             Point3d pt3d = new Point3d(ogrPoint.GetX(0), ogrPoint.GetY(0), ogrPoint.GetZ(0));
-            ///convert should happen in the component or elsewhere, not here.  point should come in pre-converted to SRS
-            //return Convert.WGSToXYZ(pt3d);
-            return pt3d;
-        }
 
-        public static OSGeo.OGR.Geometry Point3dToOgrPoint(Point3d pt3d)
-        {
-            OSGeo.OGR.Geometry ogrPoint = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
-            ogrPoint.AddPoint(pt3d.X, pt3d.Y, pt3d.Z);
-            return ogrPoint;
+            return pt3d;
         }
 
         public static List<Point3d> OgrMultiPointToPoint3d(OSGeo.OGR.Geometry ogrMultiPoint)
@@ -221,7 +157,7 @@ namespace Heron
                 sub_geom = ogrMultiPoint.GetGeometryRef(i);
                 for (int ptnum = 0; ptnum < sub_geom.GetPointCount(); ptnum++)
                 {
-                    ptList.Add(Convert.WGSToXYZ(new Point3d(sub_geom.GetX(0), sub_geom.GetY(0), sub_geom.GetZ(0))));
+                    ptList.Add(Heron.Convert.OgrPointToPoint3d(sub_geom));
                 }
             }
             return ptList;
@@ -233,14 +169,16 @@ namespace Heron
             List<Point3d> ptList = new List<Point3d>();
             for (int i = 0; i < linestring.GetPointCount(); i++)
             {
-                ptList.Add(Convert.WGSToXYZ(new Point3d(linestring.GetX(i), linestring.GetY(i), linestring.GetZ(i))));
+                ptList.Add(new Point3d(linestring.GetX(i), linestring.GetY(i), linestring.GetZ(i)));
             }
             Polyline pL = new Polyline(ptList);
 
             return new Polyline(ptList).ToNurbsCurve();
         }
 
-        public static List<Curve> OgrMultiLinestring(OSGeo.OGR.Geometry multilinestring)
+
+
+        public static List<Curve> OgrMultiLinestringToCurves(OSGeo.OGR.Geometry multilinestring)
         {
             List<Curve> cList = new List<Curve>();
             OSGeo.OGR.Geometry sub_geom;
@@ -248,12 +186,11 @@ namespace Heron
             for (int i = 0; i < multilinestring.GetGeometryCount(); i++)
             {
                 sub_geom = multilinestring.GetGeometryRef(i);
-                cList.Add(Convert.OgrLinestringToCurve(sub_geom));
+                cList.Add(Heron.Convert.OgrLinestringToCurve(sub_geom));
                 sub_geom.Dispose();
             }
             return cList;
         }
-
 
         public static Mesh OgrPolygonToMesh(OSGeo.OGR.Geometry polygon)
         {
@@ -264,7 +201,7 @@ namespace Heron
             for (int i = 0; i < polygon.GetGeometryCount(); i++)
             {
                 sub_geom = polygon.GetGeometryRef(i);
-                Curve crv = Convert.OgrLinestringToCurve(sub_geom);
+                Curve crv = Heron.Convert.OgrLinestringToCurve(sub_geom);
                 //possible cause of viewport issue, try not forcing a close.  Other possibility would be trying to convert to (back to) polyline
                 //crv.MakeClosed(tol);
                 pList.Add(crv);
@@ -293,7 +230,7 @@ namespace Heron
             for (int i = 0; i < multipoly.GetGeometryCount(); i++)
             {
                 sub_geom = multipoly.GetGeometryRef(i);
-                Mesh mP = Convert.OgrPolygonToMesh(sub_geom);
+                Mesh mP = Heron.Convert.OgrPolygonToMesh(sub_geom);
                 mP.UnifyNormals();
                 mList.Add(mP);
                 sub_geom.Dispose();
@@ -324,8 +261,93 @@ namespace Heron
 
         //////////////////////////////////////////////////////
         ///TODO: Converting Rhino/GH geometry type to GDAL geometry types
-        ///
+
+        public static OSGeo.OGR.Geometry Point3dToOgrPoint(Point3d pt3d)
+        {
+            OSGeo.OGR.Geometry ogrPoint = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
+            ogrPoint.AddPoint(pt3d.X, pt3d.Y, pt3d.Z);
+
+            return ogrPoint;
+        }
+
+        public static OSGeo.OGR.Geometry Point3dsToOgrMultiPoint(List<Point3d> points)
+        {
+            OSGeo.OGR.Geometry ogrPoints = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPoint);
+            foreach(Point3d point in points)
+            {
+                ogrPoints.AddGeometry(Heron.Convert.Point3dToOgrPoint(point));
+            }
+
+            return ogrPoints;
+        }
+
+        public static OSGeo.OGR.Geometry CurveToOgrLinestring(Curve curve)
+        {
+            Polyline pL = new Polyline();
+            curve.TryGetPolyline(out pL);
+            OSGeo.OGR.Geometry linestring = new OSGeo.OGR.Geometry(wkbGeometryType.wkbLineString);
+
+            foreach (Point3d pt in pL)
+            {
+                linestring.AddPoint(pt.X, pt.Y, pt.Z);
+            }
+
+            return linestring;
+        }
+
+        public static OSGeo.OGR.Geometry CurvesToOgrMultiLinestring(List<Curve> curves)
+        {
+            OSGeo.OGR.Geometry multilinestring = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiLineString);
+
+            foreach (Curve curve in curves)
+            {
+                Polyline pL = new Polyline();
+                curve.TryGetPolyline(out pL);
+                multilinestring.AddGeometry(Heron.Convert.CurveToOgrLinestring(curve));
+            }
+
+            return multilinestring;
+        }
+
+        public static OSGeo.OGR.Geometry CurveToOgrRing(Curve curve)
+        {
+            Polyline pL = new Polyline();
+            curve.TryGetPolyline(out pL);
+            OSGeo.OGR.Geometry ring = new OSGeo.OGR.Geometry(wkbGeometryType.wkbLinearRing);
+
+            foreach (Point3d pt in pL)
+            {
+                ring.AddPoint(pt.X, pt.Y, pt.Z);
+            }
+
+            return ring;
+        }
+
+        public static OSGeo.OGR.Geometry CurveToOgrPolygon(Curve curve)
+        {
+            OSGeo.OGR.Geometry polygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPolygon);
+            Polyline pL = new Polyline();
+            curve.TryGetPolyline(out pL);
+            polygon.AddGeometry(Heron.Convert.CurveToOgrRing(curve));
+
+            return polygon;
+        }
+
+        public static OSGeo.OGR.Geometry CurvesToOgrPolygon(List<Curve> curves)
+        {
+            OSGeo.OGR.Geometry polygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPolygon);
+            foreach (Curve curve in curves)
+            {
+                Polyline pL = new Polyline();
+                curve.TryGetPolyline(out pL);
+                polygon.AddGeometry(Heron.Convert.CurveToOgrRing(curve));
+            }
+
+            return polygon;
+        }
         //////////////////////////////////////////////////////
+
+
 
 
         public static string HttpToJson(string URL)

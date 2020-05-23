@@ -44,6 +44,7 @@ namespace Heron
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
             pManager.AddTextParameter("REST URL", "URL", "ArcGIS REST Service website to query", GH_ParamAccess.item);
+            pManager.AddTextParameter("User Spatial Reference System", "userSRS", "Custom SRS", GH_ParamAccess.item, "WGS84");
             pManager.AddBooleanParameter("run", "get", "Go ahead to download vector data from the Service", GH_ParamAccess.item, false);
 
         }
@@ -65,12 +66,30 @@ namespace Heron
             string URL = "";
             DA.GetData<string>("REST URL", ref URL);
 
+            string userSRStext = "";
+            DA.GetData<string>("User Spatial Reference System", ref userSRStext);
+
             bool run = false;
             DA.GetData<bool>("run", ref run);
+
+            ///GDAL setup
+            RESTful.GdalConfiguration.ConfigureOgr();
 
             ///TODO: implement SetCRS here.
             ///Option to set CRS here to user-defined.  Needs a SetCRS global variable.
             int SRef = 3857;
+
+            OSGeo.OSR.SpatialReference userSRS = new OSGeo.OSR.SpatialReference("");
+            userSRS.SetFromUserInput(userSRStext);
+            int userSRSInt = Int16.Parse(userSRS.GetAuthorityCode(null));
+
+            ///Set transform from input spatial reference to Rhino spatial reference
+            OSGeo.OSR.SpatialReference rhinoSRS = new OSGeo.OSR.SpatialReference("");
+            rhinoSRS.SetWellKnownGeogCS("WGS84");
+
+            ///This transform moves and scales the points required in going from userSRS to XYZ and vice versa
+            Transform userSRSToModelTransform = Heron.Convert.GetUserSRSToModelTransform(userSRS);
+            Transform modelToUserSRSTransform = Heron.Convert.GetModelToUserSRSTransform(userSRS);
 
             GH_Structure<GH_String> mapquery = new GH_Structure<GH_String>();
             GH_Structure<GH_ObjectWrapper> jT = new GH_Structure<GH_ObjectWrapper>();
@@ -85,14 +104,14 @@ namespace Heron
             {
 
                 GH_Path cpath = new GH_Path(i);
-                Point3d min = Heron.Convert.XYZToWGS(boundary[i].GetBoundingBox(true).Min);
-                Point3d max = Heron.Convert.XYZToWGS(boundary[i].GetBoundingBox(true).Max);
+                BoundingBox bbox = boundary[i].GetBoundingBox(false);
+                bbox.Transform(modelToUserSRSTransform);
 
                 string restquery = URL +
-                  "query?where=&text=&objectIds=&time=&geometry=" + Heron.Convert.ConvertLat(min.X, SRef) + "%2C" + Heron.Convert.ConvertLon(min.Y, SRef) + "%2C" + Heron.Convert.ConvertLat(max.X, SRef) + "%2C" + Heron.Convert.ConvertLon(max.Y, SRef) +
-                  "&geometryType=esriGeometryEnvelope&inSR=" + SRef +
+                  "query?where=&text=&objectIds=&time=&geometry=" + bbox.Min.X + "%2C" + bbox.Min.Y + "%2C" + bbox.Max.X + "%2C" + bbox.Max.Y +
+                  "&geometryType=esriGeometryEnvelope&inSR=" + userSRSInt +
                   "&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=*&returnGeometry=true&maxAllowableOffset=&geometryPrecision=" +
-                  "&outSR=" + SRef +
+                  "&outSR=" + userSRSInt +
                   "&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false&f=json";
 
                 mapquery.Append(new GH_String(restquery), cpath);
@@ -111,7 +130,8 @@ namespace Heron
                     GH_Path path = new GH_Path(i, m);
 
                     //need to be able to escape this if no "geometry" property
-                    if (j[i].Property("features.[" + m + "].geometry") != null)
+                    //if (j[i].Property("features.[" + m + "].geometry") != null)
+                    if (j[i]["features"][m]["geometry"] != null)
                     {
                         //choose type of geometry to read
                         JsonReader jreader = j[i]["features"][m]["geometry"].CreateReader();
@@ -132,7 +152,8 @@ namespace Heron
                         {
                             double xx = (double)j[i]["features"][m]["geometry"][gt][0][k][0];
                             double yy = (double)j[i]["features"][m]["geometry"][gt][0][k][1];
-                            restpoints.Append(new GH_Point(Heron.Convert.ConvertXY(xx, yy, SRef)), path);
+                            Point3d xyz = new Point3d(xx, yy, 0);
+                            restpoints.Append(new GH_Point(userSRSToModelTransform * xyz), path);
                         }
                     }
 

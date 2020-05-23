@@ -105,9 +105,6 @@ namespace Heron
             Transform userSRSToModelTransform = Heron.Convert.GetUserSRSToModelTransform(userSRS);
             Transform modelToUserSRSTransform = Heron.Convert.GetModelToUserSRSTransform(userSRS);
 
-            OSGeo.OSR.CoordinateTransformation coordTransformRhinoToUser = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, userSRS);
-            OSGeo.OSR.CoordinateTransformation coordTransformUserToRhino = new OSGeo.OSR.CoordinateTransformation(userSRS, rhinoSRS);
-
 
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
             GH_Structure<GH_String> mapquery = new GH_Structure<GH_String>();
@@ -127,28 +124,17 @@ namespace Heron
 
                 GH_Path path = new GH_Path(i);
 
-                //Get image frame for given boundary
+                ///Get image frame for given boundary
                 BoundingBox imageBox = boundary[i].GetBoundingBox(false);
+                imageBox.Transform(modelToUserSRSTransform);
 
-                Point3d min = Heron.Convert.XYZToWGS(imageBox.Min);
-                Point3d max = Heron.Convert.XYZToWGS(imageBox.Max);
+                ///Make sure to have a rect for output
                 Rectangle3d rect = BBoxToRect(imageBox);
 
-                ///ogr method
-                OSGeo.OGR.Geometry minOgr = Heron.Convert.Point3dToOgrPoint(min);
-                minOgr.Transform(coordTransformRhinoToUser);
-
-                OSGeo.OGR.Geometry maxOgr = Heron.Convert.Point3dToOgrPoint(max);
-                maxOgr.Transform(coordTransformRhinoToUser);
-
-                //Query the REST service
+                ///Query the REST service
                 string restquery = URL +
                   ///legacy method for creating bounding box string
-                  //"bbox=" + Heron.Convert.ConvertLat(min.X, 3857) + "%2C" + Heron.Convert.ConvertLon(min.Y, 3857) + "%2C" + Heron.Convert.ConvertLat(max.X, 3857) + "%2C" + Heron.Convert.ConvertLon(max.Y, 3857) +
-
-                  ///ogr method for creating bounding box string
-                  "bbox=" + minOgr.GetX(0) + "%2C" + minOgr.GetY(0) + "%2C" + maxOgr.GetX(0) + "%2C" + maxOgr.GetY(0) +
-
+                  "bbox=" + imageBox.Min.X + "%2C" + imageBox.Min.Y + "%2C" + imageBox.Max.X + "%2C" + imageBox.Max.Y +
                   "&bboxSR=" + userSRSInt +
                   size + //"&layers=&layerdefs=" +
                   "&imageSR=" + userSRSInt + //"&transparent=false&dpi=&time=&layerTimeOptions=" +
@@ -166,30 +152,8 @@ namespace Heron
                     JObject jObj = JsonConvert.DeserializeObject<JObject>(result);
                     Point3d extMin = new Point3d((double) jObj["extent"]["xmin"], (double) jObj["extent"]["ymin"], 0);
                     Point3d extMax = new Point3d((double) jObj["extent"]["xmax"], (double) jObj["extent"]["ymax"], 0);
-
-                    ///convert and transform extents to points
-                    OSGeo.OGR.Geometry extOgrMin = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPointZM);
-                    extOgrMin.AddPoint((double)jObj["extent"]["xmin"], (double)jObj["extent"]["ymin"], 0.0);
-                    extOgrMin.Transform(coordTransformUserToRhino);
-                    Point3d ogrPtMin = Heron.Convert.OgrPointToPoint3d(extOgrMin);
-
-                    OSGeo.OGR.Geometry extOgrMax = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPointZM);
-                    extOgrMax.AddPoint((double)jObj["extent"]["xmax"], (double)jObj["extent"]["ymax"], 0.0);
-                    extOgrMax.Transform(coordTransformUserToRhino);
-                    Point3d ogrPtMax = Heron.Convert.OgrPointToPoint3d(extOgrMax);
-
-                    ///if SRS is geographic (ie WGS84) use Rhino's internal projection
-                    ///this is still buggy as it doesn't work with other geographic systems like NAD27
-                    if ((userSRS.IsProjected() == 0) && (userSRS.IsLocal() == 0))
-                    {
-                        rect = new Rectangle3d(Plane.WorldXY, Heron.Convert.WGSToXYZ(extMin), Heron.Convert.WGSToXYZ(extMax));
-                    }
-                    else
-                    {
-                        //rect = new Rectangle3d(Plane.WorldXY, Heron.Convert.UserSRSToXYZ(extMin, userSRSToModel), Heron.Convert.UserSRSToXYZ(extMax, userSRSToModel));
-                        rect = new Rectangle3d(Plane.WorldXY, userSRSToModelTransform * extMin, userSRSToModelTransform * extMax);
-                    }
-
+                    rect = new Rectangle3d(Plane.WorldXY, extMin, extMax);
+                    rect.Transform(userSRSToModelTransform);
 
                     ///download image from source
                     string imageQuery = jObj["href"].ToString();
