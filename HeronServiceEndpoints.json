@@ -65,6 +65,13 @@
 			"url" : "https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}@2x.pngraw?access_token="
 		}
 	],
+	"Mapbox Vector":
+	[
+		{
+			"service" : "Mapbox Vector",
+			"url" : "http://a.tiles.mapbox.com/v4/mapbox.mapbox-streets-v8/{z}/{x}/{y}.mvt?access_token="
+		}
+	],
 		"Slippy Maps":
 	[
 		{
