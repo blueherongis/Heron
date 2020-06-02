@@ -91,6 +91,7 @@
     </Compile>
     <Compile Include="MapboxRaster.cs" />
     <Compile Include="MapboxTopo.cs" />
+    <Compile Include="MapboxVector.cs" />
     <Compile Include="SlippyRaster.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
