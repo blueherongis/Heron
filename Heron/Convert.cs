@@ -269,7 +269,9 @@ namespace Heron
             pList[0].TryGetPlane(out var profilePlane);
             Transform profileTransform = Transform.PlaneToPlane(profilePlane, Plane.WorldXY);
 
-            Extrusion extrusion = Extrusion.Create(pList[0], height * direction, true);
+            Extrusion extrusion = Extrusion.Create(pList[0], (height - min_height) * direction, true);
+
+            if (extrusion == null) return null;
 
             if (pList.Count > 1)
             {

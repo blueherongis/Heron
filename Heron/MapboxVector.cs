@@ -81,6 +81,7 @@ namespace Heron
             pManager.AddTextParameter("Mapbox Attribution", "mbAtt", "Mapbox word mark and text attribution required by Mapbox", GH_ParamAccess.list);
             pManager.AddTextParameter("Geometry Type", "geoType", "Type of geometry contained in the feature", GH_ParamAccess.tree);
             pManager.AddGeometryParameter("Buildings", "buildings", "Geometry of buildings contained in the feature", GH_ParamAccess.tree);
+            pManager.AddCurveParameter("Extents", "extents", "Bounding box of all the vector data features", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -182,6 +183,7 @@ namespace Heron
             ///cycle through tiles to get bounding box
             List<Polyline> tileExtents = new List<Polyline>();
             List<double> tileHeight = new List<double>();
+            List<double> tileWidth = new List<double>();
 
             for (int y = (int)y_range.Min; y <= y_range.Max; y++)
             {
@@ -190,7 +192,8 @@ namespace Heron
                     //add bounding box of tile to list for translation
                     Polyline tileExtent = Heron.Convert.GetTileAsPolygon(zoom, y, x);
                     tileExtents.Add(tileExtent);
-                    tileHeight.Add(tileExtent[0].DistanceTo(tileExtent[1]));
+                    tileWidth.Add(tileExtent[0].DistanceTo(tileExtent[1]));
+                    tileHeight.Add(tileExtent[1].DistanceTo(tileExtent[2]));
 
                     boxPtList.AddRange(tileExtent.ToList());
                     cacheFileLocs.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".mvt");
@@ -319,7 +322,7 @@ namespace Heron
                 ///Morph raw mapbox tile points to geolocated tile
                 Vector3d moveDir = tileExtents[t].ElementAt(0) - new Point3d(0, 0, 0);
                 Transform move = Transform.Translation(moveDir);
-                Transform scale = Transform.Scale(Plane.WorldXY, tileHeight[t] / 4096, tileHeight[t] / 4096, 1);
+                Transform scale = Transform.Scale(Plane.WorldXY, tileWidth[t] / 4096, tileHeight[t] / 4096, 1);
                 Transform scaleMove = Transform.Multiply(move, scale);
 
                 for (int iLayer = 0; iLayer < ds.GetLayerCount(); iLayer++)
@@ -333,7 +336,7 @@ namespace Heron
                     //if (layer.GetName() == "admin" || layer.GetName() == "building")
                     //{
 
-                        OSGeo.OGR.FeatureDefn def = layer.GetLayerDefn();
+                    OSGeo.OGR.FeatureDefn def = layer.GetLayerDefn();
 
                     ///Get the field names
                     List<string> fieldnames = new List<string>();
@@ -347,91 +350,100 @@ namespace Heron
                     OSGeo.OGR.Feature feat;
 
                     int m = 0;
-                        ///error "Self-intersection at or near point..." when zoom gets below 12 for water
-                        ///this is an issue with the way mvt simplifies geometries at lower zoom levels and is a known problem
-                        ///TODO: look into how to skip invalid geom or otherwise fix them
-                        while ((feat = layer.GetNextFeature()) != null)
+                    ///error "Self-intersection at or near point..." when zoom gets below 12 for water
+                    ///this is an issue with the way mvt simplifies geometries at lower zoom levels and is a known problem
+                    ///TODO: look into how to fix invalid geom and return to the typical while loop iterating method
+                    //while ((feat = layer.GetNextFeature()) != null)
+
+                    while (true)
+                    {
+                        try
                         {
-                            OSGeo.OGR.Geometry geom = feat.GetGeometryRef();
+                            feat = layer.GetNextFeature();
+                        }
+                        catch
+                        {
 
-                            ///reproject geometry to WGS84 and userSRS
-                            ///TODO: look into using the SetCRS global variable here
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Some features had invalid geometry and were skipped.");
+                            continue;
+                        }
 
-                            gtype.Append(new GH_String(geom.GetGeometryName()), new GH_Path(iLayer, t, m));
-                            Transform tr = new Transform(1);
+                        if (feat == null) break;
 
-                            if (feat.GetGeometryRef() != null)
+
+                        OSGeo.OGR.Geometry geom = feat.GetGeometryRef();
+
+                        ///reproject geometry to WGS84 and userSRS
+                        ///TODO: look into using the SetCRS global variable here
+
+                        gtype.Append(new GH_String(geom.GetGeometryName()), new GH_Path(iLayer, t, m));
+                        Transform tr = scaleMove; // new Transform(1);
+
+                        if (feat.GetGeometryRef() != null)
+                        {
+
+                            ///Convert GDAL geometries to IGH_GeometricGoo
+                            foreach (IGH_GeometricGoo gMorphed in Heron.Convert.OgrGeomToGHGoo(geom, tr))
                             {
+                                //gMorphed.Morph(morph);
+                                gGoo.Append(gMorphed, new GH_Path(iLayer, t, m));
 
-                                ///Convert GDAL geometries to IGH_GeometricGoo
-                                foreach (IGH_GeometricGoo gMorphed in Heron.Convert.OgrGeomToGHGoo(geom, tr))
+                            }
+
+                            if (layer.GetName() == "building")
+                            {
+                                if (feat.GetFieldAsString(def.GetFieldIndex("extrude")) == "true")
                                 {
-                                    //gMorphed.Morph(morph);
-                                    gMorphed.Transform(scaleMove);
-                                    gGoo.Append(gMorphed, new GH_Path(iLayer, t, m));
+                                    double unitsConversion = Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
+                                    double height = System.Convert.ToDouble(feat.GetFieldAsString(def.GetFieldIndex("height"))) / unitsConversion;
+                                    double min_height = System.Convert.ToDouble(feat.GetFieldAsString(def.GetFieldIndex("min_height"))) / unitsConversion;
+                                    bool underground = System.Convert.ToBoolean(feat.GetFieldAsString(def.GetFieldIndex("underground")));
 
-                                }
-
-                                if (layer.GetName() == "building")
-                                {
-                                    if (feat.GetFieldAsString(def.GetFieldIndex("extrude")) == "true")
+                                    if (geom.GetGeometryType() == wkbGeometryType.wkbPolygon)
                                     {
-                                        try
+                                        Extrusion bldg = Heron.Convert.OgrPolygonToExtrusion(geom, tr, height, min_height, underground);
+                                        IGH_GeometricGoo bldgGoo = GH_Convert.ToGeometricGoo(bldg);
+                                        gGooBuildings.Append(bldgGoo, new GH_Path(iLayer, t, m));
+                                    }
+
+                                    if (geom.GetGeometryType() == wkbGeometryType.wkbMultiPolygon)
+                                    {
+                                        List<Extrusion> bldgs = Heron.Convert.OgrMultiPolyToExtrusions(geom, tr, height, min_height, underground);
+                                        foreach (Extrusion bldg in bldgs)
                                         {
-                                            double unitsConversion = Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
-                                            double height = System.Convert.ToDouble(feat.GetFieldAsString(def.GetFieldIndex("height"))) / unitsConversion;
-                                            double min_height = System.Convert.ToDouble(feat.GetFieldAsString(def.GetFieldIndex("min_height"))) / unitsConversion;
-                                            bool underground = System.Convert.ToBoolean(feat.GetFieldAsString(def.GetFieldIndex("underground")));
-
-                                            if (geom.GetGeometryType() == wkbGeometryType.wkbPolygon)
-                                            {
-                                                Extrusion bldg = Heron.Convert.OgrPolygonToExtrusion(geom, tr, height, min_height, underground);
-                                                IGH_GeometricGoo bldgGoo = GH_Convert.ToGeometricGoo(bldg);
-                                                bldgGoo.Transform(scaleMove);
-                                                gGooBuildings.Append(bldgGoo, new GH_Path(iLayer, t, m));
-                                            }
-
-                                            if (geom.GetGeometryType() == wkbGeometryType.wkbMultiPolygon)
-                                            {
-                                                List<Extrusion> bldgs = Heron.Convert.OgrMultiPolyToExtrusions(geom, tr, height, min_height, underground);
-                                                foreach (Extrusion bldg in bldgs)
-                                                {
-                                                    IGH_GeometricGoo bldgGoo = GH_Convert.ToGeometricGoo(bldg);
-                                                    bldgGoo.Transform(scaleMove);
-                                                    gGooBuildings.Append(bldgGoo, new GH_Path(iLayer, t, m));
-                                                }
-                                            }
+                                            IGH_GeometricGoo bldgGoo = GH_Convert.ToGeometricGoo(bldg);
+                                            gGooBuildings.Append(bldgGoo, new GH_Path(iLayer, t, m));
                                         }
-                                        catch { }
                                     }
                                 }
+                            }
 
-                                /// Get Feature Values
-                                if (fvalues.PathExists(new GH_Path(iLayer, t, m)))
+                            /// Get Feature Values
+                            if (fvalues.PathExists(new GH_Path(iLayer, t, m)))
+                            {
+                                //fvalues.get_Branch(new GH_Path(iLayer, t, m)).Clear();
+                            }
+
+                            for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                            {
+                                OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
+                                if (feat.IsFieldSet(iField))
                                 {
-                                    //fvalues.get_Branch(new GH_Path(iLayer, t, m)).Clear();
+                                    fvalues.Append(new GH_String(feat.GetFieldAsString(iField)), new GH_Path(iLayer, t, m));
                                 }
-
-                                for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                                else
                                 {
-                                    OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
-                                    if (feat.IsFieldSet(iField))
-                                    {
-                                        fvalues.Append(new GH_String(feat.GetFieldAsString(iField)), new GH_Path(iLayer, t, m));
-                                    }
-                                    else
-                                    {
-                                        fvalues.Append(new GH_String("null"), new GH_Path(iLayer, t, m));
-                                    }
-
+                                    fvalues.Append(new GH_String("null"), new GH_Path(iLayer, t, m));
                                 }
 
                             }
-                            m++;
-                            geom.Dispose();
-                            feat.Dispose();
 
-                        }///end while loop through features
+                        }
+                        m++;
+                        geom.Dispose();
+                        feat.Dispose();
+
+                    }///end while loop through features
 
                     //}///end layer by name
 
@@ -456,6 +468,7 @@ namespace Heron
             DA.SetDataList(4, "copyright Mapbox");
             DA.SetDataTree(5, gtype);
             DA.SetDataTree(6, gGooBuildings);
+            DA.SetDataList(7, tileExtents);
 
         }
 
