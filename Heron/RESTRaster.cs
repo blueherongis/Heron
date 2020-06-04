@@ -51,6 +51,7 @@ namespace Heron
             pManager.AddBooleanParameter("run", "get", "Go ahead and download imagery from the Service", GH_ParamAccess.item, false);
 
             pManager.AddTextParameter("User Spatial Reference System", "userSRS", "Custom SRS", GH_ParamAccess.item,"WGS84");
+            pManager.AddTextParameter("Image Type", "imageType", "Image file type to download from the service.", GH_ParamAccess.item, "jpg");
 
         }
 
@@ -85,6 +86,9 @@ namespace Heron
 
             string userSRStext = "";
             DA.GetData<string>("User Spatial Reference System", ref userSRStext);
+
+            string imageType = "";
+            DA.GetData<string>("Image Type", ref imageType);
 
             ///GDAL setup
             RESTful.GdalConfiguration.ConfigureOgr();
@@ -138,7 +142,8 @@ namespace Heron
                   "&bboxSR=" + userSRSInt +
                   size + //"&layers=&layerdefs=" +
                   "&imageSR=" + userSRSInt + //"&transparent=false&dpi=&time=&layerTimeOptions=" +
-                  "&format=jpg&f=json";
+                  "&format=" + imageType +
+                  "&f=json";
 
                 mapquery.Append(new GH_String(restquery), path);
 
