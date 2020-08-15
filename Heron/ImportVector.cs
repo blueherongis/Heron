@@ -23,7 +23,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
-            pManager.AddTextParameter("Vector Data Location", "fileLoc", "File path for the vector data input", GH_ParamAccess.item);
+            pManager.AddTextParameter("Vector Data Location", "filePath", "File path for the vector data input", GH_ParamAccess.item);
             pManager.AddTextParameter("User Spatial Reference System", "userSRS", "Custom SRS", GH_ParamAccess.item, "WGS84");
             pManager.AddBooleanParameter("Crop file", "cropIt", "Crop the file to boundary?", GH_ParamAccess.item, true);
             pManager[0].Optional = true;
