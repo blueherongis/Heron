@@ -68,33 +68,8 @@ namespace Heron
             ///It can be spotty with KML, MVT and GML and doesn't throw informative errors.  Likely has to do with getting a valid CRS and 
             ///TODO: resolve errors with reading KML, MVT, GML.
 
-            RESTful.GdalConfiguration.ConfigureOgr();
-            OSGeo.OGR.Ogr.RegisterAll();
-            OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
-
-            if (dataSource == null)
-            {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
-                return;
-            }
-
-            List<OSGeo.OGR.Layer> layerset = new List<OSGeo.OGR.Layer>();
-            List<int> fc = new List<int>();
-
-            for (int iLayer = 0; iLayer < dataSource.GetLayerCount(); iLayer++)
-            {
-                OSGeo.OGR.Layer layer = dataSource.GetLayerByIndex(iLayer);
-
-                if (layer == null)
-                {
-                    Console.WriteLine("Couldn't fetch advertised layer " + iLayer);
-                    System.Environment.Exit(-1);
-                }
-                else
-                {
-                    layerset.Add(layer);
-                }
-            }
+            DataSource dataSource = CreateDataSource(shpFilePath);
+            List<Layer> layerset = GetLayers(dataSource);
 
             ///Declare trees
             GH_Structure<GH_Rectangle> recs = new GH_Structure<GH_Rectangle>();
@@ -530,6 +505,40 @@ namespace Heron
             DA.SetDataTree(8, gtype);
         }
 
+        private List<Layer> GetLayers(DataSource dataSource)
+        {
+            List<OSGeo.OGR.Layer> layerset = new List<OSGeo.OGR.Layer>();
+            List<int> fc = new List<int>();
+
+            for (int iLayer = 0; iLayer < dataSource.GetLayerCount(); iLayer++)
+            {
+                OSGeo.OGR.Layer layer = dataSource.GetLayerByIndex(iLayer);
+
+                if (layer == null)
+                {
+                    Console.WriteLine("Couldn't fetch advertised layer " + iLayer);
+                    System.Environment.Exit(-1);
+                }
+                else
+                {
+                    layerset.Add(layer);
+                }
+            }
+            return layerset;
+        }
+        private DataSource CreateDataSource(string shpFilePath)
+        {
+            RESTful.GdalConfiguration.ConfigureOgr();
+            OSGeo.OGR.Ogr.RegisterAll();
+            OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
+
+            if (dataSource == null)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
+            }
+
+            return dataSource;
+        }
 
         protected override System.Drawing.Bitmap Icon
         {
