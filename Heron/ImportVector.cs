@@ -56,7 +56,6 @@ namespace Heron
             string shpFileLoc = "";
             DA.GetData<string>("Vector Data Location", ref shpFileLoc);
 
-
             bool cropIt = true;
             DA.GetData<Boolean>("Crop file", ref cropIt);
 
@@ -72,9 +71,9 @@ namespace Heron
             RESTful.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
             OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("ESRI Shapefile");
-            OSGeo.OGR.DataSource ds = OSGeo.OGR.Ogr.Open(shpFileLoc, 0);
+            OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFileLoc, 0);
 
-            if (ds == null)
+            if (dataSource == null)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
                 return;
@@ -119,18 +118,20 @@ namespace Heron
 
                 if (layer == null)
                 {
-                    Console.WriteLine("Couldn't fetch advertised layer " + iLayer);
+                    Console.WriteLine($"Couldn't fetch advertised layer {iLayer}");
                     System.Environment.Exit(-1);
                 }
 
                 long count = layer.GetFeatureCount(1);
                 int featureCount = System.Convert.ToInt32(count);
 
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Layer #" + iLayer + " " + layer.GetName() + " has " + featureCount + " features");
+         
+
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"Layer #{iLayer} {layer.GetName()} has {featureCount} features");
 
                 ///Get the spatial reference of the input vector file and set to WGS84 if not known
                 OSGeo.OSR.SpatialReference sourceSRS = new SpatialReference(Osr.SRS_WKT_WGS84);
-                string sRef = "";
+                string sRef = string.Empty;
 
                 if (layer.GetSpatialRef() == null)
                 {
