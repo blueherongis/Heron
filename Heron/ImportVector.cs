@@ -34,7 +34,7 @@ namespace Heron
         {
             pManager.AddCurveParameter("Extents", "extents", "Bounding box of all the vector data features", GH_ParamAccess.tree);
             pManager.AddTextParameter("Source Spatial Reference System", "sourceSRS", "Spatial Reference of the input vector data", GH_ParamAccess.tree);
-            pManager.AddTextParameter("Fields", "fields", "Fields of data associated with the vector data features", GH_ParamAccess.tree);
+            pManager.AddTextParameter("FieldataSource", "fieldataSource", "FieldataSource of data associated with the vector data features", GH_ParamAccess.tree);
             pManager.AddTextParameter("Values", "values", "Field values for each feature", GH_ParamAccess.tree);
             pManager.AddPointParameter("FeaturePoints", "featurePoints", "Point geometry describing each feature", GH_ParamAccess.tree);
 
@@ -53,8 +53,8 @@ namespace Heron
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>("Boundary", boundary);
 
-            string shpFileLoc = "";
-            DA.GetData<string>("Vector Data Location", ref shpFileLoc);
+            string shpFilePath = "";
+            DA.GetData<string>("Vector Data Location", ref shpFilePath);
 
             bool cropIt = true;
             DA.GetData<Boolean>("Crop file", ref cropIt);
@@ -71,7 +71,7 @@ namespace Heron
             RESTful.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
             OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("ESRI Shapefile");
-            OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFileLoc, 0);
+            OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
 
             if (dataSource == null)
             {
@@ -82,9 +82,9 @@ namespace Heron
             List<OSGeo.OGR.Layer> layerset = new List<OSGeo.OGR.Layer>();
             List<int> fc = new List<int>();
 
-            for (int iLayer = 0; iLayer < ds.GetLayerCount(); iLayer++)
+            for (int iLayer = 0; iLayer < dataSource.GetLayerCount(); iLayer++)
             {
-                OSGeo.OGR.Layer layer = ds.GetLayerByIndex(iLayer);
+                OSGeo.OGR.Layer layer = dataSource.GetLayerByIndex(iLayer);
 
                 if (layer == null)
                 {
@@ -112,9 +112,9 @@ namespace Heron
 
 
             ///Loop through each layer. Layers usually occur in Geodatabase GDB format. SHP usually has only one layer.
-            for (int iLayer = 0; iLayer < ds.GetLayerCount(); iLayer++)
+            for (int iLayer = 0; iLayer < dataSource.GetLayerCount(); iLayer++)
             {
-                OSGeo.OGR.Layer layer = ds.GetLayerByIndex(iLayer);
+                OSGeo.OGR.Layer layer = dataSource.GetLayerByIndex(iLayer);
 
                 if (layer == null)
                 {
@@ -136,7 +136,7 @@ namespace Heron
                 if (layer.GetSpatialRef() == null)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is missing.  SRS set automatically set to WGS84.");
-                    Driver driver = ds.GetDriver();
+                    Driver driver = dataSource.GetDriver();
                     if (driver.GetName() == "MVT") { sourceSRS.SetFromUserInput("EPSG:3857"); }
                     else { sourceSRS.SetFromUserInput("WGS84"); } ///this seems to work where SetWellKnownGeogCS doesn't
 
@@ -251,7 +251,7 @@ namespace Heron
                     if (!rec.IsValid || ((rec.Height == 0) && (rec.Width == 0)))
                     {
                         ///Get field data if even if no geometry is present in the layer
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more vector datasource bounds are not valid.");
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more vector datasource boundataSource are not valid.");
                         OSGeo.OGR.Feature feat;
                         int m = 0;
 
@@ -275,7 +275,7 @@ namespace Heron
 
                     else if (rec.IsValid && Curve.PlanarClosedCurveRelationship(rec.ToNurbsCurve(), boundary[i], Plane.WorldXY, Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance) == RegionContainment.Disjoint)
                     {
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more clipping boundaries may be outside the bounds of the vector datasource.");
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more clipping boundaries may be outside the boundataSource of the vector datasource.");
                     }
 
                     else
@@ -516,7 +516,7 @@ namespace Heron
 
             }///end loop through layers
 
-            ds.Dispose();
+            dataSource.Dispose();
 
             DA.SetDataTree(0, recs);
             DA.SetDataTree(1, sRefs);
