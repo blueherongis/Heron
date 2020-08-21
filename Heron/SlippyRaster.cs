@@ -40,7 +40,7 @@ namespace Heron
         /// Initializes a new instance of the SlippyRaster class.
         /// </summary>
         public SlippyRaster()
-          : base("Slippy Raster", "Slippy Raster", "Get raster imagery from an tile-based map service", "GIS API")
+          : base("Slippy Raster", "Slippy Raster", "Get raster imagery from a tile-based map service", "GIS API")
         {
         }
 
