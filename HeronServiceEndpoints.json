@@ -132,7 +132,7 @@
 		},
 		{
 			"service" : "USGS Seismic Faults",
-			"url" : "http://maps1.arcgisonline.com/ArcGIS/rest/services/USGS_Earthquake_Faults/MapServer/tile/{z}/{y}/{x}"
+			"url" : "https://earthquake.usgs.gov/arcgis/rest/services/eq/map_faults/MapServer/tile/{z}/{y}/{x}"
 		},
 		{
 			"service" : "OSM Basemap",
