@@ -35,7 +35,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
-            pManager.AddTextParameter("File Location", "fileLocation", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("File Location", "filePathation", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item, topoService);
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
@@ -60,9 +60,9 @@ namespace Heron
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
 
-            string fileLoc = "";
-            DA.GetData<string>(1, ref fileLoc);
-            if (!fileLoc.EndsWith(@"\")) fileLoc = fileLoc + @"\";
+            string filePath = "";
+            DA.GetData<string>(1, ref filePath);
+            if (!filePath.EndsWith(@"\")) filePath = filePath + @"\";
 
             string prefix = "";
             DA.GetData<string>(2, ref prefix);
@@ -111,11 +111,11 @@ namespace Heron
                 if (run)
                 {
                     System.Net.WebClient webClient = new System.Net.WebClient();
-                    webClient.DownloadFile(tQ, fileLoc + prefix + "_" + i + ".tif");
+                    webClient.DownloadFile(tQ, filePath + prefix + "_" + i + ".tif");
                     webClient.Dispose();
                 }
 
-                demList.Append(new GH_String(fileLoc + prefix + "_" + i + ".tif"), path);
+                demList.Append(new GH_String(filePath + prefix + "_" + i + ".tif"), path);
                 demQuery.Append(new GH_String(tQ), path);
 
             }

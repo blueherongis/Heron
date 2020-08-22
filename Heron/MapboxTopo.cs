@@ -50,7 +50,7 @@ namespace Heron
 
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for topography", GH_ParamAccess.list);
             pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution.", GH_ParamAccess.item,14);
-            pManager.AddTextParameter("File Location", "fileLoc", "Folder to place topography image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("File Location", "filePath", "Folder to place topography image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for topography image file name", GH_ParamAccess.item);
             pManager.AddTextParameter("Mapbox Access Token", "mbToken", "Mapbox Access Token string for access to Mapbox resources. Or set an Environment Variable 'HERONMAPOXTOKEN' with your token as the string.", GH_ParamAccess.item, "");
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
@@ -86,9 +86,9 @@ namespace Heron
             int zoom = -1;
             DA.GetData<int>(1, ref zoom);
 
-            string fileloc = "";
-            DA.GetData<string>(2, ref fileloc);
-            if (!fileloc.EndsWith(@"\")) fileloc = fileloc + @"\";
+            string filePath = "";
+            DA.GetData<string>(2, ref filePath);
+            if (!filePath.EndsWith(@"\")) filePath = filePath + @"\";
 
             string prefix = "";
             DA.GetData<string>(3, ref prefix);
@@ -144,14 +144,14 @@ namespace Heron
                 ///TODO: look into scaling boundary to get buffer tiles
 
                 ///file path for final image
-                string imgPath = fileloc + prefix + "_" + i + ".png";
+                string imgPath = filePath + prefix + "_" + i + ".png";
 
                 //location of final image file
                 mapList.Append(new GH_String(imgPath), path);
 
                 //create cache folder for images
-                string cacheLoc = fileloc + @"HeronCache\";
-                List<string> cacheFileLocs = new List<string>();
+                string cacheLoc = filePath + @"HeronCache\";
+                List<string> cachefilePaths = new List<string>();
                 if (!Directory.Exists(cacheLoc))
                 {
                     Directory.CreateDirectory(cacheLoc);
@@ -180,7 +180,7 @@ namespace Heron
                     {
                         //add bounding box of tile to list
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
-                        cacheFileLocs.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + x + y + ".png");
+                        cachefilePaths.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + x + y + ".png");
                         tileTotalCount = tileTotalCount + 1;
                     }
                 }
@@ -206,7 +206,7 @@ namespace Heron
                 //if so, no need to download more or reassemble the cached tiles.
                 ///temporarily disable until how to tag images with meta data is figured out
                 /*
-                if (TileCacheMeta == tileRangeString && Convert.CheckCacheImagesExist(cacheFileLocs))
+                if (TileCacheMeta == tileRangeString && Convert.CheckCacheImagesExist(cachefilePaths))
                 {
                     if (File.Exists(imgPath))
                     {

@@ -57,7 +57,7 @@ namespace Heron
 
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for topography", GH_ParamAccess.item);
             pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution.", GH_ParamAccess.item, 14);
-            pManager.AddTextParameter("File Location", "fileLoc", "Folder to place topography image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("File Location", "filePath", "Folder to place topography image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for topography image file name", GH_ParamAccess.item);
             pManager.AddTextParameter("Mapbox Access Token", "mbToken", "Mapbox Access Token string for access to Mapbox resources. Or set an Environment Variable 'HERONMAPOXTOKEN' with your token as the string.", GH_ParamAccess.item, "");
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
@@ -96,9 +96,9 @@ namespace Heron
             int zoom = -1;
             DA.GetData<int>(1, ref zoom);
 
-            string fileloc = "";
-            DA.GetData<string>(2, ref fileloc);
-            if (!fileloc.EndsWith(@"\")) fileloc = fileloc + @"\";
+            string filePath = "";
+            DA.GetData<string>(2, ref filePath);
+            if (!filePath.EndsWith(@"\")) filePath = filePath + @"\";
 
             string prefix = "";
             DA.GetData<string>(3, ref prefix);
@@ -158,8 +158,8 @@ namespace Heron
             BoundingBox boundaryBox = boundary.GetBoundingBox(true);
 
             //create cache folder for vector tiles
-            string cacheLoc = fileloc + @"HeronCache\";
-            List<string> cacheFileLocs = new List<string>();
+            string cacheLoc = filePath + @"HeronCache\";
+            List<string> cachefilePaths = new List<string>();
             if (!Directory.Exists(cacheLoc))
             {
                 Directory.CreateDirectory(cacheLoc);
@@ -196,7 +196,7 @@ namespace Heron
                     tileHeight.Add(tileExtent[1].DistanceTo(tileExtent[2]));
 
                     boxPtList.AddRange(tileExtent.ToList());
-                    cacheFileLocs.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".mvt");
+                    cachefilePaths.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".mvt");
                     tileTotalCount = tileTotalCount + 1;
                 }
             }
@@ -274,7 +274,7 @@ namespace Heron
             //string vrtFile = cacheLoc + "mapboxvector.vrt";
             //AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, vrtFile);
             //var vrtOptions = new OSGeo.GDAL.GDALBuildVRTOptions(new[] { "-overwrite" });
-            //var vrtDataset = OSGeo.GDAL.Gdal.wrapper_GDALBuildVRT_names(vrtFile, cacheFileLocs.ToArray(), vrtOptions, null, null);
+            //var vrtDataset = OSGeo.GDAL.Gdal.wrapper_GDALBuildVRT_names(vrtFile, cachefilePaths.ToArray(), vrtOptions, null, null);
             //vrtDataset.Dispose();
 
 
@@ -305,7 +305,7 @@ namespace Heron
 
             int t = 0;
 
-            foreach (string mvtTile in cacheFileLocs)// cacheFileLocs)
+            foreach (string mvtTile in cachefilePaths)// cachefilePaths)
             {
 
                 OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("MVT");
