@@ -163,11 +163,11 @@ namespace Heron
                     ///download image from source
                     string imageQuery = jObj["href"].ToString();
                     System.Net.WebClient webClient = new System.Net.WebClient();
-                    webClient.DownloadFile(imageQuery, fileloc + prefix + "_" + i + ".jpg");
+                    webClient.DownloadFile(imageQuery, fileloc + prefix + "_" + i + "." + imageType);
                     webClient.Dispose();
 
                 }
-                var bitmapPath = fileloc + prefix + "_" + i + ".jpg";
+                var bitmapPath = fileloc + prefix + "_" + i + "." + imageType;
                 mapList.Append(new GH_String(bitmapPath), path);
 
                 imgFrame.Append(new GH_Rectangle(rect), path);
