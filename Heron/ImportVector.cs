@@ -23,7 +23,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
-            pManager.AddTextParameter("Vector Data Location", "fileLoc", "File path for the vector data input", GH_ParamAccess.item);
+            pManager.AddTextParameter("Vector Data Location", "filePath", "File path for the vector data input", GH_ParamAccess.item);
             pManager.AddTextParameter("User Spatial Reference System", "userSRS", "Custom SRS", GH_ParamAccess.item, "WGS84");
             pManager.AddBooleanParameter("Crop file", "cropIt", "Crop the file to boundary?", GH_ParamAccess.item, true);
             pManager[0].Optional = true;
@@ -53,9 +53,8 @@ namespace Heron
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>("Boundary", boundary);
 
-            string shpFileLoc = "";
-            DA.GetData<string>("Vector Data Location", ref shpFileLoc);
-
+            string shpFilePath = string.Empty;
+            DA.GetData<string>("Vector Data Location", ref shpFilePath);
 
             bool cropIt = true;
             DA.GetData<Boolean>("Crop file", ref cropIt);
@@ -69,38 +68,12 @@ namespace Heron
             ///It can be spotty with KML, MVT and GML and doesn't throw informative errors.  Likely has to do with getting a valid CRS and 
             ///TODO: resolve errors with reading KML, MVT, GML.
 
-            RESTful.GdalConfiguration.ConfigureOgr();
-            OSGeo.OGR.Ogr.RegisterAll();
-            OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("ESRI Shapefile");
-            OSGeo.OGR.DataSource ds = OSGeo.OGR.Ogr.Open(shpFileLoc, 0);
-
-            if (ds == null)
-            {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
-                return;
-            }
-
-            List<OSGeo.OGR.Layer> layerset = new List<OSGeo.OGR.Layer>();
-            List<int> fc = new List<int>();
-
-            for (int iLayer = 0; iLayer < ds.GetLayerCount(); iLayer++)
-            {
-                OSGeo.OGR.Layer layer = ds.GetLayerByIndex(iLayer);
-
-                if (layer == null)
-                {
-                    Console.WriteLine("Couldn't fetch advertised layer " + iLayer);
-                    System.Environment.Exit(-1);
-                }
-                else
-                {
-                    layerset.Add(layer);
-                }
-            }
+            DataSource dataSource = CreateDataSource(shpFilePath);
+            List<Layer> layerSet = GetLayers(dataSource);
 
             ///Declare trees
             GH_Structure<GH_Rectangle> recs = new GH_Structure<GH_Rectangle>();
-            GH_Structure<GH_String> sRefs = new GH_Structure<GH_String>();
+            GH_Structure<GH_String> spatialReferences = new GH_Structure<GH_String>();
             GH_Structure<GH_String> fnames = new GH_Structure<GH_String>();
             GH_Structure<GH_String> fset = new GH_Structure<GH_String>();
             GH_Structure<GH_Point> gset = new GH_Structure<GH_Point>();
@@ -113,65 +86,29 @@ namespace Heron
 
 
             ///Loop through each layer. Layers usually occur in Geodatabase GDB format. SHP usually has only one layer.
-            for (int iLayer = 0; iLayer < ds.GetLayerCount(); iLayer++)
+            for (int iLayer = 0; iLayer < dataSource.GetLayerCount(); iLayer++)
             {
-                OSGeo.OGR.Layer layer = ds.GetLayerByIndex(iLayer);
+                OSGeo.OGR.Layer layer = dataSource.GetLayerByIndex(iLayer);
 
                 if (layer == null)
                 {
-                    Console.WriteLine("Couldn't fetch advertised layer " + iLayer);
+                    Console.WriteLine($"Couldn't fetch advertised layer {iLayer}");
                     System.Environment.Exit(-1);
                 }
 
                 long count = layer.GetFeatureCount(1);
                 int featureCount = System.Convert.ToInt32(count);
 
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Layer #" + iLayer + " " + layer.GetName() + " has " + featureCount + " features");
+         
+
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"Layer #{iLayer} {layer.GetName()} has {featureCount} features");
 
                 ///Get the spatial reference of the input vector file and set to WGS84 if not known
+                ///
                 OSGeo.OSR.SpatialReference sourceSRS = new SpatialReference(Osr.SRS_WKT_WGS84);
-                string sRef = "";
-
-                if (layer.GetSpatialRef() == null)
-                {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is missing.  SRS set automatically set to WGS84.");
-                    Driver driver = ds.GetDriver();
-                    if (driver.GetName() == "MVT") { sourceSRS.SetFromUserInput("EPSG:3857"); }
-                    else { sourceSRS.SetFromUserInput("WGS84"); } ///this seems to work where SetWellKnownGeogCS doesn't
-
-                    string pretty = "";
-                    sourceSRS.ExportToPrettyWkt(out pretty, 0);
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, pretty);
-                    sRef = "Spatial Reference System (SRS) is missing.  SRS set automatically set to WGS84.";
-                }
-
-                else
-                {
-                    if (layer.GetSpatialRef().Validate() != 0)
-                    {
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is unknown or unsupported.  SRS set automatically set to WGS84.");
-                        sourceSRS.SetWellKnownGeogCS("WGS84");
-                        sRef = "Spatial Reference System (SRS) is unknown or unsupported.  SRS set automatically set to WGS84.";
-                    }
-                    else
-                    {
-                        sourceSRS = layer.GetSpatialRef();
-                        sourceSRS.ExportToWkt(out sRef);
-                        try
-                        {
-                            int sourceSRSInt = Int16.Parse(sourceSRS.GetAuthorityCode(null));
-                            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "The source Spatial Reference System (SRS) from layer " + layer.GetName() + " is EPSG:" + sourceSRSInt + ".");
-                        }
-                        catch
-                        {
-                            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Failed to get an EPSG Spatial Reference System (SRS) from layer " + layer.GetName() + ".");
-                        }
-                    }
-
-                }
-
-                sRefs.Append(new GH_String(sRef), new GH_Path(iLayer));
-
+                string spatialReference = GetSpatialReference(layer, iLayer, dataSource, sourceSRS);
+                spatialReferences.Append(new GH_String(spatialReference), new GH_Path(iLayer));
+                
 
                 ///Set transform from input spatial reference to Rhino spatial reference
                 ///TODO: look into adding a step for transforming to CRS set in SetCRS 
@@ -515,10 +452,10 @@ namespace Heron
 
             }///end loop through layers
 
-            ds.Dispose();
+            dataSource.Dispose();
 
             DA.SetDataTree(0, recs);
-            DA.SetDataTree(1, sRefs);
+            DA.SetDataTree(1, spatialReferences);
             DA.SetDataTree(2, fnames);
             DA.SetDataTree(3, fset);
             DA.SetDataTree(4, gset);
@@ -530,6 +467,82 @@ namespace Heron
             DA.SetDataTree(8, gtype);
         }
 
+        private string GetSpatialReference(Layer layer, int iLayer, DataSource dataSource, SpatialReference sourceSRS)
+        {
+            string spatialReference;
+            if (layer.GetSpatialRef() == null)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is missing.  SRS set automatically set to WGS84.");
+                Driver driver = dataSource.GetDriver();
+                if (driver.GetName() == "MVT") { sourceSRS.SetFromUserInput("EPSG:3857"); }
+                else { sourceSRS.SetFromUserInput("WGS84"); } ///this seems to work where SetWellKnownGeogCS doesn't
+
+                string pretty;
+                sourceSRS.ExportToPrettyWkt(out pretty, 0);
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, pretty);
+                return spatialReference = "Spatial Reference System (SRS) is missing.  SRS set automatically set to WGS84.";
+            }
+            else
+            {
+                if (layer.GetSpatialRef().Validate() != 0)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is unknown or unsupported.  SRS set automatically set to WGS84.");
+                    sourceSRS.SetWellKnownGeogCS("WGS84");
+                    return spatialReference = "Spatial Reference System (SRS) is unknown or unsupported.  SRS set automatically set to WGS84.";
+                }
+                else
+                {
+                    sourceSRS = layer.GetSpatialRef();
+                    sourceSRS.ExportToWkt(out spatialReference);
+                    try
+                    {
+                        int sourceSRSInt = Int16.Parse(sourceSRS.GetAuthorityCode(null));
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "The source Spatial Reference System (SRS) from layer " + layer.GetName() + " is EPSG:" + sourceSRSInt + ".");
+                    }
+                    catch
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Failed to get an EPSG Spatial Reference System (SRS) from layer " + layer.GetName() + ".");
+                    }
+                }
+
+            }
+            return spatialReference;
+        }
+
+        private List<Layer> GetLayers(DataSource dataSource)
+        {
+            List<OSGeo.OGR.Layer> layerSet = new List<OSGeo.OGR.Layer>();
+
+
+            for (int layerIndex = 0; layerIndex < dataSource.GetLayerCount(); layerIndex++)
+            {
+                OSGeo.OGR.Layer layer = dataSource.GetLayerByIndex(layerIndex);
+
+                if (layer == null)
+                {
+                    Console.WriteLine("Couldn't fetch advertised layer " + layerIndex);
+                    System.Environment.Exit(-1);
+                }
+                else
+                {
+                    layerSet.Add(layer);
+                }
+            }
+            return layerSet;
+        }
+        private DataSource CreateDataSource(string shpFilePath)
+        {
+            RESTful.GdalConfiguration.ConfigureOgr();
+            OSGeo.OGR.Ogr.RegisterAll();
+            OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
+
+            if (dataSource == null)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
+            }
+
+            return dataSource;
+        }
 
         protected override System.Drawing.Bitmap Icon
         {

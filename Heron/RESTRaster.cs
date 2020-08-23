@@ -45,7 +45,7 @@ namespace Heron
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
             pManager.AddIntegerParameter("Resolution", "resolution", "Maximum resolution for images", GH_ParamAccess.item,1024);
-            pManager.AddTextParameter("File Location", "fileLocation", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("Target Folder", "folderPath", "Folder to save image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item, "restRaster");
             pManager.AddTextParameter("REST URL", "URL", "ArcGIS REST Service website to query", GH_ParamAccess.item);
             pManager.AddBooleanParameter("run", "get", "Go ahead and download imagery from the Service", GH_ParamAccess.item, false);
@@ -71,9 +71,9 @@ namespace Heron
             int Res = -1;
             DA.GetData<int>("Resolution", ref Res);
 
-            string fileloc = "";
-            DA.GetData<string>("File Location", ref fileloc);
-            if (!fileloc.EndsWith(@"\")) fileloc = fileloc + @"\";
+            string folderPath = string.Empty;
+            DA.GetData<string>("File Location", ref folderPath);
+            if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
 
             string prefix = "";
             DA.GetData<string>("Prefix", ref prefix);
@@ -114,7 +114,7 @@ namespace Heron
             GH_Structure<GH_String> mapquery = new GH_Structure<GH_String>();
             GH_Structure<GH_Rectangle> imgFrame = new GH_Structure<GH_Rectangle>();
 
-            FileInfo file = new FileInfo(fileloc);
+            FileInfo file = new FileInfo(folderPath);
             file.Directory.Create();
 
             string size = "";
@@ -163,11 +163,11 @@ namespace Heron
                     ///download image from source
                     string imageQuery = jObj["href"].ToString();
                     System.Net.WebClient webClient = new System.Net.WebClient();
-                    webClient.DownloadFile(imageQuery, fileloc + prefix + "_" + i + "." + imageType);
+                    webClient.DownloadFile(imageQuery, folderPath + prefix + "_" + i + "." + imageType);
                     webClient.Dispose();
 
                 }
-                var bitmapPath = fileloc + prefix + "_" + i + "." + imageType;
+                var bitmapPath = folderPath + prefix + "_" + i + "." + imageType;
                 mapList.Append(new GH_String(bitmapPath), path);
 
                 imgFrame.Append(new GH_Rectangle(rect), path);

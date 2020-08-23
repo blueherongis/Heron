@@ -51,7 +51,7 @@ namespace Heron
 
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
             pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution, but takes longer to download. Max zoom is typically 19.", GH_ParamAccess.item,14);
-            pManager.AddTextParameter("File Location", "fileLoc", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("Target folder", "folderPath", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item);
             pManager.AddTextParameter("Mapbox Access Token", "mbToken", "Mapbox Access Token string for access to Mapbox resources. Or set an Environment Variable 'HERONMAPOXTOKEN' with your token as the string.", GH_ParamAccess.item,"");
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
@@ -88,9 +88,9 @@ namespace Heron
             int zoom = -1;
             DA.GetData<int>(1, ref zoom);
 
-            string fileloc = "";
-            DA.GetData<string>(2, ref fileloc);
-            if (!fileloc.EndsWith(@"\")) fileloc = fileloc + @"\";
+            string folderPath = string.Empty;
+            DA.GetData<string>(2, ref folderPath);
+            if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
 
             string prefix = "";
             DA.GetData<string>(3, ref prefix);
@@ -146,14 +146,14 @@ namespace Heron
                 ///TODO: look into scaling boundary to get buffer tiles
 
                 ///file path for final image
-                string imgPath = fileloc + prefix + "_" + i + ".jpg";
+                string imgPath = folderPath + prefix + "_" + i + ".jpg";
 
                 //location of final image file
                 mapList.Append(new GH_String(imgPath), path);
 
                 //create cache folder for images
-                string cacheLoc = fileloc + @"HeronCache\";
-                List<string> cacheFileLocs = new List<string>();
+                string cacheLoc = folderPath + @"HeronCache\";
+                List<string> cachefolderPaths = new List<string>();
                 if (!Directory.Exists(cacheLoc))
                 {
                     Directory.CreateDirectory(cacheLoc);
@@ -181,7 +181,7 @@ namespace Heron
                     {
                         //add bounding box of tile to list
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
-                        cacheFileLocs.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + x + y + ".jpg");
+                        cachefolderPaths.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + x + y + ".jpg");
                         tileTotalCount = tileTotalCount + 1;
                     }
                 }
@@ -205,7 +205,7 @@ namespace Heron
 
                 ///check if the existing final image already covers the boundary. 
                 ///if so, no need to download more or reassemble the cached tiles.
-                if ((TileCacheMeta == tileRangeString) && Convert.CheckCacheImagesExist(cacheFileLocs))
+                if ((TileCacheMeta == tileRangeString) && Convert.CheckCacheImagesExist(cachefolderPaths))
                 {
                     if (File.Exists(imgPath))
                     {

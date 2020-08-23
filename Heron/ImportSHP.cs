@@ -68,15 +68,15 @@ namespace Heron
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
 
-            string shpFileLoc = "";
-            DA.GetData<string>("Shapefile Location", ref shpFileLoc);
+            string shpfilePath = "";
+            DA.GetData<string>("Shapefile Location", ref shpfilePath);
 
             ////int SRef = 3857;
             GdalConfiguration.ConfigureOgr();
             GdalConfiguration.ConfigureGdal();
 
             OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("ESRI Shapefile");
-            OSGeo.OGR.DataSource ds = OSGeo.OGR.Ogr.Open(shpFileLoc, 0);
+            OSGeo.OGR.DataSource ds = OSGeo.OGR.Ogr.Open(shpfilePath, 0);
 
             List<OSGeo.OGR.Layer> layerset = new List<OSGeo.OGR.Layer>();
             List<int> fc = new List<int>();

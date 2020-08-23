@@ -681,11 +681,11 @@ namespace Heron
         }
 
         ///Check if cached images exist in cache folder
-        public static bool CheckCacheImagesExist(List<string> fileLocs)
+        public static bool CheckCacheImagesExist(List<string> filePaths)
         {
-            foreach (string fileLoc in fileLocs)
+            foreach (string filePath in filePaths)
             {
-                if (!File.Exists(fileLoc))
+                if (!File.Exists(filePath))
                     return false;
             }
             return true;
