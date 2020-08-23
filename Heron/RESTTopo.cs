@@ -35,7 +35,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
-            pManager.AddTextParameter("File Location", "filePathation", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("Target folder", "folderPath", "Folder to save image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item, topoService);
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
@@ -47,7 +47,7 @@ namespace Heron
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("Topo File", "topoFile", "File location of downloaded topographic data in GeoTIFF fomrat. To be used as input for the ImportTopo component.", GH_ParamAccess.tree);
+            pManager.AddTextParameter("Topo File", "topoFile", "File location of downloaded topographic data in GeoTIFF format. To be used as input for the ImportTopo component.", GH_ParamAccess.tree);
             pManager.AddTextParameter("Topo Query", "topoQuery", "Full text of REST query.", GH_ParamAccess.tree);
         }
 
@@ -60,9 +60,9 @@ namespace Heron
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
 
-            string filePath = "";
-            DA.GetData<string>(1, ref filePath);
-            if (!filePath.EndsWith(@"\")) filePath = filePath + @"\";
+            string folderPath = string.Empty;
+            DA.GetData<string>(1, ref folderPath);
+            if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
 
             string prefix = "";
             DA.GetData<string>(2, ref prefix);
@@ -111,11 +111,11 @@ namespace Heron
                 if (run)
                 {
                     System.Net.WebClient webClient = new System.Net.WebClient();
-                    webClient.DownloadFile(tQ, filePath + prefix + "_" + i + ".tif");
+                    webClient.DownloadFile(tQ, folderPath + prefix + "_" + i + ".tif");
                     webClient.Dispose();
                 }
 
-                demList.Append(new GH_String(filePath + prefix + "_" + i + ".tif"), path);
+                demList.Append(new GH_String(folderPath + prefix + "_" + i + ".tif"), path);
                 demQuery.Append(new GH_String(tQ), path);
 
             }
