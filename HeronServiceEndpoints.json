@@ -72,7 +72,68 @@
 			"url" : "http://a.tiles.mapbox.com/v4/mapbox.mapbox-streets-v8/{z}/{x}/{y}.mvt?access_token="
 		}
 	],
-		"Slippy Maps":
+	"OSM Vector":
+	[
+		{
+			"service" : "Overpass API 1",
+			"url" : "https://lz4.overpass-api.de/api/interpreter?data=[timeout:{timeout}];(node{searchTerm}({bbox});way{searchTerm}({bbox});relation{searchTerm}({bbox}););(._;>;);out;",
+			"description" : "Main Overpass API instance 1"
+		},
+		{
+			"service" : "Overpass API 2",
+			"url" : "https://z.overpass-api.de/api/interpreter?data=[timeout:{timeout}];(node{searchTerm}({bbox});way{searchTerm}({bbox});relation{searchTerm}({bbox}););(._;>;);out;",
+			"description" : "Main Overpass API instance 2"
+		},
+		{
+			"service" : "Overpass API France",
+			"url" : "http://overpass.openstreetmap.fr/api/interpreter?data=[timeout:{timeout}];(node{searchTerm}({bbox});way{searchTerm}({bbox});relation{searchTerm}({bbox}););(._;>;);out;",
+			"description" : "French Overpass API instance"
+		},
+		{
+			"service" : "Overpass API Kumi",
+			"url" : "https://overpass.kumi.systems/api/interpreter?data=[timeout:{timeout}];(node{searchTerm}({bbox});way{searchTerm}({bbox});relation{searchTerm}({bbox}););(._;>;);out;",
+			"description" : "Kumi Systems Overpass API instance"
+		}
+	],
+	"REST Topo":
+	[
+		{
+			"service" : "SRTM GL1 (30m)",
+			"url" : "http://opentopo.sdsc.edu/otr/getdem?demtype=SRTMGL1&west={0}&south={1}&east={2}&north={3}",
+			"description" : "SRTM GL1 (30m) 1 Arcsecond resolution"
+		},
+		{
+			"service" : "SRTM GL3 (90m)",
+			"url" : "http://opentopo.sdsc.edu/otr/getdem?demtype=SRTMGL3&west={0}&south={1}&east={2}&north={3}",
+			"description" : "SRTM GL3 (90m) 3 Arsecond resolution"
+		},
+		{
+			"service" : "ALOS World 3D (30m)",
+			"url" : "http://opentopo.sdsc.edu/otr/getdem?demtype=AW3D30&west={0}&south={1}&east={2}&north={3}",
+			"description" : "ALOS World 3D (30m)"
+		},
+		{
+			"service" : "GMRT Max",
+			"url" : "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=max",
+			"description" : "GMRT Max"
+		},
+		{
+			"service" : "GMRT High",
+			"url" : "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=high",
+			"description" : "GMRT High resolution. Will default to highest resolution if boundary is too small."
+		},
+		{
+			"service" : "GMRT Medium",
+			"url" : "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=med",
+			"description" : "GMRT Medium resolution. Will default to higher resolution if boundary is too small."
+		},
+		{
+			"service" : "GMRT Low",
+			"url" : "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=low",
+			"description" : "GMRT Low resolution. Will default to higher resolution if boundary is too small."
+		}
+	],
+	"Slippy Maps":
 	[
 		{
 			"service" : "ESRI ArcGIS World Imagery",
