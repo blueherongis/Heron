@@ -127,15 +127,15 @@ namespace Heron
                 Transform modelToSourceSRSTransform = Heron.Convert.GetModelToUserSRSTransform(sourceSRS);
 
                 ///Get OGR envelope of the data in the layer in the sourceSRS
-                OSGeo.OGR.Envelope ext = new OSGeo.OGR.Envelope();
-                ogrLayer.GetExtent(ext, 1);
+                OSGeo.OGR.Envelope envelopeOgr = new OSGeo.OGR.Envelope();
+                ogrLayer.GetExtent(envelopeOgr, 1);
 
                 OSGeo.OGR.Geometry extMinSourceOgr = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
-                extMinSourceOgr.AddPoint(ext.MinX, ext.MinY, 0.0);
+                extMinSourceOgr.AddPoint(envelopeOgr.MinX, envelopeOgr.MinY, 0.0);
                 extMinSourceOgr.AssignSpatialReference(sourceSRS);
 
                 OSGeo.OGR.Geometry extMaxSourceOgr = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
-                extMaxSourceOgr.AddPoint(ext.MaxX, ext.MaxY, 0.0);
+                extMaxSourceOgr.AddPoint(envelopeOgr.MaxX, envelopeOgr.MaxY, 0.0);
                 extMaxSourceOgr.AssignSpatialReference(sourceSRS);
 
                 ///Get extents in Rhino SRS
@@ -459,10 +459,8 @@ namespace Heron
             DA.SetDataTree(2, fnames);
             DA.SetDataTree(3, fset);
             DA.SetDataTree(4, gset);
-
             DA.SetDataTree(5, gsetUser);
             DA.SetDataTree(6, recsUser);
-
             DA.SetDataTree(7, gGoo);
             DA.SetDataTree(8, gtype);
         }
