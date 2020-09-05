@@ -57,7 +57,7 @@ namespace Heron
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
 
-            string IMG_file = "";
+            string IMG_file = string.Empty;
             DA.GetData<string>("IMG Location", ref IMG_file);
             /*  
               //Does not work with HGT files

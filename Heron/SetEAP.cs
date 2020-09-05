@@ -59,7 +59,7 @@ namespace Heron
             double lat = -1;
             double lon = -1;
             bool EAP = false;
-            string lonlatString = "";
+            string lonlatString = string.Empty;
 
             //check if EAP has been set and if so what is it
             if (!Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthLocationIsSet())

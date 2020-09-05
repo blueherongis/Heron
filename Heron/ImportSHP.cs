@@ -68,7 +68,7 @@ namespace Heron
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
 
-            string shpfilePath = "";
+            string shpfilePath = string.Empty;
             DA.GetData<string>("Shapefile Location", ref shpfilePath);
 
             ////int SRef = 3857;
