@@ -88,25 +88,25 @@ namespace Heron
             ///Loop through each layer. Layers usually occur in Geodatabase GDB format. SHP usually has only one layer.
             for (int iLayer = 0; iLayer < dataSource.GetLayerCount(); iLayer++)
             {
-                OSGeo.OGR.Layer layer = dataSource.GetLayerByIndex(iLayer);
+                OSGeo.OGR.Layer ogrLayer = dataSource.GetLayerByIndex(iLayer);
 
-                if (layer == null)
+                if (ogrLayer == null)
                 {
                     Console.WriteLine($"Couldn't fetch advertised layer {iLayer}");
                     System.Environment.Exit(-1);
                 }
 
-                long count = layer.GetFeatureCount(1);
+                long count = ogrLayer.GetFeatureCount(1);
                 int featureCount = System.Convert.ToInt32(count);
 
          
 
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"Layer #{iLayer} {layer.GetName()} has {featureCount} features");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"Layer #{iLayer} {ogrLayer.GetName()} has {featureCount} features");
 
                 ///Get the spatial reference of the input vector file and set to WGS84 if not known
                 ///
                 OSGeo.OSR.SpatialReference sourceSRS = new SpatialReference(Osr.SRS_WKT_WGS84);
-                string spatialReference = GetSpatialReference(layer, iLayer, dataSource, sourceSRS);
+                string spatialReference = GetSpatialReference(ogrLayer, iLayer, dataSource, sourceSRS);
                 spatialReferences.Append(new GH_String(spatialReference), new GH_Path(iLayer));
                 
 
@@ -128,7 +128,7 @@ namespace Heron
 
                 ///Get OGR envelope of the data in the layer in the sourceSRS
                 OSGeo.OGR.Envelope ext = new OSGeo.OGR.Envelope();
-                layer.GetExtent(ext, 1);
+                ogrLayer.GetExtent(ext, 1);
 
                 OSGeo.OGR.Geometry extMinSourceOgr = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
                 extMinSourceOgr.AddPoint(ext.MinX, ext.MinY, 0.0);
@@ -173,7 +173,7 @@ namespace Heron
                 ///Loop through input boundaries
                 for (int i = 0; i < boundary.Count; i++)
                 {
-                    OSGeo.OGR.FeatureDefn def = layer.GetLayerDefn();
+                    OSGeo.OGR.FeatureDefn def = ogrLayer.GetLayerDefn();
 
                     ///Get the field names
                     List<string> fieldnames = new List<string>();
@@ -191,7 +191,7 @@ namespace Heron
                         OSGeo.OGR.Feature feat;
                         int m = 0;
 
-                        while ((feat = layer.GetNextFeature()) != null)
+                        while ((feat = ogrLayer.GetNextFeature()) != null)
                         {
                             ///Loop through field values
                             for (int iField = 0; iField < feat.GetFieldCount(); iField++)
@@ -242,7 +242,7 @@ namespace Heron
 
                         ///Clip Shapefile
                         ///http://pcjericks.github.io/py-gdalogr-cookbook/vector_layers.html
-                        OSGeo.OGR.Layer clipped_layer = layer;
+                        OSGeo.OGR.Layer clipped_layer = ogrLayer;
 
                         if (cropIt)
                         {
@@ -448,7 +448,7 @@ namespace Heron
 
                 }///end loop through boundaries
 
-                layer.Dispose();
+                ogrLayer.Dispose();
 
             }///end loop through layers
 

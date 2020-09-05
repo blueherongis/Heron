@@ -42,7 +42,7 @@ namespace Heron
         {
             List<Point3d> pProjected = new List<Point3d>();
 
-            string view = "";
+            string view = string.Empty;
             DA.GetData<string>(0, ref view);
             viewportName = view;
             ///Get viewport boundary

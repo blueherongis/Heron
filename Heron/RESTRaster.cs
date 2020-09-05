@@ -75,19 +75,19 @@ namespace Heron
             DA.GetData<string>("File Location", ref folderPath);
             if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
 
-            string prefix = "";
+            string prefix = string.Empty;
             DA.GetData<string>("Prefix", ref prefix);
 
-            string URL = "";
+            string URL = string.Empty;
             DA.GetData<string>("REST URL", ref URL);
 
             bool run = false;
             DA.GetData<bool>("run", ref run);
 
-            string userSRStext = "";
+            string userSRStext = string.Empty;
             DA.GetData<string>("User Spatial Reference System", ref userSRStext);
 
-            string imageType = "";
+            string imageType = string.Empty;
             DA.GetData<string>("Image Type", ref imageType);
 
             ///GDAL setup
@@ -117,7 +117,7 @@ namespace Heron
             FileInfo file = new FileInfo(folderPath);
             file.Directory.Create();
 
-            string size = "";
+            string size = string.Empty;
             if (Res != 0)
             {
                 size = "&size=" + Res + "%2C" + Res;
@@ -147,7 +147,7 @@ namespace Heron
 
                 mapquery.Append(new GH_String(restquery), path);
 
-                string result = "";
+                string result = string.Empty;
 
                 if (run)
                 {

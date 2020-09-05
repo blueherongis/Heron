@@ -670,7 +670,7 @@ namespace Heron
         ///Get list of mapping service Endpoints
         public static string GetEnpoints()
         {
-            string jsonString = "";
+            string jsonString = string.Empty;
             using (System.Net.WebClient wc = new System.Net.WebClient())
             {
                 string URI = "https://raw.githubusercontent.com/blueherongis/Heron/master/HeronServiceEndpoints.json";
