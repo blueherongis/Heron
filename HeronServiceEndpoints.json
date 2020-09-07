@@ -93,6 +93,11 @@
 			"service" : "Overpass API Kumi",
 			"url" : "https://overpass.kumi.systems/api/interpreter?data=[timeout:{timeout}];(node{searchTerm}({bbox});way{searchTerm}({bbox});relation{searchTerm}({bbox}););(._;>;);out;",
 			"description" : "Kumi Systems Overpass API instance"
+		},
+		{
+			"service" : "OpenStreetMap API",
+			"url" : "https://api.openstreetmap.org/api/0.6/map?bbox={bbox}",
+			"description" : "OpenStreetMap API instance. No search term is available and max area is limited to 0.25deg square. Please consider using one of the other sources."
 		}
 	],
 	"REST Topo":
