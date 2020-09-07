@@ -76,7 +76,7 @@
 	[
 		{
 			"service" : "Overpass API 1",
-			"url" : "https://lz4.overpass-api.de/api/interpreter?data=[bbox][timeout:{timeout}];(node{searchTerm};way{searchTerm};relation{searchTerm};);(._;>;);out;&bbox={bottom},{left},{top},{right}",
+			"url" : "https://lz4.overpass-api.de/api/interpreter?data=[bbox][timeout:{timeout}];{searchTerm}out;&bbox={left},{bottom},{right},{top}",
 			"description" : "Main Overpass API instance 1"
 		},
 		{
