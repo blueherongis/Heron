@@ -76,7 +76,7 @@
 	[
 		{
 			"service" : "Overpass API 1",
-			"url" : "https://lz4.overpass-api.de/api/interpreter?data=[timeout:{timeout}];(node{searchTerm}({bbox});way{searchTerm}({bbox});relation{searchTerm}({bbox}););(._;>;);out meta;",
+			"url" : "https://lz4.overpass-api.de/api/interpreter?data=[bbox][timeout:{timeout}];(node{searchTerm};way{searchTerm};relation{searchTerm};);(._;>;);out;&bbox={bottom},{left},{top},{right}",
 			"description" : "Main Overpass API instance 1"
 		},
 		{
@@ -96,7 +96,7 @@
 		},
 		{
 			"service" : "OpenStreetMap API",
-			"url" : "https://api.openstreetmap.org/api/0.6/map?bbox={bbox}",
+			"url" : "https://api.openstreetmap.org/api/0.6/map?bbox={left},{bottom},{right},{top}",
 			"description" : "OpenStreetMap API instance. No search term is available and max area is limited to 0.25deg square. Please consider using one of the other sources."
 		}
 	],
