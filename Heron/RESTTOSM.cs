@@ -1,0 +1,278 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Windows.Forms;
+
+using Grasshopper.Kernel;
+using Grasshopper.Kernel.Data;
+using Grasshopper.Kernel.Types;
+using GH_IO;
+using GH_IO.Serialization;
+using Rhino;
+using Rhino.Geometry;
+
+using Newtonsoft.Json.Bson;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Schema;
+using Newtonsoft.Json.Serialization;
+
+namespace Heron
+{
+    public class RESTOSM : HeronComponent
+    {
+        /// <summary>
+        /// Initializes a new instance of the MyComponent1 class.
+        /// </summary>
+        public RESTOSM()
+          : base("Get REST OSM", "OSMRest",
+              "Get an OSM vector file within a boundary from web services such as the Overpass API.  " +
+                "Use a search term to filter results and increase speed. ",
+               "GIS REST")
+        {
+        }
+
+        /// <summary>
+        /// Registers all the input parameters for this component.
+        /// </summary>
+        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        {
+            pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for data", GH_ParamAccess.item);
+            pManager.AddTextParameter("Target folder", "folderPath", "Folder to save OSM vector files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("Prefix", "prefix", "Prefix for OSM vector file name", GH_ParamAccess.item, OSMSource);
+            pManager.AddTextParameter("Search Term", "searchTerm", "Search term to filter the response from the web service.", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Run", "get", "Go ahead and download OSM vector files from the service", GH_ParamAccess.item, false);
+
+            pManager[2].Optional = true;
+            pManager[3].Optional = true;
+
+            Message = OSMSource;
+        }
+
+        /// <summary>
+        /// Registers all the output parameters for this component.
+        /// </summary>
+        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        {
+            pManager.AddTextParameter("OSM File", "osmFile", "File location of downloaded OSM vector file. To be used as input for the ImportOSM component.", GH_ParamAccess.item);
+            pManager.AddTextParameter("OSM Query", "osmQuery", "Full text of REST query.", GH_ParamAccess.item);
+        }
+
+        /// <summary>
+        /// This is the method that actually does the work.
+        /// </summary>
+        /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
+        protected override void SolveInstance(IGH_DataAccess DA)
+        {
+            Curve boundary = null;
+            DA.GetData<Curve>(0, ref boundary);
+
+            string folderPath = string.Empty;
+            DA.GetData<string>(1, ref folderPath);
+            if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
+
+            string prefix = string.Empty;
+            DA.GetData<string>(2, ref prefix);
+            if (prefix == "")
+            {
+                prefix = osmSource;
+            }
+
+            string searchTerm = string.Empty;
+            DA.GetData<string>(3, ref searchTerm);
+            if (String.IsNullOrEmpty(searchTerm) == false)
+            {
+                searchTerm = System.Net.WebUtility.UrlEncode("[" + searchTerm + "]");
+            }
+
+            bool run = false;
+            DA.GetData<bool>("Run", ref run);
+
+            /// hardcoded timout integer
+            /// TODO: add this as a menu item that can be customized
+            int timeout = 60;
+
+            string URL = osmURL;
+
+            GH_Structure<GH_String> osmList = new GH_Structure<GH_String>();
+            GH_Structure<GH_String> osmQuery = new GH_Structure<GH_String>();
+
+            /// Check boundary to make sure it's valid
+            if (!boundary.GetBoundingBox(true).IsValid)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Boundary is not valid.");
+                return;
+            }
+
+            //offset boundary to ensure data from opentopography fully contains query boundary
+            //double offsetD = 200 * Rhino.RhinoMath.UnitScale(UnitSystem.Meters, Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem);
+            //Curve offsetB = boundary.Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
+            //offsetB = boundary;
+
+            //Get OSM frame for given boundary
+            Point3d min = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Min);
+            Point3d max = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Max);
+
+            string left = min.X.ToString();
+            string bottom = min.Y.ToString();
+            string right = max.X.ToString();
+            string north = max.Y.ToString();
+
+            string bbox = min.Y + "," + min.X + "," + max.Y + "," + max.X;
+
+            //string oQ = String.Format(osmURL, timeout, searchTerm, bbox);
+            string oQ = Convert.GetOSMURL(timeout, searchTerm, left, bottom, right, north, osmURL);
+            osmQuery.Append(new GH_String(oQ));
+            DA.SetDataTree(1, osmQuery);
+
+            if (run)
+            {
+                System.Net.WebClient webClient = new System.Net.WebClient();
+                webClient.DownloadFile(oQ, folderPath + prefix + ".osm");
+                webClient.Dispose();
+            }
+
+            osmList.Append(new GH_String(folderPath + prefix + ".osm"));
+
+
+
+            //populate outputs
+            DA.SetDataTree(0, osmList);
+
+        }
+
+        ////////////////////////////
+        //Menu Items
+
+        private bool IsServiceSelected(string serviceString)
+        {
+            return serviceString.Equals(osmSource);
+        }
+
+
+        protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
+        {
+            if (osmSourceList == "")
+            {
+                osmSourceList = Convert.GetEnpoints();
+            }
+
+            JObject osmJson = JObject.Parse(osmSourceList);
+
+            ToolStripMenuItem root = new ToolStripMenuItem("Pick OSM vector service");
+
+            foreach (var service in osmJson["OSM Vector"])
+            {
+                string sName = service["service"].ToString();
+
+                ToolStripMenuItem serviceName = new ToolStripMenuItem(sName);
+                serviceName.Tag = sName;
+                serviceName.Checked = IsServiceSelected(sName);
+                serviceName.ToolTipText = service["description"].ToString();
+                serviceName.Click += ServiceItemOnClick;
+
+                root.DropDownItems.Add(serviceName);
+            }
+
+            menu.Items.Add(root);
+
+            base.AppendAdditionalComponentMenuItems(menu);
+
+        }
+
+        private void ServiceItemOnClick(object sender, EventArgs e)
+        {
+            ToolStripMenuItem item = sender as ToolStripMenuItem;
+            if (item == null)
+                return;
+
+            string code = (string)item.Tag;
+            if (IsServiceSelected(code))
+                return;
+
+            RecordUndoEvent("OSMSource");
+            RecordUndoEvent("OSMURL");
+
+            osmSource = code;
+            osmURL = JObject.Parse(osmSourceList)["OSM Vector"].SelectToken("[?(@.service == '" + osmSource + "')].url").ToString();
+            Message = osmSource;
+
+            ExpireSolution(true);
+        }
+
+
+        ///////////////////////////
+
+        ///////////////////////////
+        //Sticky Parameters
+
+        private string osmSourceList = Convert.GetEnpoints();
+        private string osmSource = JObject.Parse(Convert.GetEnpoints())["OSM Vector"][0]["service"].ToString();
+        private string osmURL = JObject.Parse(Convert.GetEnpoints())["OSM Vector"][0]["url"].ToString();
+
+        public string SlippySourceList
+        {
+            get { return osmSourceList; }
+            set
+            {
+                osmSourceList = value;
+            }
+        }
+
+        public string OSMSource
+        {
+            get { return osmSource; }
+            set
+            {
+                osmSource = value;
+                Message = osmSource;
+            }
+        }
+
+        public string OSMURL
+        {
+            get { return osmURL; }
+            set
+            {
+                osmURL = value;
+            }
+        }
+
+        public override bool Write(GH_IO.Serialization.GH_IWriter writer)
+        {
+            writer.SetString("OSMService", OSMSource);
+            return base.Write(writer);
+        }
+
+        public override bool Read(GH_IO.Serialization.GH_IReader reader)
+        {
+            OSMSource = reader.GetString("OSMService");
+            return base.Read(reader);
+        }
+
+
+        ///////////////////////////
+
+        /// <summary>
+        /// Provides an Icon for the component.
+        /// </summary>
+        protected override System.Drawing.Bitmap Icon
+        {
+            get
+            {
+                //You can add image files to your project resources and access them like this:
+                // return Resources.IconForThisComponent;
+                return Properties.Resources.vector;
+            }
+        }
+
+        /// <summary>
+        /// Gets the unique ID for this component. Do not change this ID after release.
+        /// </summary>
+        public override Guid ComponentGuid
+        {
+            get { return new Guid("2360BE7D-668C-41F2-9006-0575E189C677"); }
+        }
+    }
+}
