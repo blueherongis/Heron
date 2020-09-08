@@ -230,6 +230,14 @@ namespace Heron
                 Curve crv = Heron.Convert.OgrRingToCurve(sub_geom, transform);
                 //possible cause of viewport issue, try not forcing a close.  Other possibility would be trying to convert to (back to) polyline
                 //crv.MakeClosed(tol);
+
+                if (!crv.IsClosed && sub_geom.GetPointCount()>2)
+                {
+                    Curve closingLine = new Line(crv.PointAtEnd, crv.PointAtStart).ToNurbsCurve();
+                    Curve[] result = Curve.JoinCurves(new Curve[] { crv, closingLine });
+                    crv = result[0];
+                }
+
                 pList.Add(crv);
                 sub_geom.Dispose();
             }
@@ -237,7 +245,7 @@ namespace Heron
             //need to catch if not closed polylines
             Mesh mPatch = new Mesh();
 
-            if (pList[0] != null)
+            if (pList[0] != null && pList[0].IsClosed)
             {
                 Polyline pL = null;
                 pList[0].TryGetPolyline(out pL);
@@ -664,6 +672,22 @@ namespace Heron
             string u = url.Replace("{x}", x.ToString());
             u = u.Replace("{y}", y.ToString());
             u = u.Replace("{z}", z.ToString());
+            return u;
+        }
+
+        public static string GetOSMURL(int timeout, string searchTerm, string left, string bottom, string right, string top, string url)
+        {
+            string search = "(node" + searchTerm + "; way" + searchTerm + "; relation" + searchTerm + ";);(._;>;);";
+            string u = url.Replace("{timeout}", timeout.ToString());
+            if (searchTerm.Length > 0)
+            {
+                u = u.Replace("{searchTerm}", search);
+            }
+            else { u = u.Replace("{searchTerm}", "(node;way;relation;);(._;>;);"); }
+            u = u.Replace("{left}", left);
+            u = u.Replace("{bottom}", bottom);
+            u = u.Replace("{right}", right);
+            u = u.Replace("{top}", top);
             return u;
         }
 
