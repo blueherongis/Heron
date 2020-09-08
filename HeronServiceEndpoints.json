@@ -81,17 +81,17 @@
 		},
 		{
 			"service" : "Overpass API 2",
-			"url" : "https://z.overpass-api.de/api/interpreter?data=[timeout:{timeout}];(node{searchTerm}({bbox});way{searchTerm}({bbox});relation{searchTerm}({bbox}););(._;>;);out;",
+			"url" : "https://z.overpass-api.de/api/interpreter?data=[bbox][timeout:{timeout}];{searchTerm}out;&bbox={left},{bottom},{right},{top}",
 			"description" : "Main Overpass API instance 2"
 		},
 		{
 			"service" : "Overpass API France",
-			"url" : "http://overpass.openstreetmap.fr/api/interpreter?data=[timeout:{timeout}];(node{searchTerm}({bbox});way{searchTerm}({bbox});relation{searchTerm}({bbox}););(._;>;);out;",
+			"url" : "http://overpass.openstreetmap.fr/api/interpreter?data=[bbox][timeout:{timeout}];{searchTerm}out;&bbox={left},{bottom},{right},{top}",
 			"description" : "French Overpass API instance"
 		},
 		{
 			"service" : "Overpass API Kumi",
-			"url" : "https://overpass.kumi.systems/api/interpreter?data=[timeout:{timeout}];(node{searchTerm}({bbox});way{searchTerm}({bbox});relation{searchTerm}({bbox}););(._;>;);out;",
+			"url" : "https://overpass.kumi.systems/api/interpreter?data=[bbox][timeout:{timeout}];{searchTerm}out;&bbox={left},{bottom},{right},{top}",
 			"description" : "Kumi Systems Overpass API instance"
 		},
 		{
