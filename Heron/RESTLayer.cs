@@ -53,7 +53,7 @@ namespace Heron
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string URL = "";
+            string URL = string.Empty;
 
             DA.GetData<string>("Service URL", ref URL);
 

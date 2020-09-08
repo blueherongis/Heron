@@ -92,7 +92,7 @@ namespace Heron
             DA.GetData<string>(2, ref folderPath);
             if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
 
-            string prefix = "";
+            string prefix = string.Empty;
             DA.GetData<string>(3, ref prefix);
             if (prefix=="")
             {
@@ -103,7 +103,7 @@ namespace Heron
             //DA.GetData<string>(4, ref URL);
 
             ///get a valid mapbox token to send along with query
-            string mbToken = "";
+            string mbToken = string.Empty;
             DA.GetData<string>(4, ref mbToken);
             if (mbToken =="")
             {
@@ -404,7 +404,7 @@ namespace Heron
         ///https://developer.rhino3d.com/api/grasshopper/html/5f6a9f31-8838-40e6-ad37-a407be8f2c15.htm
         ///
 
-        private string tCacheMeta = "";
+        private string tCacheMeta = string.Empty;
         private string mbSourceList = Convert.GetEnpoints();
         private string mbSource = JObject.Parse(Convert.GetEnpoints())["Mapbox Maps"][0]["service"].ToString();
         private string mbURL = JObject.Parse(Convert.GetEnpoints())["Mapbox Maps"][0]["url"].ToString();

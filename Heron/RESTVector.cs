@@ -63,10 +63,10 @@ namespace Heron
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
 
-            string URL = "";
+            string URL = string.Empty;
             DA.GetData<string>("REST URL", ref URL);
 
-            string userSRStext = "";
+            string userSRStext = string.Empty;
             DA.GetData<string>("User Spatial Reference System", ref userSRStext);
 
             bool run = false;

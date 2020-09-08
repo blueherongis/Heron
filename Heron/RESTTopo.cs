@@ -64,7 +64,7 @@ namespace Heron
             DA.GetData<string>(1, ref folderPath);
             if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
 
-            string prefix = "";
+            string prefix = string.Empty;
             DA.GetData<string>(2, ref prefix);
 
             bool run = false;

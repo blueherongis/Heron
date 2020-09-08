@@ -89,13 +89,13 @@ namespace Heron
             int zoom = -1;
             DA.GetData(1, ref zoom);
 
-            string filePath = "";
+            string filePath = string.Empty;
             DA.GetData(2, ref filePath);
             if (!filePath.EndsWith(@"\")) filePath = filePath + @"\";
 
-            string prefix = "";
+            string prefix = string.Empty;
             DA.GetData(3, ref prefix);
-            if (prefix == "")
+            if (prefix == string.Empty)
             {
                 prefix = slippySource;
             }
@@ -103,7 +103,7 @@ namespace Heron
             string URL = slippyURL;
             //DA.GetData<string>(4, ref URL);
 
-            string userAgent = "";
+            string userAgent = string.Empty;
             DA.GetData(4, ref userAgent);
 
             bool run = false;
@@ -391,7 +391,7 @@ namespace Heron
         ///https://developer.rhino3d.com/api/grasshopper/html/5f6a9f31-8838-40e6-ad37-a407be8f2c15.htm
         ///
 
-        private string tCacheMeta = "";
+        private string tCacheMeta = string.Empty;
         private string slippySourceList = Convert.GetEnpoints();
         private string slippySource = JObject.Parse(Convert.GetEnpoints())["Slippy Maps"][0]["service"].ToString();
         private string slippyURL = JObject.Parse(Convert.GetEnpoints())["Slippy Maps"][0]["url"].ToString();

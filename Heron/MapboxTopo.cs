@@ -86,13 +86,13 @@ namespace Heron
             int zoom = -1;
             DA.GetData<int>(1, ref zoom);
 
-            string filePath = "";
+            string filePath = string.Empty;
             DA.GetData<string>(2, ref filePath);
             if (!filePath.EndsWith(@"\")) filePath = filePath + @"\";
 
-            string prefix = "";
+            string prefix = string.Empty;
             DA.GetData<string>(3, ref prefix);
-            if (prefix == "")
+            if (prefix == string.Empty)
             {
                 prefix = mbSource;
             }
@@ -101,9 +101,9 @@ namespace Heron
             //DA.GetData<string>(4, ref URL);
 
 
-            string mbToken = "";
+            string mbToken = string.Empty;
             DA.GetData<string>(4, ref mbToken);
-            if (mbToken == "")
+            if (mbToken == string.Empty)
             {
                 string hmbToken = System.Environment.GetEnvironmentVariable("HERONMAPBOXTOKEN");
                 if (hmbToken != null)
@@ -340,7 +340,7 @@ namespace Heron
         ///https://developer.rhino3d.com/api/grasshopper/html/5f6a9f31-8838-40e6-ad37-a407be8f2c15.htm
         ///
 
-        private string tCacheMeta = "";
+        private string tCacheMeta = string.Empty;
         private string mbSourceList = Convert.GetEnpoints();
         private string mbSource = JObject.Parse(Convert.GetEnpoints())["Mapbox Topo"][0]["service"].ToString();
         private string mbURL = JObject.Parse(Convert.GetEnpoints())["Mapbox Topo"][0]["url"].ToString();
