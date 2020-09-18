@@ -27,6 +27,7 @@
  * DEALINGS IN THE SOFTWARE.
  *****************************************************************************/
 
+using Heron;
 using System;
 using System.IO;
 using System.Reflection;
@@ -54,8 +55,8 @@ namespace RESTful
         /// </summary>
         static GdalConfiguration()
         {
-            var ghLibDir = Grasshopper.Folders.DefaultAssemblyFolder;
-            var executingDirectory = Path.Combine(ghLibDir, "Heron");
+            var ghLibFile = typeof(ImportVector).Assembly.Location;
+            var executingDirectory = Path.GetDirectoryName(ghLibFile);
 
             if (string.IsNullOrEmpty(executingDirectory))
                 throw new InvalidOperationException("cannot get executing directory");
