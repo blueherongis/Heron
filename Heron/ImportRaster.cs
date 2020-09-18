@@ -209,7 +209,7 @@ namespace Heron
         {
             get
             {
-                return Properties.Resources.img;
+                return Properties.Resources.raster;
             }
         }
 
