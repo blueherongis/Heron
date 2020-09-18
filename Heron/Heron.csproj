@@ -95,6 +95,7 @@
     <Compile Include="HeronRasterPreviewComponent.cs" />
     <Compile Include="ImportOSM.cs" />
     <Compile Include="ImportSHP.cs" />
+    <Compile Include="ImportRaster.cs" />
     <Compile Include="ImportVector.cs" />
     <Compile Include="ImportTopo.cs">
       <SubType>Code</SubType>
