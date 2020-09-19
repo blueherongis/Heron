@@ -90,6 +90,7 @@
   <ItemGroup>
     <Compile Include="Convert.cs" />
     <Compile Include="GdalConfiguration.cs" />
+    <Compile Include="GdalTranslate.cs" />
     <Compile Include="HeronComponent.cs" />
     <Compile Include="HeronInfo.cs" />
     <Compile Include="HeronRasterPreviewComponent.cs" />
