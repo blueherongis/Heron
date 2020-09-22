@@ -1,0 +1,167 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Runtime;
+using System.Runtime.InteropServices;
+using System.IO;
+
+using Grasshopper.Kernel;
+using Rhino.Geometry;
+
+using OSGeo.GDAL;
+using OSGeo.OSR;
+using OSGeo.OGR;
+
+namespace Heron
+{
+    public class GdalWarp : HeronComponent
+    {
+        /// <summary>
+        /// Initializes a new instance of the GdalTranslate class.
+        /// </summary>
+        public GdalWarp()
+          : base("GdalWarp", "GdalWarp",
+              "Manipulate raster data with the GDAL Warp program given a source dataset, a destination dataset and a list of options.  " +
+                "Formatting for the list of options should be a single string of text with a space separating each term " +
+                "where '-' should preceed the option parameter and the next item in the list should be that parameter's value.  " +
+                "For instance, to warp a raster dataset to WGS84, the options string would be '-t_srs EPSG:4326'  " +
+                "More information about warp options can be found at https://gdal.org/programs/gdalwarp.html.",
+              "GIS Tools")
+        {
+        }
+
+        public override Grasshopper.Kernel.GH_Exposure Exposure
+        {
+            get { return GH_Exposure.tertiary; }
+        }
+
+        /// <summary>
+        /// Registers all the input parameters for this component.
+        /// </summary>
+        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        {
+            pManager.AddTextParameter("Source dataset", "source", "File location for the source raster dataset.", GH_ParamAccess.item);
+            pManager.AddTextParameter("Destination dataset", "dest", "File location for the destination dataset.", GH_ParamAccess.item);
+            pManager.AddTextParameter("Options", "options", "String of options with a space separating each term. " +
+                "For instance, to warp an dataset to WGS84, the options string would be '-t_srs EPSG:4326'.", GH_ParamAccess.item);
+            pManager[0].Optional = true;
+            pManager[1].Optional = true;
+            pManager[2].Optional = true;
+        }
+
+        /// <summary>
+        /// Registers all the output parameters for this component.
+        /// </summary>
+        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        {
+            pManager.AddTextParameter("Source Info", "sourceInfo", "List of information about the source dataset.", GH_ParamAccess.item);
+            pManager.AddTextParameter("Destination Info", "destInfo", "List of information about the destination dataset.", GH_ParamAccess.item);
+            pManager.AddTextParameter("Destination File", "destFile", "File location of destination datasource.", GH_ParamAccess.item);
+        }
+
+        /// <summary>
+        /// This is the method that actually does the work.
+        /// </summary>
+        /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
+        protected override void SolveInstance(IGH_DataAccess DA)
+        {
+            string srcFileLocation = string.Empty;
+            DA.GetData<string>(0, ref srcFileLocation);
+
+            string dstFileLocation = string.Empty;
+            DA.GetData<string>(1, ref dstFileLocation);
+
+            string options = string.Empty;
+            DA.GetData<string>(2, ref options);
+
+            string[] translateOptions = options.Split(' ');
+
+            string srcInfo = string.Empty;
+            string dstInfo = string.Empty;
+            string dstOutput = string.Empty;
+
+
+            RESTful.GdalConfiguration.ConfigureGdal();
+            OSGeo.GDAL.Gdal.AllRegister();
+
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Look for more information about options at:");
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "https://gdal.org/programs/gdalwarp.html");
+
+            if (!string.IsNullOrEmpty(srcFileLocation))
+            {
+                using (Dataset src = Gdal.Open(srcFileLocation, Access.GA_ReadOnly))
+                {
+                    if (src == null)
+                    {
+                        throw new Exception("Can't open GDAL dataset: " + srcFileLocation);
+                    }
+
+                    srcInfo = Gdal.GDALInfo(src, null);
+
+                    if (!string.IsNullOrEmpty(dstFileLocation))
+                    {
+                        if (string.IsNullOrEmpty(options) && File.Exists(dstFileLocation))
+                        {
+                            Dataset dst = Gdal.Open(dstFileLocation, Access.GA_ReadOnly);
+                            dstInfo = Gdal.GDALInfo(dst, null);
+                            dst.Dispose();
+                            dstOutput = dstFileLocation;
+                        }
+                        else
+                        {
+                            ///https://github.com/OSGeo/gdal/issues/813
+                            ///https://lists.osgeo.org/pipermail/gdal-dev/2017-February/046046.html
+                            ///Odd way to go about setting source dataset in parameters for Warp is a known issue
+
+                            var ptr = new[] { Dataset.getCPtr(src).Handle };
+                            var gcHandle = GCHandle.Alloc(ptr, GCHandleType.Pinned);
+                            try
+                            {
+                                var dss = new SWIGTYPE_p_p_GDALDatasetShadow(gcHandle.AddrOfPinnedObject(), false, null);
+                                Dataset dst = Gdal.wrapper_GDALWarpDestName(dstFileLocation, 1, dss, new GDALWarpAppOptions(translateOptions), null, null);
+                                if (dst == null)
+                                {
+                                    throw new Exception("GdalWarp failed: " + Gdal.GetLastErrorMsg());
+                                }
+
+                                dstInfo = Gdal.GDALInfo(dst, null);
+                                dst.Dispose();
+                                dstOutput = dstFileLocation;
+                            }
+                            finally
+                            {
+                                if (gcHandle.IsAllocated)
+                                    gcHandle.Free();
+                            }
+
+                        }
+                    }
+                    src.Dispose();
+                }
+            }
+
+            DA.SetData(0, srcInfo);
+            DA.SetData(1, dstInfo);
+            DA.SetData(2, dstOutput);
+
+        }
+
+        /// <summary>
+        /// Provides an Icon for the component.
+        /// </summary>
+        protected override System.Drawing.Bitmap Icon
+        {
+            get
+            {
+                return Properties.Resources.raster;
+            }
+        }
+
+        /// <summary>
+        /// Gets the unique ID for this component. Do not change this ID after release.
+        /// </summary>
+        public override Guid ComponentGuid
+        {
+            get { return new Guid("7C3A7B33-7647-4DB9-A193-F31803974BBF"); }
+        }
+    }
+}

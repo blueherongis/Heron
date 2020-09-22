@@ -48,9 +48,9 @@ namespace Heron
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("clippedRaster", "clippedRaster", "File path for the raster data clipped to the boundary.", GH_ParamAccess.item);
+            pManager.AddTextParameter("rasterInfo", "rasterInfo", "List of information about the source dataset.", GH_ParamAccess.item);
             pManager.AddRectangleParameter("rasterExtent", "rasterExtent", "Bounding box for the raster data.", GH_ParamAccess.item);
-
+            pManager.AddTextParameter("clippedRaster", "clippedRaster", "File path for the raster data clipped to the boundary.", GH_ParamAccess.item);
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -74,6 +74,7 @@ namespace Heron
             Dataset datasource = Gdal.Open(sourceFileLocation, Access.GA_ReadOnly);
             OSGeo.GDAL.Driver drv = datasource.GetDriver();
 
+            string srcInfo = string.Empty;
 
             if (datasource == null)
             {
@@ -104,6 +105,8 @@ namespace Heron
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Data source SRS: EPSG:" + sr.GetAttrValue("AUTHORITY", 1));
                 }
             }
+
+            srcInfo = Gdal.GDALInfo(datasource, null);
 
             //OSGeo.OSR.SpatialReference sr = new SpatialReference(ds.GetProjection());
             OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
@@ -166,19 +169,20 @@ namespace Heron
                     "-projwin", $"{lonWest}", $"{latNorth}", $"{lonEast}", $"{latSouth}"
                 };
 
-                Dataset clippedDataset = Gdal.wrapper_GDALTranslate(clippedRasterFile, datasource, new GDALTranslateOptions(translateOptions), null, null);
+                using (Dataset clippedDataset = Gdal.wrapper_GDALTranslate(clippedRasterFile, datasource, new GDALTranslateOptions(translateOptions), null, null))
+                {
+                    Dataset previewDataset = Gdal.wrapper_GDALTranslate(previewPNG, clippedDataset, null, null, null);
 
-                Dataset previewDataset = Gdal.wrapper_GDALTranslate(previewPNG, clippedDataset, null, null, null);
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Clipped Resolution: " + clippedDataset.RasterXSize.ToString() + "x" + datasource.RasterYSize.ToString());
 
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Clipped Resolution: " + clippedDataset.RasterXSize.ToString() + "x" + datasource.RasterYSize.ToString());
+                    ///clean up
+                    clippedDataset.FlushCache();
+                    clippedDataset.Dispose();
+                    previewDataset.FlushCache();
+                    previewDataset.Dispose();
 
-                ///clean up
-                clippedDataset.FlushCache();
-                clippedDataset.Dispose();
-                previewDataset.FlushCache();
-                previewDataset.Dispose();
-
-                AddPreviewItem(previewPNG, BBoxToRect(boundary.GetBoundingBox(true)));
+                    AddPreviewItem(previewPNG, BBoxToRect(boundary.GetBoundingBox(true)));
+                }
 
             }
 
@@ -197,10 +201,10 @@ namespace Heron
             datasource.FlushCache();
             datasource.Dispose();
 
-            
-
-            DA.SetData(0, clippedRasterFile);
+            DA.SetData(0, srcInfo);
             DA.SetData(1, datasourceBBox);
+            DA.SetData(2, clippedRasterFile);
+
         }
 
 
