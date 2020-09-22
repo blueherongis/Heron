@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime;
+using System.Runtime.InteropServices;
 using System.IO;
 
 using Grasshopper.Kernel;
@@ -12,20 +13,18 @@ using OSGeo.OGR;
 
 namespace Heron
 {
-    public class GdalTranslate : HeronComponent
+    public class GdalWarp : HeronComponent
     {
         /// <summary>
         /// Initializes a new instance of the GdalTranslate class.
         /// </summary>
-        public GdalTranslate()
-          : base("GdalTranslate", "GdalTranslate",
-              "Manipulate raster data with the GDAL Translate program given a source dataset, a destination dataset and a list of options.  " +
+        public GdalWarp()
+          : base("GdalWarp", "GdalWarp",
+              "Manipulate raster data with the GDAL Warp program given a source dataset, a destination dataset and a list of options.  " +
                 "Formatting for the list of options should be a single string of text with a space separating each term " +
                 "where '-' should preceed the option parameter and the next item in the list should be that parameter's value.  " +
-                "For instance, to convert raster data to PNG format the options string would be '-of PNG'.  To clip a large raster data set " +
-                "to a boundary of upper left x (ulx), upper left y (uly), lower right x (lrx) and lower right y (lry), the options string " +
-                "would be '-projwin ulx uly lrx lry' where ulx, uly, lrx and lry are substituted with coordinate values.  " +
-                "More information about translate options can be found at https://gdal.org/programs/gdal_translate.html.",
+                "For instance, to warp a raster dataset to WGS84, the options string would be '-t_srs EPSG:4326'  " +
+                "More information about warp options can be found at https://gdal.org/programs/gdalwarp.html.",
               "GIS Tools")
         {
         }
@@ -43,7 +42,7 @@ namespace Heron
             pManager.AddTextParameter("Source dataset", "source", "File location for the source raster dataset.", GH_ParamAccess.item);
             pManager.AddTextParameter("Destination dataset", "dest", "File location for the destination dataset.", GH_ParamAccess.item);
             pManager.AddTextParameter("Options", "options", "String of options with a space separating each term. " +
-                "For instance, to convert raster data to PNG format the options string would be '-of PNG'.", GH_ParamAccess.item);
+                "For instance, to warp an dataset to WGS84, the options string would be '-t_srs EPSG:4326'.", GH_ParamAccess.item);
             pManager[0].Optional = true;
             pManager[1].Optional = true;
             pManager[2].Optional = true;
@@ -80,14 +79,12 @@ namespace Heron
             string dstInfo = string.Empty;
             string dstOutput = string.Empty;
 
+
             RESTful.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
-            ///Specific settings for getting WMS images
-            OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
-            OSGeo.GDAL.Gdal.SetConfigOption("GDAL_SKIP", "WMS");
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Look for more information about options at:");
-            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "https://gdal.org/programs/gdal_translate.html");
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "https://gdal.org/programs/gdalwarp.html");
 
             if (!string.IsNullOrEmpty(srcFileLocation))
             {
@@ -111,10 +108,31 @@ namespace Heron
                         }
                         else
                         {
-                            Dataset dst = Gdal.wrapper_GDALTranslate(dstFileLocation, src, new GDALTranslateOptions(translateOptions), null, null);
-                            dstInfo = Gdal.GDALInfo(dst, null);
-                            dst.Dispose();
-                            dstOutput = dstFileLocation;
+                            ///https://github.com/OSGeo/gdal/issues/813
+                            ///https://lists.osgeo.org/pipermail/gdal-dev/2017-February/046046.html
+                            ///Odd way to go about setting source dataset in parameters for Warp is a known issue
+
+                            var ptr = new[] { Dataset.getCPtr(src).Handle };
+                            var gcHandle = GCHandle.Alloc(ptr, GCHandleType.Pinned);
+                            try
+                            {
+                                var dss = new SWIGTYPE_p_p_GDALDatasetShadow(gcHandle.AddrOfPinnedObject(), false, null);
+                                Dataset dst = Gdal.wrapper_GDALWarpDestName(dstFileLocation, 1, dss, new GDALWarpAppOptions(translateOptions), null, null);
+                                if (dst == null)
+                                {
+                                    throw new Exception("GdalWarp failed: " + Gdal.GetLastErrorMsg());
+                                }
+
+                                dstInfo = Gdal.GDALInfo(dst, null);
+                                dst.Dispose();
+                                dstOutput = dstFileLocation;
+                            }
+                            finally
+                            {
+                                if (gcHandle.IsAllocated)
+                                    gcHandle.Free();
+                            }
+
                         }
                     }
                     src.Dispose();
@@ -124,6 +142,7 @@ namespace Heron
             DA.SetData(0, srcInfo);
             DA.SetData(1, dstInfo);
             DA.SetData(2, dstOutput);
+
         }
 
         /// <summary>
@@ -142,7 +161,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("c9056659-a5f8-4cc0-89f3-0e2f22b08afc"); }
+            get { return new Guid("7C3A7B33-7647-4DB9-A193-F31803974BBF"); }
         }
     }
 }

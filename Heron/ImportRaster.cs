@@ -169,19 +169,20 @@ namespace Heron
                     "-projwin", $"{lonWest}", $"{latNorth}", $"{lonEast}", $"{latSouth}"
                 };
 
-                Dataset clippedDataset = Gdal.wrapper_GDALTranslate(clippedRasterFile, datasource, new GDALTranslateOptions(translateOptions), null, null);
+                using (Dataset clippedDataset = Gdal.wrapper_GDALTranslate(clippedRasterFile, datasource, new GDALTranslateOptions(translateOptions), null, null))
+                {
+                    Dataset previewDataset = Gdal.wrapper_GDALTranslate(previewPNG, clippedDataset, null, null, null);
 
-                Dataset previewDataset = Gdal.wrapper_GDALTranslate(previewPNG, clippedDataset, null, null, null);
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Clipped Resolution: " + clippedDataset.RasterXSize.ToString() + "x" + datasource.RasterYSize.ToString());
 
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Clipped Resolution: " + clippedDataset.RasterXSize.ToString() + "x" + datasource.RasterYSize.ToString());
+                    ///clean up
+                    clippedDataset.FlushCache();
+                    clippedDataset.Dispose();
+                    previewDataset.FlushCache();
+                    previewDataset.Dispose();
 
-                ///clean up
-                clippedDataset.FlushCache();
-                clippedDataset.Dispose();
-                previewDataset.FlushCache();
-                previewDataset.Dispose();
-
-                AddPreviewItem(previewPNG, BBoxToRect(boundary.GetBoundingBox(true)));
+                    AddPreviewItem(previewPNG, BBoxToRect(boundary.GetBoundingBox(true)));
+                }
 
             }
 
