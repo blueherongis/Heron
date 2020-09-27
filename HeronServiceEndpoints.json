@@ -104,17 +104,17 @@
 	[
 		{
 			"service" : "SRTM GL1 (30m)",
-			"url" : "http://opentopo.sdsc.edu/otr/getdem?demtype=SRTMGL1&west={0}&south={1}&east={2}&north={3}",
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL1&west={0}&south={1}&east={2}&north={3}",
 			"description" : "SRTM GL1 (30m) 1 Arcsecond resolution"
 		},
 		{
 			"service" : "SRTM GL3 (90m)",
-			"url" : "http://opentopo.sdsc.edu/otr/getdem?demtype=SRTMGL3&west={0}&south={1}&east={2}&north={3}",
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL3&west={0}&south={1}&east={2}&north={3}",
 			"description" : "SRTM GL3 (90m) 3 Arsecond resolution"
 		},
 		{
 			"service" : "ALOS World 3D (30m)",
-			"url" : "http://opentopo.sdsc.edu/otr/getdem?demtype=AW3D30&west={0}&south={1}&east={2}&north={3}",
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=AW3D30&west={0}&south={1}&east={2}&north={3}",
 			"description" : "ALOS World 3D (30m)"
 		},
 		{
