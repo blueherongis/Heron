@@ -195,9 +195,9 @@ namespace Heron
         {
             Dictionary<string, TopoServices> services = new Dictionary<string, TopoServices>()
             {
-                {"SRTM GL1 (30m)", new TopoServices{ServiceName = "SRTM GL1 (30m)", ServiceDesc = "SRTM GL1 (30m) 1 Arcsecond resolution", URL = "http://opentopo.sdsc.edu/otr/getdem?demtype=SRTMGL1&west={0}&south={1}&east={2}&north={3}"} },
-                {"SRTM GL3 (90m)", new TopoServices{ServiceName = "SRTM GL3 (90m)", ServiceDesc = "SRTM GL3 (90m) 3 Arsecond resolution", URL = "http://opentopo.sdsc.edu/otr/getdem?demtype=SRTMGL3&west={0}&south={1}&east={2}&north={3}"} },
-                {"ALOS World 3D (30m)", new TopoServices{ServiceName = "ALOS World 3D (30m)", ServiceDesc = "ALOS World 3D (30m)", URL = "http://opentopo.sdsc.edu/otr/getdem?demtype=AW3D30&west={0}&south={1}&east={2}&north={3}"} },
+                {"SRTM GL1 (30m)", new TopoServices{ServiceName = "SRTM GL1 (30m)", ServiceDesc = "SRTM GL1 (30m) 1 Arcsecond resolution", URL = "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL1&west={0}&south={1}&east={2}&north={3}"} },
+                {"SRTM GL3 (90m)", new TopoServices{ServiceName = "SRTM GL3 (90m)", ServiceDesc = "SRTM GL3 (90m) 3 Arsecond resolution", URL = "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL3&west={0}&south={1}&east={2}&north={3}"} },
+                {"ALOS World 3D (30m)", new TopoServices{ServiceName = "ALOS World 3D (30m)", ServiceDesc = "ALOS World 3D (30m)", URL = "https://portal.opentopography.org/API/globaldem?demtype=AW3D30&west={0}&south={1}&east={2}&north={3}"} },
                 {"GMRT Max", new TopoServices{ServiceName = "GMRT Max", ServiceDesc = "GMRT Max", URL = "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=max"} },
                 {"GMRT High", new TopoServices{ServiceName = "GMRT High", ServiceDesc = "GMRT High resolution. Will default to highest resolution if boundary is too small.", URL = "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=high"} },
                 {"GMRT Medium", new TopoServices{ServiceName = "GMRT Medium", ServiceDesc = "GMRT Medium resolution. Will default to higher resolution if boundary is too small.", URL = "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=med"} },
