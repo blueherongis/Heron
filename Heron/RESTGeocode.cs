@@ -69,7 +69,7 @@ namespace Heron
                 foreach (GH_String addressString in branch)
                 {
                     string address = System.Net.WebUtility.UrlEncode(addressString.Value);
-                    string output = GetData("http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?Address=" + address + "&f=pjson");
+                    string output = GetData("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?Address=" + address + "&f=pjson");
                     JObject ja = JObject.Parse(output);
 
                     if (ja["candidates"].Count() < 1)

@@ -101,10 +101,10 @@ namespace Heron
                 foreach (GH_Point pt in branch)
                 {
                     Point3d geopt = Heron.Convert.XYZToWGS(pt.Value);
-                    string webrequest = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson";
+                    string webrequest = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson";
 
                     //Synchronous method
-                    string output = GetData("http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson");
+                    string output = GetData("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson");
                     JObject ja = JObject.Parse(output);
 
                     //Delegate method
@@ -112,7 +112,7 @@ namespace Heron
                     //JObject ja = del.EndInvoke(jaInvoke);
 
                     //Asynchronous method.  Needs "async" after override to work
-                    //JObject ja = await GetAsync("http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson");
+                    //JObject ja = await GetAsync("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson");
 
 
                     addressTree.Append(new GH_String(ja["address"]["Address"].ToString()), path);
