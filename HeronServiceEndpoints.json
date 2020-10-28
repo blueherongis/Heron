@@ -11,50 +11,50 @@
 		},
 		{
 			"service" : "Mapbox Streets",
-			"url" : "https://api.mapbox.com/v4/mapbox.streets/{z}/{x}/{y}@2x.jpg90?access_token="
+			"url" : "https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token="
 		},
 		{
-			"service" : "Mapbox Streets-Basic",
+			"service" : "Mapbox Streets-Basic (deprecated)",
 			"url" : "https://api.mapbox.com/v4/mapbox.streets-basic/{z}/{x}/{y}@2x.jpg90?access_token="
 		},
 		{
 			"service" : "Mapbox Light",
-			"url" : "https://api.mapbox.com/v4/mapbox.light/{z}/{x}/{y}@2x.jpg90?access_token="
+			"url" : "https://api.mapbox.com/styles/v1/mapbox/light-v10/tiles/{z}/{x}/{y}?access_token="
 		},
 		{
 			"service" : "Mapbox Dark",
-			"url" : "https://api.mapbox.com/v4/mapbox.dark/{z}/{x}/{y}@2x.jpg90?access_token="
+			"url" : "https://api.mapbox.com/styles/v1/mapbox/dark-v10/tiles/{z}/{x}/{y}?access_token="
 		},
 		{
 			"service" : "Mapbox Outdoors",
-			"url" : "https://api.mapbox.com/v4/mapbox.outdoors/{z}/{x}/{y}@2x.jpg90?access_token="
+			"url" : "https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token="
 		},
 		{
-			"service" : "Mapbox Run-Bike-Hike",
+			"service" : "Mapbox Run-Bike-Hike (deprecated)",
 			"url" : "https://api.mapbox.com/v4/mapbox.run-bike-hike/{z}/{x}/{y}@2x.jpg90?access_token="
 		},
 		{
-			"service" : "Mapbox Comic",
+			"service" : "Mapbox Comic (deprecated)",
 			"url" : "https://api.mapbox.com/v4/mapbox.comic/{z}/{x}/{y}@2x.jpg90?access_token="
 		},
 		{
-			"service" : "Mapbox Pencil",
+			"service" : "Mapbox Pencil (deprecated)",
 			"url" : "https://api.mapbox.com/v4/mapbox.pencil/{z}/{x}/{y}@2x.jpg90?access_token="
 		},
 		{
-			"service" : "Mapbox Pirate",
+			"service" : "Mapbox Pirate (deprecated)",
 			"url" : "https://api.mapbox.com/v4/mapbox.pirates/{z}/{x}/{y}@2x.jpg90?access_token="
 		},
 		{
-			"service" : "Mapbox Emerald",
+			"service" : "Mapbox Emerald (deprecated)",
 			"url" : "https://api.mapbox.com/v4/mapbox.emerald/{z}/{x}/{y}@2x.jpg90?access_token="
 		},
 		{
-			"service" : "Mapbox High-Contrast",
+			"service" : "Mapbox High-Contrast (deprecated)",
 			"url" : "https://api.mapbox.com/v4/mapbox.high-contrast/{z}/{x}/{y}@2x.jpg90?access_token="
 		},
 		{
-			"service" : "Mapbox Landsat Live",
+			"service" : "Mapbox Landsat Live (deprecated)",
 			"url" : "https://api.mapbox.com/v4/mapbox.landsat-live/{z}/{x}/{y}@2x.jpg90?access_token="
 		}
 	],
