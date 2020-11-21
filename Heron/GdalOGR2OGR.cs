@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Runtime;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 using Grasshopper.Kernel;
 using Rhino.Geometry;
@@ -74,7 +76,8 @@ namespace Heron
             string options = string.Empty;
             DA.GetData<string>(2, ref options);
 
-            string[] ogr2ogrOptions = options.Split(' ');
+            var re = new System.Text.RegularExpressions.Regex("(?<=\")[^\"]*(?=\")|[^\" ]+");
+            string[] ogr2ogrOptions = re.Matches(options).Cast<Match>().Select(m => m.Value).ToArray();
 
             string srcInfo = string.Empty;
             string dstInfo = string.Empty;
