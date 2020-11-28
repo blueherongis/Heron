@@ -86,27 +86,59 @@ namespace Heron
             ///Get the spatial reference of the input raster file and set to WGS84 if not known
             ///Set up transform from source to WGS84
             OSGeo.OSR.SpatialReference sr = new SpatialReference(Osr.SRS_WKT_WGS84);
+
             if (datasource.GetProjection() == null)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) is missing.  CRS set automatically set to WGS84.");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is missing.  SRS set automatically set to WGS84.");
             }
 
             else
             {
                 sr = new SpatialReference(datasource.GetProjection());
+
                 if (sr.Validate() != 0)
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) is unknown or unsupported.  CRS set automatically set to WGS84.");
-                    sr.SetWellKnownGeogCS("WGS84");
-                }
+                    ///Check if SRS needs to be converted from ESRI format to WKT to avoid error:
+                    ///"No translation for Lambert_Conformal_Conic to PROJ.4 format is known."
+                    ///https://gis.stackexchange.com/questions/128266/qgis-error-6-no-translation-for-lambert-conformal-conic-to-proj-4-format-is-kn
+                    SpatialReference srEsri = sr;
+                    srEsri.MorphFromESRI();
+                    string projEsri = string.Empty;
+                    srEsri.ExportToWkt(out projEsri);
 
-                else
-                {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Data source SRS: EPSG:" + sr.GetAttrValue("AUTHORITY", 1));
+                    ///If no SRS exists, check Ground Control Points SRS
+                    SpatialReference srGCP = new SpatialReference(datasource.GetGCPProjection());
+                    string projGCP = string.Empty;
+                    srGCP.ExportToWkt(out projGCP);
+
+                    if (!string.IsNullOrEmpty(projEsri))
+                    {
+                        datasource.SetProjection(projEsri);
+                        sr = srEsri;
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) morphed form ESRI format.");
+                    }
+                    else if (!string.IsNullOrEmpty(projGCP))
+                    {
+                        datasource.SetProjection(projGCP);
+                        sr = srGCP;
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) set from Ground Control Points (GCPs).");
+                    }
+                    else
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is unknown or unsupported.  " +
+                            "Try setting the CRS with the GdalWarp component using -t_srs EPSG:4326 for the option input.");
+                        //sr.SetWellKnownGeogCS("WGS84");
+                    }
+
                 }
+                else { AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Data source SRS: EPSG:" + sr.GetAttrValue("AUTHORITY", 1)); }
             }
 
-            srcInfo = Gdal.GDALInfo(datasource, null);
+            ///Get info about image
+            List<string> infoOptions = new List<string> {
+                    "-stats"
+                    };
+            srcInfo = Gdal.GDALInfo(datasource, new GDALInfoOptions(infoOptions.ToArray()));
 
             //OSGeo.OSR.SpatialReference sr = new SpatialReference(ds.GetProjection());
             OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
@@ -149,7 +181,7 @@ namespace Heron
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Original Resolution: " + datasource.RasterXSize.ToString() + "x" + datasource.RasterYSize.ToString());
 
-            if (boundary!=null)
+            if (boundary != null)
             {
 
                 Point3d clipperMin = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Corner(true, false, true));

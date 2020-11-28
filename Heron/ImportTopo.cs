@@ -104,10 +104,40 @@ namespace Heron
             else
             {
                 sr = new SpatialReference(ds.GetProjection());
+
                 if (sr.Validate() != 0)
                 {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) is unknown or unsupported.  CRS set automatically set to WGS84.");
-                    sr.SetWellKnownGeogCS("WGS84");
+                    ///Check if SRS needs to be converted from ESRI format to WKT to avoid error:
+                    ///"No translation for Lambert_Conformal_Conic to PROJ.4 format is known."
+                    ///https://gis.stackexchange.com/questions/128266/qgis-error-6-no-translation-for-lambert-conformal-conic-to-proj-4-format-is-kn
+                    SpatialReference srEsri = sr;
+                    srEsri.MorphFromESRI();
+                    string projEsri = string.Empty;
+                    srEsri.ExportToWkt(out projEsri);
+
+                    ///If no SRS exists, check Ground Control Points SRS
+                    SpatialReference srGCP = new SpatialReference(ds.GetGCPProjection());
+                    string projGCP = string.Empty;
+                    srGCP.ExportToWkt(out projGCP);
+
+                    if (!string.IsNullOrEmpty(projEsri))
+                    {
+                        ds.SetProjection(projEsri);
+                        sr = srEsri;
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) morphed form ESRI format.");
+                    }
+                    else if (!string.IsNullOrEmpty(projGCP))
+                    {
+                        ds.SetProjection(projGCP);
+                        sr = srGCP;
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) set from Ground Control Points (GCPs).");
+                    }
+                    else
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is unknown or unsupported.  " +
+                            "Try setting the CRS with the GdalWarp component using -t_srs EPSG:4326 for the option input.");
+                        //sr.SetWellKnownGeogCS("WGS84");
+                    }
                 }
 
                 else

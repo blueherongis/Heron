@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Runtime;
 using System.Runtime.InteropServices;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 using Grasshopper.Kernel;
 using Rhino.Geometry;
@@ -64,8 +66,8 @@ namespace Heron
         /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string srcFileLocation = string.Empty;
-            DA.GetData<string>(0, ref srcFileLocation);
+            string datasourceFileLocation = string.Empty;
+            DA.GetData<string>(0, ref datasourceFileLocation);
 
             string dstFileLocation = string.Empty;
             DA.GetData<string>(1, ref dstFileLocation);
@@ -73,9 +75,10 @@ namespace Heron
             string options = string.Empty;
             DA.GetData<string>(2, ref options);
 
-            string[] translateOptions = options.Split(' ');
+            var re = new System.Text.RegularExpressions.Regex("(?<=\")[^\"]*(?=\")|[^\" ]+");
+            string[] translateOptions = re.Matches(options).Cast<Match>().Select(m => m.Value).ToArray();
 
-            string srcInfo = string.Empty;
+            string datasourceInfo = string.Empty;
             string dstInfo = string.Empty;
             string dstOutput = string.Empty;
 
@@ -86,16 +89,54 @@ namespace Heron
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Look for more information about options at:");
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "https://gdal.org/programs/gdalwarp.html");
 
-            if (!string.IsNullOrEmpty(srcFileLocation))
+            if (!string.IsNullOrEmpty(datasourceFileLocation))
             {
-                using (Dataset src = Gdal.Open(srcFileLocation, Access.GA_ReadOnly))
+                using (Dataset datasource = Gdal.Open(datasourceFileLocation, Access.GA_ReadOnly))
                 {
-                    if (src == null)
+                    if (datasource == null)
                     {
-                        throw new Exception("Can't open GDAL dataset: " + srcFileLocation);
+                        throw new Exception("Can't open GDAL dataset: " + datasourceFileLocation);
                     }
 
-                    srcInfo = Gdal.GDALInfo(src, null);
+                    SpatialReference sr = new SpatialReference(datasource.GetProjection());
+
+                    ///Check if SRS needs to be converted from ESRI format to WKT to avoid error:
+                    ///"No translation for Lambert_Conformal_Conic to PROJ.4 format is known."
+                    ///https://gis.stackexchange.com/questions/128266/qgis-error-6-no-translation-for-lambert-conformal-conic-to-proj-4-format-is-kn
+                    SpatialReference srEsri = sr;
+                    srEsri.MorphFromESRI();
+                    string projEsri = string.Empty;
+                    srEsri.ExportToWkt(out projEsri);
+
+                    ///If no SRS exists, check Ground Control Points SRS
+                    SpatialReference srGCP = new SpatialReference(datasource.GetGCPProjection());
+                    string projGCP = string.Empty;
+                    srGCP.ExportToWkt(out projGCP);
+
+                    if (!string.IsNullOrEmpty(projEsri))
+                    {
+                        datasource.SetProjection(projEsri);
+                        sr = srEsri;
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) morphed form ESRI format.");
+                    }
+                    else if (!string.IsNullOrEmpty(projGCP))
+                    {
+                        datasource.SetProjection(projGCP);
+                        sr = srGCP;
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) set from Ground Control Points (GCPs).");
+                    }
+                    else
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is unknown or unsupported.  " +
+                            "Try setting the CRS with the GdalWarp component using -t_srs EPSG:4326 for the option input.");
+                        //sr.SetWellKnownGeogCS("WGS84");
+                    }
+
+                    ///Get info about image
+                    List<string> infoOptions = new List<string> {
+                    "-stats"
+                    };
+                    datasourceInfo = Gdal.GDALInfo(datasource, new GDALInfoOptions(infoOptions.ToArray()));
 
                     if (!string.IsNullOrEmpty(dstFileLocation))
                     {
@@ -112,7 +153,7 @@ namespace Heron
                             ///https://lists.osgeo.org/pipermail/gdal-dev/2017-February/046046.html
                             ///Odd way to go about setting source dataset in parameters for Warp is a known issue
 
-                            var ptr = new[] { Dataset.getCPtr(src).Handle };
+                            var ptr = new[] { Dataset.getCPtr(datasource).Handle };
                             var gcHandle = GCHandle.Alloc(ptr, GCHandleType.Pinned);
                             try
                             {
@@ -123,7 +164,7 @@ namespace Heron
                                     throw new Exception("GdalWarp failed: " + Gdal.GetLastErrorMsg());
                                 }
 
-                                dstInfo = Gdal.GDALInfo(dst, null);
+                                dstInfo = Gdal.GDALInfo(dst, new GDALInfoOptions(infoOptions.ToArray()));
                                 dst.Dispose();
                                 dstOutput = dstFileLocation;
                             }
@@ -135,11 +176,11 @@ namespace Heron
 
                         }
                     }
-                    src.Dispose();
+                    datasource.Dispose();
                 }
             }
 
-            DA.SetData(0, srcInfo);
+            DA.SetData(0, datasourceInfo);
             DA.SetData(1, dstInfo);
             DA.SetData(2, dstOutput);
 
