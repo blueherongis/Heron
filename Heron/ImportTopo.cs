@@ -134,9 +134,9 @@ namespace Heron
                     }
                     else
                     {
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is unknown or unsupported.  " +
-                            "Try setting the CRS with the GdalWarp component using -t_srs EPSG:4326 for the option input.");
-                        //sr.SetWellKnownGeogCS("WGS84");
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is unknown or unsupported.  SRS assumed to be WGS84." +
+                            "Try setting the SRS with the GdalWarp component using -t_srs EPSG:4326 for the option input.");
+                        sr.SetWellKnownGeogCS("WGS84");
                     }
                 }
 
