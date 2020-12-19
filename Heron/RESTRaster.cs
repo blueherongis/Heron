@@ -72,8 +72,8 @@ namespace Heron
             DA.GetData<int>("Resolution", ref Res);
 
             string folderPath = string.Empty;
-            DA.GetData<string>("File Location", ref folderPath);
-            if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
+            DA.GetData<string>("Target Folder", ref folderPath);
+            if (!folderPath.EndsWith(@"\")) { folderPath = folderPath + @"\"; }
 
             string prefix = string.Empty;
             DA.GetData<string>("Prefix", ref prefix);
