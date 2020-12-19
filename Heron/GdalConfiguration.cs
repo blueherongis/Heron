@@ -85,6 +85,8 @@ namespace RESTful
             var projSharePath = Path.Combine(gdalPath, "share");
             Environment.SetEnvironmentVariable("PROJ_LIB", projSharePath);
             Gdal.SetConfigOption("PROJ_LIB", projSharePath);
+
+            OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
         }
 
         /// <summary>
