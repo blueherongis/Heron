@@ -312,7 +312,8 @@ namespace Heron
             DA.SetDataTree(0, mapList);
             DA.SetDataTree(1, imgFrame);
             DA.SetDataTree(2, tCount);
-            DA.SetDataList(3, "copyright Slippy");
+            ///Add copyright info here
+            DA.SetDataList(3, "");
 
         }
 
