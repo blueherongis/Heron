@@ -32,11 +32,10 @@ namespace Heron
     public class ImportTopo : HeronComponent
     {
         //Class Constructor
-        public ImportTopo() : base("Import Topo", "ImportTopo", "Create a topographic mesh from a raster file (IMG, HGT, ASCII, DEM, etc) clipped to a boundary", "GIS Tools")
+        public ImportTopo() : base("Import Topo", "ImportTopo", "Create a topographic mesh from a raster file (IMG, HGT, ASCII, DEM, etc) clipped to a boundary", "GIS Import | Export")
         {
 
         }
-
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {

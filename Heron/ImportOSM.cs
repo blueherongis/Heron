@@ -25,7 +25,7 @@ namespace Heron
         public ImportOSM()
           : base("ImportOSM", "ImportOSM",
               "Import vector OpenStreetMap data clipped to a boundary. Nodes, Ways and Relations are organized onto their own branches in the output.",
-              "GIS Tools")
+              "GIS Import | Export")
         {
         }
 

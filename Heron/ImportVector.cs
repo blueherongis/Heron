@@ -14,11 +14,10 @@ namespace Heron
     public class ImportVector : HeronComponent
     {
         //Class Constructor
-        public ImportVector() : base("Import Vector", "ImportVector", "Import vector GIS data clipped to a boundary, including SHP, GeoJSON, OSM, KML, MVT and GDB folders.", "GIS Tools")
+        public ImportVector() : base("Import Vector", "ImportVector", "Import vector GIS data clipped to a boundary, including SHP, GeoJSON, OSM, KML, MVT and GDB folders.", "GIS Import | Export")
         {
 
         }
-
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {

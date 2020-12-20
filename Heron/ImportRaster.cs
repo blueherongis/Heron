@@ -32,11 +32,10 @@ namespace Heron
     public class ImportRaster : HeronRasterPreviewComponent
     {
         //Class Constructor
-        public ImportRaster() : base("Import Raster", "ImportRaster", "Import georeferenced raster data.", "GIS Tools")
+        public ImportRaster() : base("Import Raster", "ImportRaster", "Import georeferenced raster data.", "GIS Import | Export")
         {
 
         }
-
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
