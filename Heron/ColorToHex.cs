@@ -12,9 +12,7 @@ namespace Heron
         /// Initializes a new instance of the ColorToHex class.
         /// </summary>
         public ColorToHex()
-          : base("ColorToHex", "C2H",
-              "Convert an RGBA color to hexidecimal format.",
-              "GIS Tools")
+          : base("ColorToHex", "C2H", "Convert an RGBA color to hexidecimal format.", "Utilities")
         {
         }
         public override Grasshopper.Kernel.GH_Exposure Exposure
