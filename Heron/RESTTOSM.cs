@@ -41,11 +41,16 @@ namespace Heron
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for data", GH_ParamAccess.item);
             pManager.AddTextParameter("Target folder", "folderPath", "Folder to save OSM vector files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for OSM vector file name", GH_ParamAccess.item, OSMSource);
-            pManager.AddTextParameter("Search Term", "searchTerm", "Search term to filter the response from the web service.", GH_ParamAccess.item);
+            pManager.AddTextParameter("Search Term", "searchTerm", "A basic search term to filter the response from the web service. For more advanced queries, use the overpassQL input.", GH_ParamAccess.item);
+            pManager.AddTextParameter("Overpass Query Language API", "overpassQL", "Query string for the Overpass API.  " +
+                "You can use '{bbox}' as a placeholder for '(bottom, left, top, right)' in the Overpass API query if a boundary polyline is provided.  " +
+                "See https://wiki.openstreetmap.org/wiki/Overpass_API/Language_Guide", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download OSM vector files from the service", GH_ParamAccess.item, false);
 
+            pManager[0].Optional = true;
             pManager[2].Optional = true;
             pManager[3].Optional = true;
+            pManager[4].Optional = true;
 
             Message = OSMSource;
         }
@@ -81,10 +86,13 @@ namespace Heron
 
             string searchTerm = string.Empty;
             DA.GetData<string>(3, ref searchTerm);
-            if (String.IsNullOrEmpty(searchTerm) == false)
+            if (!String.IsNullOrEmpty(searchTerm))
             {
                 searchTerm = System.Net.WebUtility.UrlEncode("[" + searchTerm + "]");
             }
+
+            string overpassQL = string.Empty;
+            DA.GetData<string>(4, ref overpassQL);
 
             bool run = false;
             DA.GetData<bool>("Run", ref run);
@@ -98,33 +106,64 @@ namespace Heron
             GH_Structure<GH_String> osmList = new GH_Structure<GH_String>();
             GH_Structure<GH_String> osmQuery = new GH_Structure<GH_String>();
 
-            /// Check boundary to make sure it's valid
-            if (!boundary.GetBoundingBox(true).IsValid)
+            string oQ = string.Empty;
+
+            string left = string.Empty;
+            string bottom = string.Empty;
+            string right = string.Empty;
+            string top = string.Empty;
+
+            ///Construct query with bounding box
+            if (boundary != null)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Boundary is not valid.");
-                return;
+                /// Check boundary to make sure it's valid
+                if (!boundary.GetBoundingBox(true).IsValid)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Boundary is not valid.");
+                    return;
+                }
+
+                //offset boundary to ensure data from opentopography fully contains query boundary
+                //double offsetD = 200 * Rhino.RhinoMath.UnitScale(UnitSystem.Meters, Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem);
+                //Curve offsetB = boundary.Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
+                //offsetB = boundary;
+
+                //Get OSM frame for given boundary
+                Point3d min = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Min);
+                Point3d max = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Max);
+
+                left = min.X.ToString();
+                bottom = min.Y.ToString();
+                right = max.X.ToString();
+                top = max.Y.ToString();
+
+                ///Override search with Query Language
+                if (!String.IsNullOrEmpty(overpassQL))
+                {
+                    string bbox = "(" + bottom + "," + left + "," + top + "," + right + ")";
+                    overpassQL = overpassQL.Replace("{bbox}", bbox);
+                    oQ = osmURL.Split('=')[0] + "=" + overpassQL;
+                    osmQuery.Append(new GH_String(oQ));
+                    DA.SetDataTree(1, osmQuery);
+                }
+
+                else
+                {
+                    oQ = Convert.GetOSMURL(timeout, searchTerm, left, bottom, right, top, osmURL);
+                    osmQuery.Append(new GH_String(oQ));
+                    DA.SetDataTree(1, osmQuery);
+                }
             }
 
-            //offset boundary to ensure data from opentopography fully contains query boundary
-            //double offsetD = 200 * Rhino.RhinoMath.UnitScale(UnitSystem.Meters, Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem);
-            //Curve offsetB = boundary.Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
-            //offsetB = boundary;
+            ///Construct query with Overpass QL 
+            ///https://wiki.openstreetmap.org/wiki/Overpass_API/Language_Guide
+            else if (!String.IsNullOrEmpty(overpassQL) && boundary == null)
+            {
+                oQ = osmURL.Split('=')[0] + "=" + overpassQL;
+                osmQuery.Append(new GH_String(oQ));
+                DA.SetDataTree(1, osmQuery);
+            }
 
-            //Get OSM frame for given boundary
-            Point3d min = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Min);
-            Point3d max = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Max);
-
-            string left = min.X.ToString();
-            string bottom = min.Y.ToString();
-            string right = max.X.ToString();
-            string north = max.Y.ToString();
-
-            string bbox = min.Y + "," + min.X + "," + max.Y + "," + max.X;
-
-            //string oQ = String.Format(osmURL, timeout, searchTerm, bbox);
-            string oQ = Convert.GetOSMURL(timeout, searchTerm, left, bottom, right, north, osmURL);
-            osmQuery.Append(new GH_String(oQ));
-            DA.SetDataTree(1, osmQuery);
 
             if (run)
             {

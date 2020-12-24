@@ -112,7 +112,11 @@ namespace Heron
 
                 recs = new Rectangle3d(Plane.WorldXY, boundsMin, boundsMax);
             }
-            else { AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Cannot determine the extents of the OSM file. A 'bounds' element may not be present in the file."); }
+            else 
+            { 
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Cannot determine the extents of the OSM file. A 'bounds' element may not be present in the file. " +
+                    "Try turning off clipping in this component's menu.");
+            }
 
 
             using (var fileStreamSource = File.OpenRead(osmFilePath))
