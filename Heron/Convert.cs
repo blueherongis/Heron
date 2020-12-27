@@ -86,7 +86,9 @@ namespace Heron
             rhinoSRS.SetWellKnownGeogCS("WGS84");
 
             OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, userSRS);
-            OSGeo.OGR.Geometry userAnchorPointDD = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLon, eapLat, eapElev));
+            //OSGeo.OGR.Geometry userAnchorPointDD = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLon, eapLat, eapElev));
+            OSGeo.OGR.Geometry userAnchorPointDD = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
+            userAnchorPointDD.AddPoint(eapLon, eapLat, eapElev);
             Transform t = new Transform(1.0);
 
             userAnchorPointDD.Transform(coordTransform);
@@ -96,8 +98,15 @@ namespace Heron
             ///setup userAnchorPoint plane for move and rotation
             double eapLatNorth = EarthAnchorPoint.EarthBasepointLatitude + 0.5;
             double eapLonEast = EarthAnchorPoint.EarthBasepointLongitude + 0.5;
-            OSGeo.OGR.Geometry userAnchorPointDDNorth = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLon, eapLatNorth, eapElev));
-            OSGeo.OGR.Geometry userAnchorPointDDEast = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLonEast, eapLat, eapElev));
+
+            //OSGeo.OGR.Geometry userAnchorPointDDNorth = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLon, eapLatNorth, eapElev));
+            OSGeo.OGR.Geometry userAnchorPointDDNorth = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
+            userAnchorPointDDNorth.AddPoint(eapLon, eapLatNorth, eapElev);
+
+            //OSGeo.OGR.Geometry userAnchorPointDDEast = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLonEast, eapLat, eapElev));
+            OSGeo.OGR.Geometry userAnchorPointDDEast = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
+            userAnchorPointDDEast.AddPoint(eapLonEast, eapLat, eapElev);
+
             userAnchorPointDDNorth.Transform(coordTransform);
             userAnchorPointDDEast.Transform(coordTransform);
             Point3d userAnchorPointPTNorth = Heron.Convert.OgrPointToPoint3d(userAnchorPointDDNorth, t);
@@ -231,7 +240,7 @@ namespace Heron
                 //possible cause of viewport issue, try not forcing a close.  Other possibility would be trying to convert to (back to) polyline
                 //crv.MakeClosed(tol);
 
-                if (!crv.IsClosed && sub_geom.GetPointCount()>2)
+                if (!crv.IsClosed && sub_geom.GetPointCount() > 2)
                 {
                     Curve closingLine = new Line(crv.PointAtEnd, crv.PointAtStart).ToNurbsCurve();
                     Curve[] result = Curve.JoinCurves(new Curve[] { crv, closingLine });
@@ -251,6 +260,14 @@ namespace Heron
                 pList[0].TryGetPolyline(out pL);
                 pList.RemoveAt(0);
                 mPatch = Rhino.Geometry.Mesh.CreatePatch(pL, tol, null, pList, null, null, true, 1);
+
+                ///Adds ngon capability
+                ///https://discourse.mcneel.com/t/create-ngon-mesh-rhinocommon-c/51796/12
+                mPatch.Ngons.AddPlanarNgons(tol);
+                mPatch.FaceNormals.ComputeFaceNormals();
+                mPatch.Normals.ComputeNormals();
+                mPatch.Compact();
+                mPatch.UnifyNormals();
             }
 
             return mPatch;
@@ -301,6 +318,7 @@ namespace Heron
 
         public static Mesh OgrMultiPolyToMesh(OSGeo.OGR.Geometry multipoly, Transform transform)
         {
+            double tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance;
             OSGeo.OGR.Geometry sub_geom;
             List<Mesh> mList = new List<Mesh>();
 
@@ -314,8 +332,14 @@ namespace Heron
             }
             Mesh m = new Mesh();
             m.Append(mList);
-            m.RebuildNormals();
+
+            //m.Ngons.AddPlanarNgons(tol);
+            m.FaceNormals.ComputeFaceNormals();
+            m.Normals.ComputeNormals();
+            //m.RebuildNormals();
+            m.Compact();
             m.UnifyNormals();
+
 
             if (m.DisjointMeshCount > 0)
             {
@@ -326,8 +350,13 @@ namespace Heron
                     if (mPiece.SolidOrientation() < 0) mPiece.Flip(false, false, true);
                     mm.Append(mPiece);
                 }
-                mm.RebuildNormals();
+                //mm.Ngons.AddPlanarNgons(tol);
+                mm.FaceNormals.ComputeFaceNormals();
+                mm.Normals.ComputeNormals();
+                //mm.RebuildNormals();
+                mm.Compact();
                 mm.UnifyNormals();
+
                 return mm;
 
             }
@@ -355,6 +384,33 @@ namespace Heron
         }
 
         public static List<IGH_GeometricGoo> OgrGeomToGHGoo(OSGeo.OGR.Geometry geom, Transform transform)
+        {
+            List<IGH_GeometricGoo> gGoo = new List<IGH_GeometricGoo>();
+
+            switch (geom.GetGeometryType())
+            {
+                case wkbGeometryType.wkbGeometryCollection:
+                case wkbGeometryType.wkbGeometryCollection25D:
+                case wkbGeometryType.wkbGeometryCollectionM:
+                case wkbGeometryType.wkbGeometryCollectionZM:
+                    OSGeo.OGR.Geometry sub_geom;
+                    for (int gi = 0; gi < geom.GetGeometryCount(); gi++)
+                    {
+                        sub_geom = geom.GetGeometryRef(gi);
+                        gGoo.AddRange(GetGoo(sub_geom, transform));
+                        sub_geom.Dispose();
+                    }
+                    break;
+
+                default:
+                    gGoo = GetGoo(geom, transform);
+                    break;
+            }
+
+            return gGoo;
+        }
+
+        public static List<IGH_GeometricGoo> GetGoo(OSGeo.OGR.Geometry geom, Transform transform)
         {
             List<IGH_GeometricGoo> gGoo = new List<IGH_GeometricGoo>();
 
@@ -410,12 +466,28 @@ namespace Heron
                 case wkbGeometryType.wkbMultiPolygon25D:
                 case wkbGeometryType.wkbMultiPolygonM:
                 case wkbGeometryType.wkbMultiPolygon:
-                    gGoo.Add(new GH_Mesh(Heron.Convert.OgrMultiPolyToMesh(geom, transform)));
+                case wkbGeometryType.wkbSurface:
+                case wkbGeometryType.wkbSurfaceZ:
+                case wkbGeometryType.wkbSurfaceZM:
+                case wkbGeometryType.wkbSurfaceM:
+                case wkbGeometryType.wkbPolyhedralSurface:
+                case wkbGeometryType.wkbPolyhedralSurfaceM:
+                case wkbGeometryType.wkbPolyhedralSurfaceZ:
+                case wkbGeometryType.wkbPolyhedralSurfaceZM:
+                case wkbGeometryType.wkbTINZ:
+                case wkbGeometryType.wkbTINM:
+                case wkbGeometryType.wkbTINZM:
+                case wkbGeometryType.wkbTIN:
+                    Mesh[] mDis = Heron.Convert.OgrMultiPolyToMesh(geom, transform).SplitDisjointPieces();
+                    foreach (var mPiece in mDis)
+                    {
+                        gGoo.Add(new GH_Mesh(mPiece));
+                    }
                     break;
 
                 default:
 
-                    ///Feature is of an unrecognized geometry type
+                    ///If Feature is of an unrecognized geometry type
                     ///Loop through geometry points
 
                     for (int gpc = 0; gpc < geom.GetPointCount(); gpc++)
@@ -462,89 +534,134 @@ namespace Heron
         //////////////////////////////////////////////////////
         ///TODO: Converting Rhino/GH geometry type to GDAL geometry types
 
-        public static OSGeo.OGR.Geometry Point3dToOgrPoint(Point3d pt3d)
+        public static OSGeo.OGR.Geometry Point3dToOgrPoint(Point3d pt3d, Transform transform)
         {
-            OSGeo.OGR.Geometry ogrPoint = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
+            pt3d.Transform(transform);
+            OSGeo.OGR.Geometry ogrPoint = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint25D);
             ogrPoint.AddPoint(pt3d.X, pt3d.Y, pt3d.Z);
 
             return ogrPoint;
         }
 
-        public static OSGeo.OGR.Geometry Point3dsToOgrMultiPoint(List<Point3d> points)
+        public static OSGeo.OGR.Geometry Point3dsToOgrMultiPoint(List<Point3d> points, Transform transform)
         {
-            OSGeo.OGR.Geometry ogrPoints = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPoint);
+            OSGeo.OGR.Geometry ogrPoints = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPoint25D);
             foreach (Point3d point in points)
             {
-                ogrPoints.AddGeometry(Heron.Convert.Point3dToOgrPoint(point));
+                ogrPoints.AddGeometry(Heron.Convert.Point3dToOgrPoint(point, transform));
             }
 
             return ogrPoints;
         }
 
-        public static OSGeo.OGR.Geometry CurveToOgrLinestring(Curve curve)
+        public static OSGeo.OGR.Geometry CurveToOgrLinestring(Curve curve, Transform transform)
         {
             Polyline pL = new Polyline();
             curve.TryGetPolyline(out pL);
-            OSGeo.OGR.Geometry linestring = new OSGeo.OGR.Geometry(wkbGeometryType.wkbLineString);
+            OSGeo.OGR.Geometry linestring = new OSGeo.OGR.Geometry(wkbGeometryType.wkbLineString25D);
 
             foreach (Point3d pt in pL)
             {
+                pt.Transform(transform);
                 linestring.AddPoint(pt.X, pt.Y, pt.Z);
             }
 
             return linestring;
         }
 
-        public static OSGeo.OGR.Geometry CurvesToOgrMultiLinestring(List<Curve> curves)
+        public static OSGeo.OGR.Geometry CurvesToOgrMultiLinestring(List<Curve> curves, Transform transform)
         {
-            OSGeo.OGR.Geometry multilinestring = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiLineString);
+            OSGeo.OGR.Geometry multilinestring = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiLineString25D);
 
             foreach (Curve curve in curves)
             {
                 Polyline pL = new Polyline();
                 curve.TryGetPolyline(out pL);
-                multilinestring.AddGeometry(Heron.Convert.CurveToOgrLinestring(curve));
+                multilinestring.AddGeometry(Heron.Convert.CurveToOgrLinestring(curve, transform));
             }
 
             return multilinestring;
         }
 
-        public static OSGeo.OGR.Geometry CurveToOgrRing(Curve curve)
+        public static OSGeo.OGR.Geometry CurveToOgrRing(Curve curve, Transform transform)
         {
             Polyline pL = new Polyline();
             curve.TryGetPolyline(out pL);
             OSGeo.OGR.Geometry ring = new OSGeo.OGR.Geometry(wkbGeometryType.wkbLinearRing);
 
+            if (pL[0] != pL[pL.Count-1])
+            {
+                pL.Add(pL[0]);
+            }
+
             foreach (Point3d pt in pL)
             {
+                pt.Transform(transform);
                 ring.AddPoint(pt.X, pt.Y, pt.Z);
             }
 
             return ring;
         }
 
-        public static OSGeo.OGR.Geometry CurveToOgrPolygon(Curve curve)
+        public static OSGeo.OGR.Geometry CurveToOgrPolygon(Curve curve, Transform transform)
         {
-            OSGeo.OGR.Geometry polygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPolygon);
+            OSGeo.OGR.Geometry polygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPolygon25D);
             Polyline pL = new Polyline();
             curve.TryGetPolyline(out pL);
-            polygon.AddGeometry(Heron.Convert.CurveToOgrRing(curve));
+            polygon.AddGeometry(Heron.Convert.CurveToOgrRing(curve, transform));
 
             return polygon;
         }
 
-        public static OSGeo.OGR.Geometry CurvesToOgrPolygon(List<Curve> curves)
+        public static OSGeo.OGR.Geometry CurvesToOgrPolygon(List<Curve> curves, Transform transform)
         {
-            OSGeo.OGR.Geometry polygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPolygon);
+            OSGeo.OGR.Geometry polygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPolygon25D);
             foreach (Curve curve in curves)
             {
                 Polyline pL = new Polyline();
                 curve.TryGetPolyline(out pL);
-                polygon.AddGeometry(Heron.Convert.CurveToOgrRing(curve));
+                polygon.AddGeometry(Heron.Convert.CurveToOgrRing(curve, transform));
             }
 
             return polygon;
         }
+
+        public static OSGeo.OGR.Geometry MeshToMultiPolygon(Mesh mesh, Transform transform)
+        {
+            //OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPolygon25D);
+            OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiSurfaceZ);
+
+
+            foreach (var face in mesh.GetNgonAndFacesEnumerable())
+            {
+                Polyline pL = new Polyline();
+                foreach (var index in face.BoundaryVertexIndexList())
+                {
+                    pL.Add(mesh.Vertices.Point3dAt(System.Convert.ToInt32(index)));
+                }
+
+                ogrMultiPolygon.AddGeometry(Heron.Convert.CurveToOgrPolygon(pL.ToNurbsCurve(), transform));
+            }
+            return ogrMultiPolygon;
+        }
+
+        public static OSGeo.OGR.Geometry MeshesToMultiPolygon(List<Mesh> meshes, Transform transform)
+        {
+            //OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPolygon25D);
+            OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiSurfaceZ);
+
+            Mesh m = new Mesh();
+            foreach (var mesh in meshes)
+            {
+                m.Append(mesh);
+                //ogrMultiPolygon.AddGeometry(Heron.Convert.MeshToMultiPolygon(mesh, transform));
+            }
+            ogrMultiPolygon.AddGeometry(Heron.Convert.MeshToMultiPolygon(m, transform));
+
+            return ogrMultiPolygon;
+        }
+
+
         //////////////////////////////////////////////////////
 
 

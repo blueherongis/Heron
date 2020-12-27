@@ -88,7 +88,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ColorToHex.cs" />
     <Compile Include="Convert.cs" />
+    <Compile Include="ExportVector.cs" />
+    <Compile Include="ImageRotate.cs" />
+    <Compile Include="ImageFlip.cs" />
     <Compile Include="GdalConfiguration.cs" />
     <Compile Include="GdalOGR2OGR.cs" />
     <Compile Include="GdalWarp.cs" />
