@@ -32,7 +32,7 @@ namespace Heron
     public class ImportTopo : HeronComponent
     {
         //Class Constructor
-        public ImportTopo() : base("Import Topo", "ImportTopo", "Create a topographic mesh from a raster file (IMG, HGT, ASCII, DEM, etc) clipped to a boundary", "GIS Import | Export")
+        public ImportTopo() : base("Import Topo", "ImportTopo", "Create a topographic mesh from a raster file (IMG, HGT, ASCII, DEM, TIF, etc) clipped to a boundary", "GIS Import | Export")
         {
 
         }
@@ -40,14 +40,14 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
-            pManager.AddTextParameter("IMG Location", "imgLocation", "Filepath for the *.img or *.hgt input", GH_ParamAccess.item);
+            pManager.AddTextParameter("Topography Raster File", "topoFile", "Filepath for the raster topography input", GH_ParamAccess.item);
             pManager[0].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddMeshParameter("topoMesh", "topoMesh", "Resultant topographic mesh from IMG or HGT file", GH_ParamAccess.tree);
-            pManager.AddRectangleParameter("topoExtent", "topoExtent", "Bounding box for the entire IMG or HGT file", GH_ParamAccess.item);
+            pManager.AddMeshParameter("Topography Mesh", "topoMesh", "Resultant topographic mesh from IMG or HGT file", GH_ParamAccess.tree);
+            pManager.AddRectangleParameter("Topography Extent", "topoExtent", "Bounding box for the entire IMG or HGT file", GH_ParamAccess.item);
 
         }
 
@@ -57,7 +57,7 @@ namespace Heron
             DA.GetDataList<Curve>(0, boundary);
 
             string IMG_file = string.Empty;
-            DA.GetData<string>("IMG Location", ref IMG_file);
+            DA.GetData<string>(1, ref IMG_file);
             /*  
               //Does not work with HGT files
              * 
