@@ -11,6 +11,8 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Net;
+using System.Net.Http;
 using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
@@ -142,29 +144,51 @@ namespace Heron
                   "&bboxSR=" + userSRSInt +
                   size + //"&layers=&layerdefs=" +
                   "&imageSR=" + userSRSInt + //"&transparent=false&dpi=&time=&layerTimeOptions=" +
-                  "&format=" + imageType +
-                  "&f=json";
+                  "&format=" + imageType;// +
+                  //"&f=json";
+                string restqueryJSON = restquery + "&f=json";
+                string restqueryImage = restquery + "&f=image";
 
-                mapquery.Append(new GH_String(restquery), path);
+                mapquery.Append(new GH_String(restqueryImage), path);
 
                 string result = string.Empty;
 
                 if (run)
                 {
 
-                    ///get extent of image from arcgis rest service as JSON
-                    result = Heron.Convert.HttpToJson(restquery);
+                    ///Get extent of image from arcgis rest service as JSON
+                    result = Heron.Convert.HttpToJson(restqueryJSON);
                     JObject jObj = JsonConvert.DeserializeObject<JObject>(result);
                     Point3d extMin = new Point3d((double) jObj["extent"]["xmin"], (double) jObj["extent"]["ymin"], 0);
                     Point3d extMax = new Point3d((double) jObj["extent"]["xmax"], (double) jObj["extent"]["ymax"], 0);
                     rect = new Rectangle3d(Plane.WorldXY, extMin, extMax);
                     rect.Transform(userSRSToModelTransform);
 
-                    ///download image from source
-                    string imageQuery = jObj["href"].ToString();
-                    System.Net.WebClient webClient = new System.Net.WebClient();
-                    webClient.DownloadFile(imageQuery, folderPath + prefix + "_" + i + "." + imageType);
-                    webClient.Dispose();
+                    ///Download image from source
+                    ///Catch if JSON query throws an error
+                    string imageQueryJSON = jObj["href"].ToString();
+                    using (WebClient webC = new WebClient())
+                    {
+                        try 
+                        {
+                            if (!String.IsNullOrEmpty(imageQueryJSON))
+                            {
+                                webC.DownloadFile(imageQueryJSON, folderPath + prefix + "_" + i + "." + imageType);
+                                webC.Dispose();
+                            }
+                            else
+                            {
+                                webC.DownloadFile(restqueryImage, folderPath + prefix + "_" + i + "." + imageType);
+                                webC.Dispose();
+                            }
+
+                        }
+                        catch (WebException e)
+                        {
+                            webC.DownloadFile(restqueryImage, folderPath + prefix + "_" + i + "." + imageType);
+                            webC.Dispose();
+                        }
+                    }
 
                 }
                 var bitmapPath = folderPath + prefix + "_" + i + "." + imageType;
