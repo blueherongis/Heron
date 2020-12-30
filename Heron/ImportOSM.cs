@@ -23,7 +23,7 @@ namespace Heron
     public class ImportOSM : HeronComponent
     {
         public ImportOSM()
-          : base("ImportOSM", "ImportOSM",
+          : base("Import OSM", "ImportOSM",
               "Import vector OpenStreetMap data clipped to a boundary. Nodes, Ways and Relations are organized onto their own branches in the output.",
               "GIS Import | Export")
         {

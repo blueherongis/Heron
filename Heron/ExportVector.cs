@@ -25,7 +25,7 @@ namespace Heron
         /// Initializes a new instance of the ExportVector class.
         /// </summary>
         public ExportVector()
-          : base("ExportVector", "ExportVector",
+          : base("Export Vector", "ExportVector",
               "Export Grasshopper geometry to Shapefile, GeoJSON, KML and GML file formats in the WGS84 (EPSG:4326) spatial reference system. " +
                 "Inputs should adhere to the Simple Features Data Model where each feature, containing point(s), polyline(s), mesh(es) or a combination of these " +
                 "has data values for each field. Note exporting multiple goemetry types on the same branch (a geometry collection) may cause a shapefile export to fail.",
