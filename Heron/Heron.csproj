@@ -184,10 +184,10 @@
     <None Include="Resources\xytodd.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\xytodd.bmp" />
+    <None Include="Resources\heron-favicon.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\heron-favicon.png" />
+    <None Include="Resources\heron-icon.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
