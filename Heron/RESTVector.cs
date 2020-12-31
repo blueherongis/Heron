@@ -110,70 +110,90 @@ namespace Heron
                 string restquery = URL +
                   "query?where=&text=&objectIds=&time=&geometry=" + bbox.Min.X + "%2C" + bbox.Min.Y + "%2C" + bbox.Max.X + "%2C" + bbox.Max.Y +
                   "&geometryType=esriGeometryEnvelope&inSR=" + userSRSInt +
-                  "&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=*&returnGeometry=true&maxAllowableOffset=&geometryPrecision=" +
+                  "&spatialRel=+esriSpatialRelIntersects" +
+                  "&relationParam=&outFields=*" +
+                  "&returnGeometry=true" +
+                  "&maxAllowableOffset=" +
+                  "&geometryPrecision=" +
                   "&outSR=" + userSRSInt +
-                  "&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false&f=json";
+                  "&returnIdsOnly=false" +
+                  "&returnCountOnly=false" +
+                  "&orderByFields=" +
+                  "&groupByFieldsForStatistics=&outStatistics=" +
+                  "&returnZ=true" +
+                  "&returnM=false" +
+                  "&gdbVersion=" +
+                  "&returnDistinctValues=false" +
+                  "&f=json";
 
                 mapquery.Append(new GH_String(restquery), cpath);
 
-                string result = Heron.Convert.HttpToJson(restquery);
-
-
-                jT.Append(new GH_ObjectWrapper(JsonConvert.DeserializeObject<JObject>(result)), cpath);
-                j.Add(JsonConvert.DeserializeObject<JObject>(result));
-
-                JArray e = (JArray)j[i]["features"];
-
-                for (int m = 0; m < e.Count; m++)
+                if (run)
                 {
-                    JObject aa = (JObject)j[i]["features"][m]["attributes"];
-                    GH_Path path = new GH_Path(i, m);
 
-                    //need to be able to escape this if no "geometry" property
-                    //if (j[i].Property("features.[" + m + "].geometry") != null)
-                    if (j[i]["features"][m]["geometry"] != null)
+                    string result = Heron.Convert.HttpToJson(restquery);
+
+
+                    jT.Append(new GH_ObjectWrapper(JsonConvert.DeserializeObject<JObject>(result)), cpath);
+                    j.Add(JsonConvert.DeserializeObject<JObject>(result));
+
+                    JArray e = (JArray)j[i]["features"];
+
+                    for (int m = 0; m < e.Count; m++)
                     {
-                        //choose type of geometry to read
-                        JsonReader jreader = j[i]["features"][m]["geometry"].CreateReader();
-                        int jrc = 0;
-                        string gt = null;
-                        while ((jreader.Read()) && (jrc < 1))
+                        JObject aa = (JObject)j[i]["features"][m]["attributes"];
+                        GH_Path path = new GH_Path(i, m);
+
+                        ///Need to be able to escape this if no "geometry" property
+                        //if (j[i].Property("features.[" + m + "].geometry") != null)
+                        if (j[i]["features"][m]["geometry"] != null)
                         {
-                            if (jreader.Value != null)
+                            ///Choose type of geometry to read
+                            JsonReader jreader = j[i]["features"][m]["geometry"].CreateReader();
+                            int jrc = 0;
+                            string gt = null;
+                            while ((jreader.Read()) && (jrc < 1))
                             {
-                                //gtype.Add(jreader.Value, path);
-                                gt = jreader.Value.ToString();
-                                jrc++;
+                                if (jreader.Value != null)
+                                {
+                                    //gtype.Add(jreader.Value, path);
+                                    gt = jreader.Value.ToString();
+                                    jrc++;
+                                }
+                            }
+
+                            JArray c = (JArray)j[i]["features"][m]["geometry"][gt][0];
+                            for (int k = 0; k < c.Count; k++)
+                            {
+                                double xx = (double)j[i]["features"][m]["geometry"][gt][0][k][0];
+                                double yy = (double)j[i]["features"][m]["geometry"][gt][0][k][1];
+                                Point3d xyz = new Point3d(xx, yy, 0);
+                                restpoints.Append(new GH_Point(userSRSToModelTransform * xyz), path);
                             }
                         }
 
-                        JArray c = (JArray)j[i]["features"][m]["geometry"][gt][0];
-                        for (int k = 0; k < c.Count; k++)
+
+                        foreach (JProperty attribute in j[i]["features"][m]["attributes"])
                         {
-                            double xx = (double)j[i]["features"][m]["geometry"][gt][0][k][0];
-                            double yy = (double)j[i]["features"][m]["geometry"][gt][0][k][1];
-                            Point3d xyz = new Point3d(xx, yy, 0);
-                            restpoints.Append(new GH_Point(userSRSToModelTransform * xyz), path);
+                            attpoints.Append(new GH_String(attribute.Value.ToString()), path);
                         }
                     }
 
-
-                    foreach (JProperty attribute in j[i]["features"][m]["attributes"])
+                    //Get the field names
+                    foreach (JObject fn in j[i]["fields"])
                     {
-                        attpoints.Append(new GH_String(attribute.Value.ToString()), path);
+                        fieldnames.Append(new GH_String(fn["alias"].Value<string>()), cpath);
                     }
-                }
-
-                //Get the field names
-                foreach (JObject fn in j[i]["fields"])
-                {
-                    fieldnames.Append(new GH_String(fn["alias"].Value<string>()), cpath);
                 }
             }
 
-            DA.SetDataList(0, fieldnames.get_Branch(0));
-            DA.SetDataTree(1, attpoints);
-            DA.SetDataTree(2, restpoints);
+            ///Not the most elegant way of setting outputs only on run
+            if (run)
+            {
+                DA.SetDataList(0, fieldnames.get_Branch(0));
+                DA.SetDataTree(1, attpoints);
+                DA.SetDataTree(2, restpoints);
+            }
             DA.SetDataTree(3, mapquery);
 
         }
