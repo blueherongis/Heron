@@ -149,7 +149,7 @@
 		{
 			"service" : "USA 2000-2010 Population Change",
 			"url" : "https://services.arcgisonline.com/arcgis/rest/services/Demographics/USA_2000-2010_Population_Change/MapServer/",
-			"description" : "This map shows the annual compound growth rate of total population in the United States from 2000 to 2010. Total Population is the total number of residents in an area. Residence refers to the "usual place" where a person lives. The annual compound growth rate for the United States overall was 0.93% per year during the period 2000 to 2010. The geography depicts States at greater than 50m scale, Counties at 7.5m to 50m scale, Census Tracts at 200k to 7.5m scale, and Census Block Groups at less than 200k scale. Scale Range: 1:591,657,528 down to 1:72,224 For more information on this map, including our terms of use, visit us online at http://goto.arcgisonline.com/maps/Demographics/USA_2000-2010_Population_Change",
+			"description" : "This map shows the annual compound growth rate of total population in the United States from 2000 to 2010. Total Population is the total number of residents in an area. Residence refers to the 'usual place' where a person lives. The annual compound growth rate for the United States overall was 0.93% per year during the period 2000 to 2010. The geography depicts States at greater than 50m scale, Counties at 7.5m to 50m scale, Census Tracts at 200k to 7.5m scale, and Census Block Groups at less than 200k scale. Scale Range: 1:591,657,528 down to 1:72,224 For more information on this map, including our terms of use, visit us online at http://goto.arcgisonline.com/maps/Demographics/USA_2000-2010_Population_Change",
 			"source" : "ESRI Demographics"
 		},
 		{
