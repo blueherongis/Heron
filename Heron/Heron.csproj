@@ -110,6 +110,7 @@
     <Compile Include="MapboxRaster.cs" />
     <Compile Include="MapboxTopo.cs" />
     <Compile Include="MapboxVector.cs" />
+    <Compile Include="RESTLayer.cs" />
     <Compile Include="RESTTOSM.cs" />
     <Compile Include="SlippyRaster.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -120,7 +121,7 @@
     <Compile Include="RESTRaster.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="RESTLayer.cs" />
+    <Compile Include="RESTLayer_DEPRICATED.cs" />
     <Compile Include="RESTRevGeo.cs" />
     <Compile Include="RESTTopo.cs" />
     <Compile Include="RESTVector.cs">

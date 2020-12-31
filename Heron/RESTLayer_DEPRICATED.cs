@@ -30,12 +30,18 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class RESTLayer : HeronComponent
+    public class RESTLayer_DEPRICATED : HeronComponent
     {
         //Class Constructor
-        public RESTLayer() : base("Get REST Service Layers", "RESTLayer", "Discover ArcGIS REST Service Layers", "GIS REST")
+        public RESTLayer_DEPRICATED() : base("Get REST Service Layers", "RESTLayer", "Discover ArcGIS REST Service Layers", "GIS REST")
         {
 
+        }
+
+        ///Retiring this component in to update the outputs to include urls
+        public override Grasshopper.Kernel.GH_Exposure Exposure
+        {
+            get { return GH_Exposure.hidden; }
         }
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
@@ -47,9 +53,8 @@ namespace Heron
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Map Description", "mapDescription", "Description of the REST Service", GH_ParamAccess.item);
-            pManager.AddTextParameter("Map Layers", "mapLayers", "Names of available Service Layers", GH_ParamAccess.list);
-            pManager.AddIntegerParameter("Map Integers", "mapIndexes", "Indexes of available Service Layers", GH_ParamAccess.list);
-            pManager.AddTextParameter("Map Layer URLs", "URLs", "URLs of available Service Layers", GH_ParamAccess.list);
+            pManager.AddTextParameter("Map Layer", "mapLayers", "Names of available Service Layers", GH_ParamAccess.list);
+            pManager.AddIntegerParameter("Map Integer", "mapIndex", "Index of available Service Layers", GH_ParamAccess.list);
 
         }
 
@@ -58,7 +63,6 @@ namespace Heron
             string URL = string.Empty;
 
             DA.GetData<string>("Service URL", ref URL);
-            if (!URL.EndsWith(@"/")) { URL = URL + "/"; }
 
             //get json from rest service
             string restquery = URL + "?f=pjson";
@@ -77,7 +81,6 @@ namespace Heron
             JObject j = JObject.Parse(result);
             List<string> layerKey = new List<string>();
             List<int> layerInt = new List<int>();
-            List<string> layerUrl = new List<string>();
 
             Dictionary<string, int> d = new Dictionary<string, int>();
 
@@ -86,16 +89,14 @@ namespace Heron
                 d[(string)j["layers"][i]["name"]] = (int)j["layers"][i]["id"];
                 layerKey.Add((string)j["layers"][i]["name"]);
                 layerInt.Add((int)j["layers"][i]["id"]);
-                layerUrl.Add(URL + j["layers"][i]["id"].ToString() + "/");
             }
 
-            DA.SetData(0, (string)j["description"]);
+            DA.SetData("Map Description", (string)j["description"]);
             //mapDescription = (string) j["description"];
-            DA.SetDataList(1, layerKey);
+            DA.SetDataList("Map Layer", layerKey);
             //mapLayer = layerKey;
-            DA.SetDataList(2, layerInt);
+            DA.SetDataList("Map Integer", layerInt);
             //mapInt = layerInt;
-            DA.SetDataList(3, layerUrl);
 
         }
 
@@ -186,7 +187,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{8F33D7B4-FF14-438A-B49B-7DF895890BDD}"); }
+            get { return new Guid("{AD3A9FBB-AD30-4C95-BDD4-44D804895120}"); }
         }
     }
 }
