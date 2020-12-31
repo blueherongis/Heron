@@ -13,10 +13,12 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Net;
 using System.Net.Http;
+using System.Windows.Forms;
 using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
+using Grasshopper.Kernel.Special;
 using Rhino;
 using Rhino.Geometry;
 using Rhino.DocObjects;
@@ -49,7 +51,7 @@ namespace Heron
             pManager.AddIntegerParameter("Resolution", "resolution", "Maximum resolution for images", GH_ParamAccess.item,1024);
             pManager.AddTextParameter("Target Folder", "folderPath", "Folder to save image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item, "restRaster");
-            pManager.AddTextParameter("REST URL", "URL", "ArcGIS REST Service website to query", GH_ParamAccess.item);
+            pManager.AddTextParameter("REST URL", "URL", "ArcGIS REST Service website to query. Use the component \nmenu item \"Create REST Raster Source List\" for some examples.", GH_ParamAccess.item);
             pManager.AddBooleanParameter("run", "get", "Go ahead and download imagery from the Service", GH_ParamAccess.item, false);
 
             pManager.AddTextParameter("User Spatial Reference System", "userSRS", "Custom SRS", GH_ParamAccess.item,"WGS84");
@@ -59,9 +61,9 @@ namespace Heron
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("image", "Image", "File location of downloaded image", GH_ParamAccess.tree);
-            pManager.AddCurveParameter("imageFrame", "imageFrame", "Bounding box of image for mapping to geometry", GH_ParamAccess.tree);
-            pManager.AddTextParameter("RESTQuery", "RESTQuery", "Full text of REST query", GH_ParamAccess.tree);
+            pManager.AddTextParameter("Image", "Image", "File location of downloaded image", GH_ParamAccess.tree);
+            pManager.AddCurveParameter("Image Frame", "imageFrame", "Bounding box of image for mapping to geometry", GH_ParamAccess.tree);
+            pManager.AddTextParameter("REST Query", "RESTQuery", "Full text of REST query", GH_ParamAccess.tree);
 
         }
 
@@ -82,6 +84,7 @@ namespace Heron
 
             string URL = string.Empty;
             DA.GetData<string>("REST URL", ref URL);
+            if (URL.EndsWith(@"/")) { URL = URL + "export?"; }
 
             bool run = false;
             DA.GetData<bool>("run", ref run);
@@ -153,14 +156,23 @@ namespace Heron
 
                 string result = string.Empty;
 
-                if (run)
-                {
-
                     ///Get extent of image from arcgis rest service as JSON
                     result = Heron.Convert.HttpToJson(restqueryJSON);
                     JObject jObj = JsonConvert.DeserializeObject<JObject>(result);
-                    Point3d extMin = new Point3d((double) jObj["extent"]["xmin"], (double) jObj["extent"]["ymin"], 0);
-                    Point3d extMax = new Point3d((double) jObj["extent"]["xmax"], (double) jObj["extent"]["ymax"], 0);
+                    if (!jObj.ContainsKey("href"))
+                    {
+                        restqueryJSON = restqueryJSON.Replace("export?", "exportImage?");
+                        restqueryImage = restqueryImage.Replace("export?", "exportImage?");
+                        mapquery.RemovePath(path);
+                        mapquery.Append(new GH_String(restqueryImage), path);
+                        result = Heron.Convert.HttpToJson(restqueryJSON);
+                        jObj = JsonConvert.DeserializeObject<JObject>(result);
+                    }
+
+                if (run)
+                {
+                    Point3d extMin = new Point3d((double)jObj["extent"]["xmin"], (double)jObj["extent"]["ymin"], 0);
+                    Point3d extMax = new Point3d((double)jObj["extent"]["xmax"], (double)jObj["extent"]["ymax"], 0);
                     rect = new Rectangle3d(Plane.WorldXY, extMin, extMax);
                     rect.Transform(userSRSToModelTransform);
 
@@ -203,6 +215,82 @@ namespace Heron
             DA.SetDataTree(2, mapquery);
 
 
+        }
+
+
+
+
+        private JObject rasterJson = JObject.Parse(Heron.Convert.GetEnpoints());
+
+        /// <summary>
+        /// Adds to the context menu an option to create a pre-populated list of common REST Raster sources
+        /// </summary>
+        /// <param name="menu"></param>
+        /// https://discourse.mcneel.com/t/generated-valuelist-not-working/79406/6?u=hypar
+        public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
+        {
+            var rasterSourcesJson = rasterJson["REST Raster"].Select(x => x["source"]).Distinct();
+            List<string> rasterSources = rasterSourcesJson.Values<string>().ToList();
+            foreach (var src in rasterSourcesJson)
+            {
+                ToolStripMenuItem root = GH_DocumentObject.Menu_AppendItem(menu, "Create " + src.ToString() + " Source List", CreateRasterList);
+                root.ToolTipText = "Click this to create a pre-populated list of some " + src.ToString() + " sources.";
+                base.AppendAdditionalMenuItems(menu);
+            }
+        }
+
+        /// <summary>
+        /// Creates a value list pre-populated with possible accent colors and adds it to the Grasshopper Document, located near the component pivot.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
+        private void CreateRasterList(object sender, System.EventArgs e)
+        {
+            string source = sender.ToString();
+            source = source.Replace("Create ", "");
+            source = source.Replace(" Source List", "");
+
+            GH_DocumentIO docIO = new GH_DocumentIO();
+            docIO.Document = new GH_Document();
+
+            ///Initialize object
+            GH_ValueList vl = new GH_ValueList();
+
+            ///Clear default contents
+            vl.ListItems.Clear();
+
+            foreach (var service in rasterJson["REST Raster"])
+            {
+                if (service["source"].ToString() == source)
+                {
+                    GH_ValueListItem vi = new GH_ValueListItem(service["service"].ToString(), String.Format("\"{0}\"", service["url"].ToString()));
+                    vl.ListItems.Add(vi);
+                }
+            }
+
+            ///Set component nickname
+            vl.NickName = source;
+            
+            ///Get active GH doc
+            GH_Document doc = OnPingDocument();
+            if (docIO.Document == null) return;
+            
+            ///Place the object
+            docIO.Document.AddObject(vl, false, 1);
+            
+            ///Get the pivot of the "URL" param
+            PointF currPivot = Params.Input[4].Attributes.Pivot;
+            
+            ///Set the pivot of the new object
+            vl.Attributes.Pivot = new PointF(currPivot.X - 400, currPivot.Y - 11);
+
+            docIO.Document.SelectAll();
+            docIO.Document.ExpireSolution();
+            docIO.Document.MutateAllIds();
+            IEnumerable<IGH_DocumentObject> objs = docIO.Document.Objects;
+            doc.DeselectAll();
+            doc.UndoUtil.RecordAddObjectEvent("Create REST Raster Source List", objs);
+            doc.MergeDocument(docIO.Document);
         }
 
         protected override System.Drawing.Bitmap Icon
