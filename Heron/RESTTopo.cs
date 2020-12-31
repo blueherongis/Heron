@@ -11,6 +11,8 @@ using GH_IO.Serialization;
 using Rhino;
 using Rhino.Geometry;
 
+using Newtonsoft.Json.Linq;
+
 namespace Heron
 {
     public class RESTTopo : HeronComponent
@@ -36,10 +38,12 @@ namespace Heron
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
             pManager.AddTextParameter("Target folder", "folderPath", "Folder to save image files", GH_ParamAccess.item, Path.GetTempPath());
-            pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item, topoService);
+            pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
-            Message = TopoService;
+            pManager[2].Optional = true;
+
+            Message = TopoSource;
         }
 
         /// <summary>
@@ -66,11 +70,15 @@ namespace Heron
 
             string prefix = string.Empty;
             DA.GetData<string>(2, ref prefix);
+            if (prefix == "")
+            {
+                prefix = topoSource;
+            }
 
             bool run = false;
             DA.GetData<bool>("Run", ref run);
 
-            Dictionary<string, TopoServices> tServices = GetTopoServices();
+            //Dictionary<string, TopoServices> tServices = GetTopoServices();
 
             GH_Structure<GH_String> demList = new GH_Structure<GH_String>();
             GH_Structure<GH_String> demQuery = new GH_Structure<GH_String>();
@@ -106,7 +114,7 @@ namespace Heron
                 double east = max.X;
                 double north = max.Y;
 
-                string tQ = String.Format(tServices[topoService].URL, west, south, east, north);
+                string tQ = String.Format(topoURL, west, south, east, north);
 
                 if (run)
                 {
@@ -130,24 +138,32 @@ namespace Heron
 
         private bool IsServiceSelected(string serviceString)
         {
-            return serviceString.Equals(topoService);
+            return serviceString.Equals(topoSource);
         }
 
 
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
-            Dictionary<string, TopoServices> services = GetTopoServices();
+            //Dictionary<string, TopoServices> services = GetTopoServices();
 
             //ToolStripMenuItem root = new ToolStripMenuItem("Pick a topo service");
 
-            foreach (var service in services)
+
+            if (topoSourceList == "")
             {
-                string sName = service.Key;
+                topoSourceList = Convert.GetEnpoints();
+            }
+
+            JObject topoJson = JObject.Parse(topoSourceList);
+
+            foreach (var service in topoJson["REST Topo"])
+            {
+                string sName = service["service"].ToString();
 
                 ToolStripMenuItem serviceName = new ToolStripMenuItem(sName);
                 serviceName.Tag = sName;
                 serviceName.Checked = IsServiceSelected(sName);
-                serviceName.ToolTipText = service.Value.ServiceDesc;
+                serviceName.ToolTipText = service["description"].ToString();
                 serviceName.Click += ServiceItemOnClick;
 
                 //root.DropDownItems.Add(serviceName);
@@ -170,10 +186,11 @@ namespace Heron
             if (IsServiceSelected(code))
                 return;
 
-            RecordUndoEvent("TopoService");
+            RecordUndoEvent("TopoSource");
 
-            topoService = code;
-            Message = topoService;
+            topoSource = code;
+            topoURL = JObject.Parse(topoSourceList)["REST Topo"].SelectToken("[?(@.service == '" + topoSource + "')].url").ToString();
+            Message = topoSource;
 
             ExpireSolution(true);
         }
@@ -184,51 +201,41 @@ namespace Heron
         ///////////////////////////
         //Stick Parameters
 
-        public class TopoServices
+        private string topoSourceList = Convert.GetEnpoints();
+        private string topoSource = JObject.Parse(Convert.GetEnpoints())["REST Topo"][0]["service"].ToString();
+        private string topoURL = JObject.Parse(Convert.GetEnpoints())["REST Topo"][0]["url"].ToString();
+        
+        public string TopoSourceList
         {
-            public string ServiceName { get; set; }
-            public string ServiceDesc { get; set; }
-            public string URL { get; set; }
+            get { return topoSourceList; }
+            set { topoSourceList = value; }
         }
 
-        public static Dictionary<string, TopoServices> GetTopoServices()
+        public string TopoSource
         {
-            Dictionary<string, TopoServices> services = new Dictionary<string, TopoServices>()
-            {
-                {"SRTM GL1 (30m)", new TopoServices{ServiceName = "SRTM GL1 (30m)", ServiceDesc = "SRTM GL1 (30m) 1 Arcsecond resolution", URL = "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL1&west={0}&south={1}&east={2}&north={3}"} },
-                {"SRTM GL3 (90m)", new TopoServices{ServiceName = "SRTM GL3 (90m)", ServiceDesc = "SRTM GL3 (90m) 3 Arsecond resolution", URL = "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL3&west={0}&south={1}&east={2}&north={3}"} },
-                {"ALOS World 3D (30m)", new TopoServices{ServiceName = "ALOS World 3D (30m)", ServiceDesc = "ALOS World 3D (30m)", URL = "https://portal.opentopography.org/API/globaldem?demtype=AW3D30&west={0}&south={1}&east={2}&north={3}"} },
-                {"GMRT Max", new TopoServices{ServiceName = "GMRT Max", ServiceDesc = "GMRT Max", URL = "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=max"} },
-                {"GMRT High", new TopoServices{ServiceName = "GMRT High", ServiceDesc = "GMRT High resolution. Will default to highest resolution if boundary is too small.", URL = "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=high"} },
-                {"GMRT Medium", new TopoServices{ServiceName = "GMRT Medium", ServiceDesc = "GMRT Medium resolution. Will default to higher resolution if boundary is too small.", URL = "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=med"} },
-                {"GMRT Low", new TopoServices{ServiceName = "GMRT Low", ServiceDesc = "GMRT Low resolution. Will default to higher resolution if boundary is too small.", URL = "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=low"} }
-            };
-            return services;
-        }
-
-
-
-        private string topoService = "SRTM GL1 (30m)";
-
-        public string TopoService
-        {
-            get { return topoService; }
+            get { return topoSource; }
             set
             {
-                topoService = value;
-                Message = topoService;
+                topoSource = value;
+                Message = topoSource;
             }
+        }
+
+        public string TopoURL
+        {
+            get { return topoURL; }
+            set { topoURL = value; }
         }
 
         public override bool Write(GH_IO.Serialization.GH_IWriter writer)
         {
-            writer.SetString("TopoService", TopoService);
+            writer.SetString("TopoSource", TopoSource);
             return base.Write(writer);
         }
 
         public override bool Read(GH_IO.Serialization.GH_IReader reader)
         {
-            TopoService = reader.GetString("TopoService");
+            TopoSource = reader.GetString("TopoSource");
             return base.Read(reader);
         }
 
