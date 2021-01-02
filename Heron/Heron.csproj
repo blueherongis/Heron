@@ -103,8 +103,9 @@
     <Compile Include="ImportOSM.cs" />
     <Compile Include="ImportSHP.cs" />
     <Compile Include="ImportRaster.cs" />
+    <Compile Include="ImportTopo.cs" />
     <Compile Include="ImportVector.cs" />
-    <Compile Include="ImportTopo.cs">
+    <Compile Include="ImportTopo_DEPRECATED.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="MapboxRaster.cs" />
@@ -121,7 +122,7 @@
     <Compile Include="RESTRaster.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="RESTLayer_DEPRICATED.cs" />
+    <Compile Include="RESTLayer_DEPRECATED.cs" />
     <Compile Include="RESTRevGeo.cs" />
     <Compile Include="RESTTopo.cs" />
     <Compile Include="RESTVector.cs">
