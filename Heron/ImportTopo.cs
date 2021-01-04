@@ -47,8 +47,8 @@ namespace Heron
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddMeshParameter("Topography Mesh", "topoMesh", "Resultant topographic mesh from IMG or HGT file", GH_ParamAccess.tree);
-            pManager.AddRectangleParameter("Topography Extent", "topoExtent", "Bounding box for the entire IMG or HGT file", GH_ParamAccess.item);
+            pManager.AddMeshParameter("Topography Mesh", "topoMesh", "Resultant topographic mesh from the source file", GH_ParamAccess.tree);
+            pManager.AddRectangleParameter("Topography Extent", "topoExtent", "Bounding box for the entire source file", GH_ParamAccess.item);
             pManager.AddTextParameter("Topography Source Info", "topoInfo", "Raster info about topography source", GH_ParamAccess.item);
 
         }
@@ -196,9 +196,19 @@ namespace Heron
 
                 Point3d clipperMaxPreAdd = clippingBoundary.GetBoundingBox(true).Corner(false, true, true);
                 ///add/subtract pixel width if desired to get closer to boundary
-                //Point3d clipperMaxPostAdd = new Point3d(clipperMaxPreAdd.X + pixelWidth, clipperMaxPreAdd.Y - pixelHeight, clipperMaxPreAdd.Z);
-                Point3d clipperMaxPostAdd = new Point3d(clipperMaxPreAdd.X, clipperMaxPreAdd.Y, clipperMaxPreAdd.Z);
-                Point3d clipperMax = Heron.Convert.XYZToWGS(clipperMaxPostAdd);
+                Point3d clipperMaxPostAdd = new Point3d();
+                Point3d clipperMax = new Point3d();
+                if (clip) 
+                { 
+                    clipperMaxPostAdd = new Point3d(clipperMaxPreAdd.X + pixelWidth, clipperMaxPreAdd.Y - pixelHeight, clipperMaxPreAdd.Z);
+                    clipperMax = Heron.Convert.XYZToWGS(clipperMaxPostAdd);
+                }
+                else 
+                { 
+                    clipperMaxPostAdd = new Point3d(clipperMaxPreAdd.X, clipperMaxPreAdd.Y, clipperMaxPreAdd.Z);
+                    clipperMax = Heron.Convert.XYZToWGS(clipperMaxPostAdd);
+                }
+
 
                 double lonWest = clipperMin.X;
                 double lonEast = clipperMax.X;
@@ -293,6 +303,9 @@ namespace Heron
                 }
                 Gdal.Unlink("/vsimem/topoclipped.tif");
             }
+
+            datasource.Dispose();
+
             DA.SetDataTree(0, tMesh);
             DA.SetData(1, dsbox);
             DA.SetData(2, srcInfo);
