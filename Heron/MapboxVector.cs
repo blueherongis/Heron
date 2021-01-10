@@ -55,7 +55,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
 
-            pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for topography", GH_ParamAccess.item);
+            pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for Mapbox vector tiles", GH_ParamAccess.item);
             pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution.", GH_ParamAccess.item, 14);
             pManager.AddTextParameter("File Location", "filePath", "Folder to place topography image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for topography image file name", GH_ParamAccess.item);
@@ -81,7 +81,7 @@ namespace Heron
             pManager.AddTextParameter("Mapbox Attribution", "mbAtt", "Mapbox word mark and text attribution required by Mapbox", GH_ParamAccess.list);
             pManager.AddTextParameter("Geometry Type", "geoType", "Type of geometry contained in the feature", GH_ParamAccess.tree);
             pManager.AddGeometryParameter("Buildings", "buildings", "Geometry of buildings contained in the feature", GH_ParamAccess.tree);
-            pManager.AddCurveParameter("Extents", "extents", "Bounding box of all the vector data features", GH_ParamAccess.list);
+            pManager.AddCurveParameter("Tile Extents", "tiles", "Map tile boundaries for each Mapbox vector tile", GH_ParamAccess.list);
         }
 
         /// <summary>
