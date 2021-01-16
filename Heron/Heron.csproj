@@ -112,6 +112,7 @@
     <Compile Include="MapboxTopo.cs" />
     <Compile Include="MapboxVector.cs" />
     <Compile Include="MultiMeshPatch.cs" />
+    <Compile Include="MultiSDiff.cs" />
     <Compile Include="RESTLayer.cs" />
     <Compile Include="RESTTOSM.cs" />
     <Compile Include="SlippyRaster.cs" />
