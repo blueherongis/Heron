@@ -136,6 +136,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SlippyTiles.cs" />
     <Compile Include="SlippyViewport.cs" />
+    <Compile Include="VisualCenter.cs" />
     <Compile Include="XYtoDD.cs" />
   </ItemGroup>
   <ItemGroup>
