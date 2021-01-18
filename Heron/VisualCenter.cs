@@ -1,15 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Linq;
+using System.Windows.Forms;
 
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
+using Grasshopper.GUI;
+using GH_IO;
+using GH_IO.Serialization;
+
+using Rhino;
 using Rhino.Geometry;
 
 namespace Heron
 {
-    public class VisualCenter : HeronComponent
+    public class VisualCenter : GH_TaskCapableComponent<VisualCenter.SolveResults>
     {
         /// <summary>
         /// Initializes a new instance of the VisualCenter class.
@@ -17,7 +24,7 @@ namespace Heron
         public VisualCenter()
           : base("Visual Center", "VC",
               "Find the visual center of closed planar curves. The resulting point will lie within the boundary of the curve and multiple curves on a branch will be treated as a surface with holes.",
-              "Utilities")
+              "Utilities","Test")
         {
         }
 
@@ -32,6 +39,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Closed Curves", "CC", "Closed curves of which to find the visual center", GH_ParamAccess.list);
+            pManager.AddNumberParameter("Tolerance", "T", "Tolerance in document units.  The smaller the tolerance, the longer it take to resolve the solution.", GH_ParamAccess.item, 1.0);
         }
 
         /// <summary>
@@ -43,23 +51,19 @@ namespace Heron
             //pManager.AddRectangleParameter("Boxes", "B", "test", GH_ParamAccess.list);
         }
 
-        /// <summary>
-        /// This is the method that actually does the work.
-        /// </summary>
-        /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
-        protected override void SolveInstance(IGH_DataAccess DA)
+        public class SolveResults
         {
-            List<Curve> closedCrvs = new List<Curve>();
-            DA.GetDataList<Curve>(0, closedCrvs);
+            public List<Point3d> centers { get; set; }
+        }
 
-            // define precision here
-            double tol = DocumentTolerance();
+        SolveResults Compute (List<Curve> closedCrvs, double tol)
+        {
+            var rc = new SolveResults();
 
             List<Point3d> centers = new List<Point3d>();
             List<Rectangle3d> boxes = new List<Rectangle3d>();
 
             Brep[] srfs = Brep.CreatePlanarBreps(closedCrvs, tol);
-
 
             foreach (var srf in srfs)
             {
@@ -90,20 +94,18 @@ namespace Heron
                     for (var y = minY; y < maxY; y += cellSize)
                     {
                         cellList.Add(new Cell(x + h, y + h, h, srf));
-                        cellList.Sort((a, b) => a.max.CompareTo(b.max));
+                        //cellList.Sort((a, b) => a.max.CompareTo(b.max));
                         //cellArchive.AddRange(cellList); //if (showBoxes) cellArchive.AddRange(cellList);
                     }
                 }
+                cellList.Sort((a, b) => a.max.CompareTo(b.max));
 
                 /// Take centroid as the first best guess
                 Cell bestCell = GetCentroidCell(srf);
 
                 /// Special case for rectangular polygons
-                Cell bboxCell = new Cell(minX + width / 2 + tol, minY + height / 2 + tol, 0, srf);
-                if (bboxCell.d > bestCell.d)
-                {
-                    bestCell = bboxCell;
-                }
+                Cell bboxCell = new Cell(minX + width / 2, minY + height / 2, 0, srf);
+                if (bboxCell.d > bestCell.d) { bestCell = bboxCell; }
 
                 /// Do the work
                 while (cellList.Count > 0)
@@ -125,7 +127,6 @@ namespace Heron
                     /// Split the cell into four cells
                     h = cell.h / 2;
 
-                    cellList.Clear();
                     cellList.Add(new Cell(cell.x - h, cell.y - h, h, srf));
                     cellList.Add(new Cell(cell.x + h, cell.y - h, h, srf));
                     cellList.Add(new Cell(cell.x - h, cell.y + h, h, srf));
@@ -139,8 +140,53 @@ namespace Heron
 
             }
 
-            DA.SetDataList(0, centers);
-            //DA.SetDataList(1, boxes);
+            rc.centers = centers;
+            return rc;
+        }
+
+
+        /// <summary>
+        /// This is the method that actually does the work.
+        /// </summary>
+        /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
+        protected override void SolveInstance(IGH_DataAccess DA)
+        {
+            if (InPreSolve)
+            {
+                ///First pass; collect data and construct tasks
+                List<Curve> closedCrvs = new List<Curve>();
+                double tol = DocumentTolerance();
+                Task<SolveResults> tsk = null;
+
+                if (DA.GetDataList<Curve>(0, closedCrvs) && DA.GetData<double>(1, ref tol))
+                {
+                    tsk = Task.Run(() => Compute(closedCrvs, tol), CancelToken);
+                }
+
+                ///Add a null task even if data collection fails.  This keeps the list size in sync with the iterations
+                TaskList.Add(tsk);
+                return;
+            }
+
+            if (!GetSolveResults(DA, out var results))
+            {
+                ///Compute right here, right now.
+                ///1. Collect
+                List<Curve> closedCrvs = new List<Curve>();
+                double tol = DocumentTolerance();
+
+                if (!DA.GetDataList<Curve>(0, closedCrvs)) { return; }
+                if (!DA.GetData<double>(1, ref tol)) { return; }
+
+                ///2. Compute
+                results = Compute(closedCrvs, tol);
+            }
+
+            ///3. Set
+            if (results != null)
+            {
+                DA.SetDataList(0, results.centers);
+            }
         }
 
 
@@ -174,7 +220,8 @@ namespace Heron
         public static double DistanceToBrepEdge(Brep polygon, Point3d point)
         {
             var closestPoint = polygon.Edges[0].PointAtStart;
-            var distance = point.DistanceTo(closestPoint);
+            var distance = Double.PositiveInfinity;// point.DistanceTo(closestPoint);
+            
             foreach (var edge in polygon.Edges)
             {
                 double t_prm;
@@ -203,6 +250,7 @@ namespace Heron
             if (dist > DocumentTolerance()) inside = false;
             return inside;
         }
+
 
         /// <summary>
         /// Provides an Icon for the component.
