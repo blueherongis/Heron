@@ -24,7 +24,7 @@ namespace Heron
         public VisualCenter()
           : base("Visual Center", "VC",
               "Find the visual center of closed planar curves. The resulting point will lie within the boundary of the curve and multiple curves on a branch will be treated as a surface with holes.",
-              "Utilities","Test")
+              "Heron","Utilities")
         {
         }
 
