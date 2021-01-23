@@ -65,8 +65,21 @@ namespace Heron
 
             Brep[] srfs = Brep.CreatePlanarBreps(closedCrvs, tol);
 
-            foreach (var srf in srfs)
+            if (srfs != null)
             {
+                ///Pick the srf with the biggest area in order to discard smaller islands
+                ///TODO: Add option to include islands with a foreach in srfs
+                Brep srf = srfs[0];
+                double area = AreaMassProperties.Compute(srf).Area;
+                foreach (var b in srfs)
+                {
+                    if (AreaMassProperties.Compute(b).Area > area)
+                    {
+                        area = AreaMassProperties.Compute(b).Area;
+                        srf = b;
+                    }
+                }
+
                 /// Based on javascript code from: https://github.com/mapbox/polylabel/blob/master/polylabel.js
 
                 Point3d vc = new Point3d();
@@ -139,7 +152,6 @@ namespace Heron
                 //boxes.AddRange(cellArchive.Select(x => x.box));
 
             }
-
             rc.centers = centers;
             return rc;
         }
