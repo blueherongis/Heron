@@ -4,6 +4,7 @@ using Grasshopper.Kernel.Types;
 using OSGeo.OSR;
 using OSGeo.OGR;
 using Rhino.Geometry;
+using Rhino.DocObjects;
 using System;
 using System.Collections.Generic;
 
@@ -68,7 +69,7 @@ namespace Heron
             ///TODO: resolve errors with reading KML, MVT, GML.
 
             DataSource dataSource = CreateDataSource(shpFilePath);
-            List<Layer> layerSet = GetLayers(dataSource);
+            List<OSGeo.OGR.Layer> layerSet = GetLayers(dataSource); 
 
             ///Declare trees
             GH_Structure<GH_Rectangle> recs = new GH_Structure<GH_Rectangle>();
@@ -106,6 +107,7 @@ namespace Heron
                 ///
                 OSGeo.OSR.SpatialReference sourceSRS = new SpatialReference(Osr.SRS_WKT_WGS84);
                 string spatialReference = GetSpatialReference(ogrLayer, iLayer, dataSource, sourceSRS);
+                sourceSRS.SetFromUserInput(spatialReference);
                 spatialReferences.Append(new GH_String(spatialReference), new GH_Path(iLayer));
                 
 
@@ -119,15 +121,33 @@ namespace Heron
                 OSGeo.OSR.SpatialReference userSRS = new OSGeo.OSR.SpatialReference("");
                 userSRS.SetFromUserInput(userSRStext);
 
+                ///Get OGR envelope of the data in the layer in the sourceSRS
+                OSGeo.OGR.Envelope envelopeOgr = new OSGeo.OGR.Envelope();
+                ogrLayer.GetExtent(envelopeOgr, 1);
+
+                ///If not set, set the earth anchor point to the center of the data
+                if (!Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthLocationIsSet())
+                {
+                    OSGeo.OGR.Geometry sourceCenter = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
+                    sourceCenter.AddPoint(envelopeOgr.MinX + (envelopeOgr.MaxX - envelopeOgr.MinX)/2, envelopeOgr.MinY + (envelopeOgr.MaxY - envelopeOgr.MinY)/2, 0.0);
+                    sourceCenter.AssignSpatialReference(sourceSRS);
+                    sourceCenter.TransformTo(userSRS);
+                    EarthAnchorPoint eap = new EarthAnchorPoint();
+                    eap.EarthBasepointLatitude = sourceCenter.GetY(0);
+                    eap.EarthBasepointLongitude = sourceCenter.GetX(0);
+
+                    ///Set new EAP
+                    Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint = eap;
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "The earth anchor point was not previously set and has now been set to the center of the data.");
+
+                }
+
                 ///These transforms move and scale in order to go from userSRS to XYZ and vice versa
                 Transform userSRSToModelTransform = Heron.Convert.GetUserSRSToModelTransform(userSRS);
                 Transform modelToUserSRSTransform = Heron.Convert.GetModelToUserSRSTransform(userSRS);
                 Transform sourceToModelSRSTransform = Heron.Convert.GetUserSRSToModelTransform(sourceSRS);
                 Transform modelToSourceSRSTransform = Heron.Convert.GetModelToUserSRSTransform(sourceSRS);
 
-                ///Get OGR envelope of the data in the layer in the sourceSRS
-                OSGeo.OGR.Envelope envelopeOgr = new OSGeo.OGR.Envelope();
-                ogrLayer.GetExtent(envelopeOgr, 1);
 
                 OSGeo.OGR.Geometry extMinSourceOgr = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
                 extMinSourceOgr.AddPoint(envelopeOgr.MinX, envelopeOgr.MinY, 0.0);
@@ -136,6 +156,7 @@ namespace Heron
                 OSGeo.OGR.Geometry extMaxSourceOgr = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
                 extMaxSourceOgr.AddPoint(envelopeOgr.MaxX, envelopeOgr.MaxY, 0.0);
                 extMaxSourceOgr.AssignSpatialReference(sourceSRS);
+
 
                 ///Get extents in Rhino SRS
                 Point3d extPTmin = Heron.Convert.OgrPointToPoint3d(extMinSourceOgr, sourceToModelSRSTransform);
@@ -154,6 +175,7 @@ namespace Heron
 
                 Rectangle3d recUser = new Rectangle3d(Plane.WorldXY, extPTminUser, extPTmaxUser);
                 recsUser.Append(new GH_Rectangle(recUser), new GH_Path(iLayer));
+
 
 
                 if (boundary.Count == 0 && cropIt == true)
@@ -464,7 +486,7 @@ namespace Heron
             DA.SetDataTree(8, gtype);
         }
 
-        private string GetSpatialReference(Layer layer, int iLayer, DataSource dataSource, SpatialReference sourceSRS)
+        private string GetSpatialReference(OSGeo.OGR.Layer layer, int iLayer, DataSource dataSource, SpatialReference sourceSRS)
         {
             string spatialReference;
             if (layer.GetSpatialRef() == null)
@@ -498,7 +520,7 @@ namespace Heron
                     }
                     catch
                     {
-                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Failed to get an EPSG Spatial Reference System (SRS) from layer " + layer.GetName() + ".");
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Failed to get an EPSG Spatial Reference System (SRS) integer from layer " + layer.GetName() + ".");
                     }
                 }
 
@@ -506,7 +528,7 @@ namespace Heron
             return spatialReference;
         }
 
-        private List<Layer> GetLayers(DataSource dataSource)
+        private List<OSGeo.OGR.Layer> GetLayers(DataSource dataSource)
         {
             List<OSGeo.OGR.Layer> layerSet = new List<OSGeo.OGR.Layer>();
 
