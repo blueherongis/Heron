@@ -47,6 +47,9 @@
     <Reference Include="Grasshopper, Version=6.32.20340.21000, Culture=neutral, PublicKeyToken=dda4f5ec2cd80803, processorArchitecture=MSIL">
       <HintPath>..\packages\Grasshopper.6.32.20340.21001\lib\net45\Grasshopper.dll</HintPath>
     </Reference>
+    <Reference Include="laszip.net, Version=2.2.0.0, Culture=neutral, PublicKeyToken=bc50e9aa04368e1b, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unofficial.laszip.net.2.2.0\lib\net4\laszip.net.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -91,6 +94,9 @@
     <Compile Include="ColorToHex.cs" />
     <Compile Include="Convert.cs" />
     <Compile Include="ExportVector.cs" />
+    <Compile Include="HeronBoxPreviewComponent.cs" />
+    <None Include="ImageCubeMap.cs" />
+    <None Include="ImageCubeToEqui.cs" />
     <Compile Include="ImageRotate.cs" />
     <Compile Include="ImageFlip.cs" />
     <Compile Include="GdalConfiguration.cs" />
@@ -100,6 +106,7 @@
     <Compile Include="HeronComponent.cs" />
     <Compile Include="HeronInfo.cs" />
     <Compile Include="HeronRasterPreviewComponent.cs" />
+    <Compile Include="ImportLAZ.cs" />
     <Compile Include="ImportOSM.cs" />
     <Compile Include="ImportSHP.cs" />
     <Compile Include="ImportRaster.cs" />
@@ -136,6 +143,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SlippyTiles.cs" />
     <Compile Include="SlippyViewport.cs" />
+    <Compile Include="CoordinateTransformation.cs" />
     <Compile Include="VisualCenter.cs" />
     <Compile Include="XYtoDD.cs" />
   </ItemGroup>
