@@ -93,6 +93,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HexToColor.cs" />
     <Compile Include="ColorToHex.cs" />
     <Compile Include="Convert.cs" />
     <Compile Include="ExportVector.cs" />
