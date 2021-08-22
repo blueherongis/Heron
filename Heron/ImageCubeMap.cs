@@ -7,6 +7,7 @@ using Grasshopper.Kernel;
 using Rhino.Geometry;
 using Rhino.DocObjects;
 using Rhino.Collections;
+using Rhino.Display;
 
 namespace Heron
 {
@@ -16,8 +17,8 @@ namespace Heron
         /// Initializes a new instance of the ImageCubeMap class.
         /// </summary>
         public ImageCubeMap()
-          : base("View Cubemap", "CM",
-              "Generate a cubemap from a given plane using the display mode in the active viewport.",
+          : base("Cubemap From View", "CM",
+              "Generate a cubemap from a given plane using the specified display mode.",
               "Utilities")
         {
         }
@@ -32,11 +33,13 @@ namespace Heron
             pManager.AddTextParameter("Folder Path", "folderPath", "Folder path for exported cube maps.", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for exported cube maps.", GH_ParamAccess.item, "cubemap");
             pManager.AddIntegerParameter("Resolution", "res", "The width resolution of the cube map.", GH_ParamAccess.item, 1024);
+            pManager.AddTextParameter("Display Mode", "displayMode", "Set the display mode to be used when creating the cubemap.  If no display mode is set or does not exist in the document, the active view's display mode will be used.", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "run", "Go ahead and run the export", GH_ParamAccess.item);
 
             pManager[1].Optional = true;
             pManager[2].Optional = true;
             pManager[3].Optional = true;
+            pManager[4].Optional = true;
         }
 
         /// <summary>
@@ -67,9 +70,13 @@ namespace Heron
             int imageWidth = 0;
             DA.GetData<int>(3, ref imageWidth);
             imageWidth = imageWidth / 4;
+            Size size = new Size(imageWidth, imageWidth);
+
+            string displayMode = string.Empty;
+            DA.GetData<string>(4, ref displayMode);
 
             bool run = false;
-            DA.GetData<bool>(4, ref run);
+            DA.GetData<bool>(5, ref run);
 
             int pad = camPlanes.Count.ToString().Length;
 
@@ -77,6 +84,14 @@ namespace Heron
 
             ///Save the intial camera
             saveCam = camFromVP(Rhino.RhinoDoc.ActiveDoc.Views.ActiveView.ActiveViewport);
+
+            ///Set the display mode to be used for bitmaps
+            DisplayModeDescription viewMode = Rhino.RhinoDoc.ActiveDoc.Views.ActiveView.ActiveViewport.DisplayMode;
+
+            if (DisplayModeDescription.FindByName(displayMode) != null)
+            {
+                viewMode = DisplayModeDescription.FindByName(displayMode);
+            }
 
             if (run)
             {
@@ -86,17 +101,21 @@ namespace Heron
                     Rhino.Display.RhinoView view = Rhino.RhinoDoc.ActiveDoc.Views.ActiveView;
                     Rhino.Display.RhinoViewport vp = view.ActiveViewport;
 
+                    ///Get the bounding box of all visible object in the doc for use in setting up the camera 
+                    ///target so that the far frustrum plane doesn't clip anything
+                    double zoomDistance = Rhino.RhinoDoc.ActiveDoc.Objects.BoundingBoxVisible.Diagonal.Length;
+
                     Plane camPlane = camPlanes[i];
                     Point3d camPoint = camPlane.Origin;
                     Vector3d camDir = camPlane.YAxis;
-                    Vector3d camUp = camPlane.ZAxis;
-                    Point3d tarPoint = Transform.Translation(camDir * 10) * camPoint;
+                    Point3d tarPoint = Transform.Translation(camDir * zoomDistance/2) * camPoint;
 
-
-                    vp.SetCameraLocations(tarPoint, camPoint);
-                    vp.CameraUp = camPlane.ZAxis;
-                    vp.Camera35mmLensLength = 12;
-                    view.Redraw();
+                    
+                    vp.ChangeToPerspectiveProjection(false, 12.0);
+                    //vp.Size = size;
+                    vp.DisplayMode = viewMode;
+                    //view.Redraw();
+                    
 
                     ///Set up final bitmap
                     Bitmap cubemap = new Bitmap(imageWidth * 4, imageWidth * 3);
@@ -104,51 +123,52 @@ namespace Heron
                     ///Place the images on cubemap bitmap
                     using (Graphics gr = Graphics.FromImage(cubemap))
                     {
-
-                        int insertLoc = 0;
-
                         ///Grab bitmap
-                        System.Drawing.Size size = new System.Drawing.Size(imageWidth, imageWidth);
-                        ///Initiate camera direction to make left first image
-                        camDir.Rotate(-180 * (Math.PI / 180), vp.CameraUp);
-                        ///Set rotation amount at 90deg
-                        double dirAngle = -90 * (Math.PI / 180);
+                        Message = view.DisplayPipeline.IsOpenGL.ToString();
+
+                        ///Set up camera directions
+                        Point3d tarLeft = Transform.Translation(-camPlane.XAxis * zoomDistance / 2) * camPoint;
+                        Point3d tarFront = Transform.Translation(camPlane.YAxis * zoomDistance / 2) * camPoint;
+                        Point3d tarRight = Transform.Translation(camPlane.XAxis * zoomDistance / 2) * camPoint;
+                        Point3d tarBack = Transform.Translation(-camPlane.YAxis * zoomDistance / 2) * camPoint;
+                        Point3d tarUp = Transform.Translation(camPlane.ZAxis * zoomDistance / 2) * camPoint;
+                        Point3d tarDown = Transform.Translation(-camPlane.ZAxis * zoomDistance / 2) * camPoint;
+                        List<Point3d> camTargets = new List<Point3d>() { tarLeft, tarFront, tarRight, tarBack, tarUp, tarDown };
 
                         ///Loop through pano directions
+                        int insertLoc = 0;
                         for (int d = 0; d < 4; d++)
                         {
                             ///Set camera direction
-                            camDir.Rotate(dirAngle, vp.CameraUp);
-                            vp.SetCameraDirection(camDir, true);
+                            vp.SetCameraLocations(camTargets[d], camPoint);
 
                             ///Redraw
-                            view.Redraw();
+                            //view.Redraw();
 
-                            gr.DrawImage(view.CaptureToBitmap(size, false, false, false), insertLoc, imageWidth);
+                            gr.DrawImage(view.CaptureToBitmap(size, viewMode), insertLoc, imageWidth);
 
                             insertLoc = insertLoc + imageWidth;
-
                         }
+                        
                         ///Get up and down views
-
                         ///Get up view
-                        vp.SetCameraDirection(-camDir, true);
-                        vp.SetCameraDirection(vp.CameraUp, true);
+                        vp.SetCameraLocations(tarUp, camPoint);
                         ///Redraw
                         view.Redraw();
-                        gr.DrawImage(view.CaptureToBitmap(size, false, false, false), imageWidth, 0);
+                        var bmTop = view.CaptureToBitmap(size, viewMode);
+                        bmTop.RotateFlip(RotateFlipType.Rotate180FlipNone);
+                        gr.DrawImage(bmTop, imageWidth, 0);
 
                         ///Get down view
-                        camDir.Rotate(dirAngle * 2, camUp);
-                        vp.SetCameraDirection(camDir, true);
-                        vp.SetCameraDirection(-vp.CameraUp, true);
+                        vp.SetCameraLocations(tarDown, camPoint);
 
                         ///Redraw
                         view.Redraw();
-                        gr.DrawImage(view.CaptureToBitmap(size, false, false, false), imageWidth, imageWidth * 2);
+                        var bmBottom = view.CaptureToBitmap(size, viewMode);
+                        gr.DrawImage(view.CaptureToBitmap(size, viewMode), imageWidth, imageWidth * 2);
 
                     }
-                    ///End pano directions loop
+                    ///End cubemap construction loop
                     
                     ///Save cubemap bitmap
                     string s = i.ToString().PadLeft(pad, '0');
@@ -162,6 +182,7 @@ namespace Heron
 
             ///Restore initial camera
             setCamera(saveCam, Rhino.RhinoDoc.ActiveDoc.Views.ActiveView.ActiveViewport);
+            Rhino.RhinoDoc.ActiveDoc.Views.ActiveView.Redraw();
 
             DA.SetDataList(0, cubemaps);
         }
@@ -176,7 +197,8 @@ namespace Heron
             public Vector3d up;
             public double lens;
             public bool parallel;
-
+            public Size size;
+            public DisplayModeDescription displayMode;
         }
 
         camera camFromVP(Rhino.Display.RhinoViewport vp)
@@ -187,14 +209,13 @@ namespace Heron
             c.up = vp.CameraUp;
             c.lens = vp.Camera35mmLensLength;
             c.parallel = vp.IsParallelProjection;
+            c.size = vp.Size;
+            c.displayMode = vp.DisplayMode;
             return c;
         }
 
         void setCamera(camera c, Rhino.Display.RhinoViewport vp)
         {
-            vp.SetCameraLocations(c.target, c.location);
-            vp.CameraUp = c.up;
-            vp.Camera35mmLensLength = c.lens;
             if (c.parallel)
             {
                 vp.ChangeToParallelProjection(true);
@@ -203,7 +224,11 @@ namespace Heron
             {
                 vp.ChangeToPerspectiveProjection(false, c.lens);
             }
-
+            vp.SetCameraLocations(c.target, c.location);
+            vp.CameraUp = c.up;
+            vp.Camera35mmLensLength = c.lens;
+            vp.Size = c.size;
+            vp.DisplayMode = c.displayMode;
         }
 
 
