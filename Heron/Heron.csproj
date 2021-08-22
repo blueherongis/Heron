@@ -22,6 +22,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -30,6 +31,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Eto, Version=2.5.0.0, Culture=neutral, PublicKeyToken=552281e97c755530, processorArchitecture=MSIL">
@@ -94,9 +96,13 @@
     <Compile Include="ColorToHex.cs" />
     <Compile Include="Convert.cs" />
     <Compile Include="ExportVector.cs" />
+    <None Include="GdalPoligonize.cs" />
     <Compile Include="HeronBoxPreviewComponent.cs" />
-    <None Include="ImageCubeMap.cs" />
-    <None Include="ImageCubeToEqui.cs" />
+    <Compile Include="ImageFilterColors.cs" />
+    <Compile Include="ImageCubeMapPlus.cs" />
+    <Compile Include="ImageCubeMap.cs" />
+    <Compile Include="ImageCubeToEqui.cs" />
+    <Compile Include="ImageTopColors.cs" />
     <Compile Include="ImageRotate.cs" />
     <Compile Include="ImageFlip.cs" />
     <Compile Include="GdalConfiguration.cs" />

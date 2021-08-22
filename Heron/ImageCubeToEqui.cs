@@ -349,8 +349,8 @@ namespace Heron
         }
 
 
-
-        public unsafe static Bitmap ConvertCubicToEquirectangularLockbits(Bitmap bm, int w)
+        
+        /*public unsafe static Bitmap ConvertCubicToEquirectangularLockbits(Bitmap bm, int w)
         {
             //algorithm from https://stackoverflow.com/questions/34250742/converting-a-cubemap-into-equirectangular-panorama
             //for cube maps with the following format:
@@ -500,5 +500,6 @@ namespace Heron
 
             return equiTexture;
         }
+        */
     }
 }
