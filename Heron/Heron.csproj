@@ -93,66 +93,69 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="HexToColor.cs" />
-    <Compile Include="ColorToHex.cs" />
+    <Compile Include="SpeckleAsync\GH_AsyncComponent.cs" />
+    <Compile Include="Components\Utilities\HexToColor.cs" />
+    <Compile Include="Components\Utilities\ColorToHex.cs" />
     <Compile Include="Convert.cs" />
-    <Compile Include="ExportVector.cs" />
-    <None Include="GdalPoligonize.cs" />
+    <Compile Include="Components\GIS Import-Export\ExportVector.cs" />
+    <Compile Include="SpeckleAsync\WorkerInstance.cs" />
+    <Compile Include="Components\GIS API\Yelp.cs" />
+    <None Include="Components\GIS Tools\GdalPoligonize.cs" />
     <Compile Include="HeronBoxPreviewComponent.cs" />
-    <Compile Include="ImageFilterColors.cs" />
-    <Compile Include="ImageCubeMapPlus.cs" />
-    <Compile Include="ImageCubeMap.cs" />
-    <Compile Include="ImageCubeToEqui.cs" />
-    <Compile Include="ImageTopColors.cs" />
-    <Compile Include="ImageRotate.cs" />
-    <Compile Include="ImageFlip.cs" />
+    <Compile Include="Components\Utilities\ImageFilterColors.cs" />
+    <Compile Include="Components\Utilities\ImageCubeMapPlus.cs" />
+    <Compile Include="Components\Utilities\ImageCubeMap.cs" />
+    <Compile Include="Components\Utilities\ImageCubeToEqui.cs" />
+    <Compile Include="Components\Utilities\ImageTopColors.cs" />
+    <Compile Include="Components\Utilities\ImageRotate.cs" />
+    <Compile Include="Components\Utilities\ImageFlip.cs" />
     <Compile Include="GdalConfiguration.cs" />
-    <Compile Include="GdalOGR2OGR.cs" />
-    <Compile Include="GdalWarp.cs" />
-    <Compile Include="GdalTranslate.cs" />
+    <Compile Include="Components\GIS Tools\GdalOGR2OGR.cs" />
+    <Compile Include="Components\GIS Tools\GdalWarp.cs" />
+    <Compile Include="Components\GIS Tools\GdalTranslate.cs" />
     <Compile Include="HeronComponent.cs" />
     <Compile Include="HeronInfo.cs" />
     <Compile Include="HeronRasterPreviewComponent.cs" />
-    <Compile Include="ImportLAZ.cs" />
-    <Compile Include="ImportOSM.cs" />
-    <Compile Include="ImportSHP.cs" />
-    <Compile Include="ImportRaster.cs" />
-    <Compile Include="ImportTopo.cs" />
-    <Compile Include="ImportVector.cs" />
-    <Compile Include="ImportTopo_DEPRECATED.cs">
+    <Compile Include="Components\GIS Import-Export\ImportLAZ.cs" />
+    <Compile Include="Components\GIS Import-Export\ImportOSM.cs" />
+    <Compile Include="Components\GIS Import-Export\ImportSHP.cs" />
+    <Compile Include="Components\GIS Import-Export\ImportRaster.cs" />
+    <Compile Include="Components\GIS Import-Export\ImportTopo.cs" />
+    <Compile Include="Components\GIS Import-Export\ImportVector.cs" />
+    <Compile Include="Components\GIS Import-Export\ImportTopo_DEPRECATED.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="MapboxRaster.cs" />
-    <Compile Include="MapboxTopo.cs" />
-    <Compile Include="MapboxVector.cs" />
-    <Compile Include="MultiMeshPatch.cs" />
-    <Compile Include="MultiSDiff.cs" />
-    <Compile Include="RESTLayer.cs" />
-    <Compile Include="RESTTOSM.cs" />
-    <Compile Include="SlippyRaster.cs" />
+    <Compile Include="Components\GIS API\MapboxRaster.cs" />
+    <Compile Include="Components\GIS API\MapboxTopo.cs" />
+    <Compile Include="Components\GIS API\MapboxVector.cs" />
+    <Compile Include="Components\Utilities\MultiMeshPatch.cs" />
+    <Compile Include="Components\Utilities\MultiSDiff.cs" />
+    <Compile Include="Components\GIS REST\RESTLayer.cs" />
+    <Compile Include="Components\GIS REST\RESTTOSM.cs" />
+    <Compile Include="Components\GIS API\SlippyRaster.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="RESTRaster.cs">
+    <Compile Include="Components\GIS REST\RESTRaster.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="RESTLayer_DEPRECATED.cs" />
-    <Compile Include="RESTRevGeo.cs" />
-    <Compile Include="RESTTopo.cs" />
-    <Compile Include="RESTVector.cs">
+    <Compile Include="Components\GIS REST\RESTLayer_DEPRECATED.cs" />
+    <Compile Include="Components\GIS REST\RESTRevGeo.cs" />
+    <Compile Include="Components\GIS REST\RESTTopo.cs" />
+    <Compile Include="Components\GIS REST\RESTVector.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="SetEAP.cs" />
-    <Compile Include="DDtoXY.cs" />
-    <Compile Include="RESTGeocode.cs" />
+    <Compile Include="Components\GIS Tools\SetEAP.cs" />
+    <Compile Include="Components\GIS Tools\DDtoXY.cs" />
+    <Compile Include="Components\GIS REST\RESTGeocode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SlippyTiles.cs" />
-    <Compile Include="SlippyViewport.cs" />
-    <Compile Include="CoordinateTransformation.cs" />
-    <Compile Include="VisualCenter.cs" />
-    <Compile Include="XYtoDD.cs" />
+    <Compile Include="Components\GIS API\SlippyTiles.cs" />
+    <Compile Include="Components\GIS API\SlippyViewport.cs" />
+    <Compile Include="Components\GIS Tools\CoordinateTransformation.cs" />
+    <Compile Include="Components\Utilities\VisualCenter.cs" />
+    <Compile Include="Components\GIS Tools\XYtoDD.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -210,6 +213,7 @@
   <ItemGroup>
     <None Include="Resources\heron-icon.png" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>robocopy "$(ProjectDir)bin\$(ConfigurationName)" "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron" /E /xf *.pdb

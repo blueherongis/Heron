@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
@@ -398,12 +399,17 @@ namespace Heron
             if (osmGeo.Tags.ContainsKey("height"))
             {
                 string heightText = osmGeo.Tags.GetValue("height").Split(' ')[0]; //clear trailing m
-                                                                                  //check if in feet
-                if (heightText.Contains("'"))
+                                                                                  
+                if (heightText.Contains("'")) //check if in feet
                 {
                     keyHeight = System.Convert.ToDouble(heightText.Split('\'')[0]) / 3.28084; //convert feet to meters
                 }
                 //if not feet assume meters
+                else if (heightText.Contains("m") || heightText.Contains("M")) //clear trailing m with no space
+                {
+                    string[] heightWithM = Regex.Split(heightText, @"[^\d]");
+                    keyHeight = System.Convert.ToDouble(heightWithM[0]);
+                }
                 else
                 {
                     keyHeight = System.Convert.ToDouble(heightText);
