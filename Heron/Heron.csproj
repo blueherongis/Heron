@@ -93,13 +93,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Components\Utilities\MultiMoveToMesh.cs" />
     <Compile Include="SpeckleAsync\GH_AsyncComponent.cs" />
     <Compile Include="Components\Utilities\HexToColor.cs" />
     <Compile Include="Components\Utilities\ColorToHex.cs" />
     <Compile Include="Convert.cs" />
     <Compile Include="Components\GIS Import-Export\ExportVector.cs" />
     <Compile Include="SpeckleAsync\WorkerInstance.cs" />
-    <Compile Include="Components\GIS API\Yelp.cs" />
+    <None Include="Components\GIS API\Yelp.cs" />
     <None Include="Components\GIS Tools\GdalPoligonize.cs" />
     <Compile Include="HeronBoxPreviewComponent.cs" />
     <Compile Include="Components\Utilities\ImageFilterColors.cs" />
