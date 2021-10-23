@@ -93,7 +93,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Components\Utilities\MultiMoveToMesh.cs" />
+    <Compile Include="Components\GIS REST\RESTVector.cs" />
+    <Compile Include="Components\Utilities\MultiMoveToTopo.cs" />
     <Compile Include="SpeckleAsync\GH_AsyncComponent.cs" />
     <Compile Include="Components\Utilities\HexToColor.cs" />
     <Compile Include="Components\Utilities\ColorToHex.cs" />
@@ -145,7 +146,7 @@
     <Compile Include="Components\GIS REST\RESTLayer_DEPRECATED.cs" />
     <Compile Include="Components\GIS REST\RESTRevGeo.cs" />
     <Compile Include="Components\GIS REST\RESTTopo.cs" />
-    <Compile Include="Components\GIS REST\RESTVector.cs">
+    <Compile Include="Components\GIS REST\RESTVector_DEPRECATED.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Components\GIS Tools\SetEAP.cs" />
@@ -214,11 +215,9 @@
   <ItemGroup>
     <None Include="Resources\heron-icon.png" />
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>robocopy "$(ProjectDir)bin\$(ConfigurationName)" "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron" /E /xf *.pdb
-Move /Y "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron\$(ProjectName).dll" "$(Userprofile)\AppData\Roaming\Grasshopper\Libraries\Heron\$(ProjectName).gha"</PostBuildEvent>
+    <PostBuildEvent>Move /Y "$(ProjectDir)bin\$(ConfigurationName)\$(ProjectName).dll" "$(ProjectDir)bin\$(ConfigurationName)\$(ProjectName).gha"</PostBuildEvent>
   </PropertyGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

@@ -1,33 +1,10 @@
-﻿using System;
-using System.IO;
-using System.Xml;
-using System.Xml.Linq;
-using System.Linq;
-using System.Data;
-using System.Drawing;
-using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using Grasshopper;
-using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
-using Rhino;
 using Rhino.Geometry;
-using Rhino.DocObjects;
-using Rhino.Collections;
-using GH_IO;
-using GH_IO.Serialization;
-
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Serialization;
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace Heron
 {
@@ -51,9 +28,9 @@ namespace Heron
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("fieldNames", "fieldNames", "List of data fields associated with vectors", GH_ParamAccess.list);
-            pManager.AddTextParameter("fieldValues", "fieldValues", "Data values associated with vectors", GH_ParamAccess.tree);
-            pManager.AddPointParameter("featurePoints", "featurePoints", "Points of vector data", GH_ParamAccess.tree);
+            pManager.AddTextParameter("Field Names", "fieldNames", "List of data fields associated with vectors", GH_ParamAccess.list);
+            pManager.AddTextParameter("Field Values", "fieldValues", "Data values associated with vectors", GH_ParamAccess.tree);
+            pManager.AddGeometryParameter("Feature Geometry", "featureGeometry", "Feature geometry from REST vector data.  To output points only, select Points Only from component menu.", GH_ParamAccess.tree);
             pManager.AddTextParameter("RESTQuery", "RESTQuery", "Full text of REST query", GH_ParamAccess.tree);
 
         }
@@ -77,7 +54,6 @@ namespace Heron
 
             ///TODO: implement SetCRS here.
             ///Option to set CRS here to user-defined.  Needs a SetCRS global variable.
-            int SRef = 3857;
 
             OSGeo.OSR.SpatialReference userSRS = new OSGeo.OSR.SpatialReference("");
             userSRS.SetFromUserInput(userSRStext);
@@ -92,11 +68,10 @@ namespace Heron
             Transform modelToUserSRSTransform = Heron.Convert.GetModelToUserSRSTransform(userSRS);
 
             GH_Structure<GH_String> mapquery = new GH_Structure<GH_String>();
-            GH_Structure<GH_ObjectWrapper> jT = new GH_Structure<GH_ObjectWrapper>();
-            List<JObject> j = new List<JObject>();
 
-            GH_Structure<GH_Point> restpoints = new GH_Structure<GH_Point>();
-            GH_Structure<GH_String> attpoints = new GH_Structure<GH_String>();
+            GH_Structure<GH_Point> gsetUser = new GH_Structure<GH_Point>();
+            GH_Structure<IGH_GeometricGoo> gGoo = new GH_Structure<IGH_GeometricGoo>();
+            GH_Structure<GH_String> fset = new GH_Structure<GH_String>();
             GH_Structure<GH_String> fieldnames = new GH_Structure<GH_String>();
 
 
@@ -110,7 +85,7 @@ namespace Heron
                 string restquery = URL +
                   "query?where=&text=&objectIds=&time=&geometry=" + bbox.Min.X + "%2C" + bbox.Min.Y + "%2C" + bbox.Max.X + "%2C" + bbox.Max.Y +
                   "&geometryType=esriGeometryEnvelope&inSR=" + userSRSInt +
-                  "&spatialRel=+esriSpatialRelIntersects" +
+                  "&spatialRel=esriSpatialRelIntersects" +
                   "&relationParam=&outFields=*" +
                   "&returnGeometry=true" +
                   "&maxAllowableOffset=" +
@@ -131,59 +106,194 @@ namespace Heron
                 if (run)
                 {
 
-                    string result = Heron.Convert.HttpToJson(restquery);
+                    //string result = Heron.Convert.HttpToJson(restquery);
 
+                    OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(restquery, 0);
 
-                    jT.Append(new GH_ObjectWrapper(JsonConvert.DeserializeObject<JObject>(result)), cpath);
-                    j.Add(JsonConvert.DeserializeObject<JObject>(result));
-
-                    JArray e = (JArray)j[i]["features"];
-
-                    for (int m = 0; m < e.Count; m++)
+                    if (dataSource == null)
                     {
-                        JObject aa = (JObject)j[i]["features"][m]["attributes"];
-                        GH_Path path = new GH_Path(i, m);
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
+                    }
 
-                        ///Need to be able to escape this if no "geometry" property
-                        //if (j[i].Property("features.[" + m + "].geometry") != null)
-                        if (j[i]["features"][m]["geometry"] != null)
+
+                    ///Loop through each layer. Likely not any layers in a REST service
+                    for (int iLayer = 0; iLayer < dataSource.GetLayerCount(); iLayer++)
+                    {
+                        OSGeo.OGR.Layer ogrLayer = dataSource.GetLayerByIndex(iLayer);
+
+                        if (ogrLayer == null)
                         {
-                            ///Choose type of geometry to read
-                            JsonReader jreader = j[i]["features"][m]["geometry"].CreateReader();
-                            int jrc = 0;
-                            string gt = null;
-                            while ((jreader.Read()) && (jrc < 1))
+                            Console.WriteLine($"Couldn't fetch advertised layer {iLayer}");
+                            System.Environment.Exit(-1);
+                        }
+
+                        long count = ogrLayer.GetFeatureCount(1);
+                        int featureCount = System.Convert.ToInt32(count);
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"Layer #{iLayer} {ogrLayer.GetName()} has {featureCount} features");
+
+                        OSGeo.OGR.FeatureDefn def = ogrLayer.GetLayerDefn();
+
+                        ///Get the field names
+                        for (int iAttr = 0; iAttr < def.GetFieldCount(); iAttr++)
+                        {
+                            OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iAttr);
+                            fieldnames.Append(new GH_String(fdef.GetNameRef()), new GH_Path(i, iLayer));
+                        }
+
+                        ///Loop through geometry
+                        OSGeo.OGR.Feature feat;
+                        def = ogrLayer.GetLayerDefn();
+
+                        int m = 0;
+                        while ((feat = ogrLayer.GetNextFeature()) != null)
+                        {
+
+                            OSGeo.OGR.Geometry geomUser = feat.GetGeometryRef().Clone();
+                            OSGeo.OGR.Geometry sub_geomUser;
+
+                            ///reproject geometry to WGS84 and userSRS
+                            ///TODO: look into using the SetCRS global variable here
+                            if (geomUser.GetSpatialReference() == null) { geomUser.AssignSpatialReference(userSRS); }
+
+                            geomUser.TransformTo(userSRS);
+
+                            if (feat.GetGeometryRef() != null)
                             {
-                                if (jreader.Value != null)
+                                if (!pointsOnly)
                                 {
-                                    //gtype.Add(jreader.Value, path);
-                                    gt = jreader.Value.ToString();
-                                    jrc++;
+                                    ///Convert GDAL geometries to IGH_GeometricGoo
+                                    gGoo.AppendRange(Heron.Convert.OgrGeomToGHGoo(geomUser, userSRSToModelTransform), new GH_Path(i, iLayer, m));
+
+                                    /// Get Feature Values
+                                    if (fset.PathExists(new GH_Path(i, iLayer, m)))
+                                    {
+                                        fset.get_Branch(new GH_Path(i, iLayer, m)).Clear();
+                                    }
+                                    for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                                    {
+                                        OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
+                                        if (feat.IsFieldSet(iField))
+                                        {
+                                            fset.Append(new GH_String(feat.GetFieldAsString(iField)), new GH_Path(i, iLayer, m));
+                                        }
+                                        else
+                                        {
+                                            fset.Append(new GH_String("null"), new GH_Path(i, iLayer, m));
+                                        }
+                                    }
+                                    ///End get Feature Values
                                 }
+
+                                else
+                                {
+                                    ///Start get points if open polylines and points
+                                    for (int gpc = 0; gpc < geomUser.GetPointCount(); gpc++)
+                                    {
+                                        ///Loop through geometry points for User SRS
+                                        double[] ogrPtUser = new double[3];
+                                        geomUser.GetPoint(gpc, ogrPtUser);
+                                        Point3d pt3DUser = new Point3d(ogrPtUser[0], ogrPtUser[1], ogrPtUser[2]);
+                                        pt3DUser.Transform(userSRSToModelTransform);
+
+                                        gGoo.Append(new GH_Point(pt3DUser), new GH_Path(i, iLayer, m));
+                                        ///End loop through geometry points
+
+
+                                        /// Get Feature Values
+                                        if (fset.PathExists(new GH_Path(i, iLayer, m)))
+                                        {
+                                            fset.get_Branch(new GH_Path(i, iLayer, m)).Clear();
+                                        }
+                                        for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                                        {
+                                            OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
+                                            if (feat.IsFieldSet(iField))
+                                            {
+                                                fset.Append(new GH_String(feat.GetFieldAsString(iField)), new GH_Path(i, iLayer, m));
+                                            }
+                                            else
+                                            {
+                                                fset.Append(new GH_String("null"), new GH_Path(i, iLayer, m));
+                                            }
+                                        }
+                                        ///End Get Feature Values
+                                    }
+                                    ///End getting points if open polylines or points
+
+
+                                    ///Start getting points if closed polylines and multipolygons
+                                    for (int gi = 0; gi < geomUser.GetGeometryCount(); gi++)
+                                    {
+                                        sub_geomUser = geomUser.GetGeometryRef(gi);
+                                        OSGeo.OGR.Geometry subsub_geomUser;
+
+                                        if (sub_geomUser.GetGeometryCount() > 0)
+                                        {
+                                            for (int n = 0; n < sub_geomUser.GetGeometryCount(); n++)
+                                            {
+                                                subsub_geomUser = sub_geomUser.GetGeometryRef(n);
+
+                                                for (int ptnum = 0; ptnum < subsub_geomUser.GetPointCount(); ptnum++)
+                                                {
+                                                    ///Loop through geometry points for User SRS
+                                                    double[] ogrPtUser = new double[3];
+                                                    subsub_geomUser.GetPoint(ptnum, ogrPtUser);
+                                                    Point3d pt3DUser = new Point3d(ogrPtUser[0], ogrPtUser[1], ogrPtUser[2]);
+                                                    pt3DUser.Transform(userSRSToModelTransform);
+
+                                                    gGoo.Append(new GH_Point(pt3DUser), new GH_Path(i, iLayer, m, gi, n));
+                                                    ///End loop through geometry points
+                                                }
+                                                subsub_geomUser.Dispose();
+                                            }
+                                        }
+
+                                        else
+                                        {
+                                            for (int ptnum = 0; ptnum < sub_geomUser.GetPointCount(); ptnum++)
+                                            {
+                                                ///Loop through geometry points for User SRS
+                                                double[] ogrPtUser = new double[3];
+                                                sub_geomUser.GetPoint(ptnum, ogrPtUser);
+                                                Point3d pt3DUser = new Point3d(ogrPtUser[0], ogrPtUser[1], ogrPtUser[2]);
+                                                pt3DUser.Transform(userSRSToModelTransform);
+
+                                                gGoo.Append(new GH_Point(pt3DUser), new GH_Path(i, iLayer, m, gi));
+
+                                                ///End loop through geometry points
+                                            }
+                                        }
+
+                                        sub_geomUser.Dispose();
+
+                                        /// Get Feature Values
+                                        if (fset.PathExists(new GH_Path(i, iLayer, m)))
+                                        {
+                                            fset.get_Branch(new GH_Path(i, iLayer, m)).Clear();
+                                        }
+                                        for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                                        {
+                                            OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
+                                            if (feat.IsFieldSet(iField))
+                                            {
+                                                fset.Append(new GH_String(feat.GetFieldAsString(iField)), new GH_Path(i, iLayer, m));
+                                            }
+                                            else
+                                            {
+                                                fset.Append(new GH_String("null"), new GH_Path(i, iLayer, m));
+                                            }
+                                        }
+                                        ///End Get Feature Values
+                                    }///End closed polygons and multipolygons
+                                }///End points only
                             }
+                            m++;
+                            geomUser.Dispose();
+                            feat.Dispose();
+                        }///end while loop through features
 
-                            JArray c = (JArray)j[i]["features"][m]["geometry"][gt][0];
-                            for (int k = 0; k < c.Count; k++)
-                            {
-                                double xx = (double)j[i]["features"][m]["geometry"][gt][0][k][0];
-                                double yy = (double)j[i]["features"][m]["geometry"][gt][0][k][1];
-                                Point3d xyz = new Point3d(xx, yy, 0);
-                                restpoints.Append(new GH_Point(userSRSToModelTransform * xyz), path);
-                            }
-                        }
-
-
-                        foreach (JProperty attribute in j[i]["features"][m]["attributes"])
-                        {
-                            attpoints.Append(new GH_String(attribute.Value.ToString()), path);
-                        }
                     }
-
-                    //Get the field names
-                    foreach (JObject fn in j[i]["fields"])
-                    {
-                        fieldnames.Append(new GH_String(fn["alias"].Value<string>()), cpath);
-                    }
+                    dataSource.Dispose();
                 }
             }
 
@@ -191,13 +301,55 @@ namespace Heron
             if (run)
             {
                 DA.SetDataList(0, fieldnames.get_Branch(0));
-                DA.SetDataTree(1, attpoints);
-                DA.SetDataTree(2, restpoints);
+                DA.SetDataTree(1, fset);
+                DA.SetDataTree(2, gGoo);
             }
             DA.SetDataTree(3, mapquery);
 
         }
 
+
+
+        private bool pointsOnly = false;
+        public bool PointsOnly
+        {
+            get { return pointsOnly; }
+            set
+            {
+                pointsOnly = value;
+                if ((!pointsOnly))
+                {
+                    Message = string.Empty;
+                }
+                else
+                {
+                    Message = "Points Only";
+                }
+            }
+        }
+        protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
+        {
+            ToolStripMenuItem item = Menu_AppendItem(menu, "Points Only", Menu_PointsOnlyChecked, true, PointsOnly);
+            item.ToolTipText = "Output only the points which make up the feature geometry.  If unchecked, the feature geometry will be output.";
+        }
+
+        private void Menu_PointsOnlyChecked(object sender, EventArgs e)
+        {
+            RecordUndoEvent("PointsOnly");
+            PointsOnly = !PointsOnly;
+            ExpireSolution(true);
+        }
+
+        public override bool Write(GH_IO.Serialization.GH_IWriter writer)
+        {
+            writer.SetBoolean("PointsOnly", PointsOnly);
+            return base.Write(writer);
+        }
+        public override bool Read(GH_IO.Serialization.GH_IReader reader)
+        {
+            PointsOnly = reader.GetBoolean("PointsOnly");
+            return base.Read(reader);
+        }
 
         protected override System.Drawing.Bitmap Icon
         {
@@ -209,7 +361,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{3E93C79E-954C-4074-8637-E1B9BDC8B367}"); }
+            get { return new Guid("{9324AECD-F345-4507-9C04-34D017378976}"); }
         }
     }
 }
