@@ -93,6 +93,8 @@ namespace Heron
                 viewMode = DisplayModeDescription.FindByName(displayMode);
             }
 
+            Message = viewMode.EnglishName;
+
             if (run)
             {
                 for (int i = 0; i < camPlanes.Count; i++)
@@ -115,7 +117,7 @@ namespace Heron
                     //vp.Size = size;
                     vp.DisplayMode = viewMode;
                     //view.Redraw();
-                    
+
 
                     ///Set up final bitmap
                     Bitmap cubemap = new Bitmap(imageWidth * 4, imageWidth * 3);
@@ -124,7 +126,6 @@ namespace Heron
                     using (Graphics gr = Graphics.FromImage(cubemap))
                     {
                         ///Grab bitmap
-                        Message = view.DisplayPipeline.IsOpenGL.ToString();
 
                         ///Set up camera directions
                         Point3d tarLeft = Transform.Translation(-camPlane.XAxis * zoomDistance / 2) * camPoint;

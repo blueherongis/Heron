@@ -127,6 +127,7 @@ namespace Heron
             saveCam = camFromVP(Rhino.RhinoDoc.ActiveDoc.Views.ActiveView.ActiveViewport);
 
             ///Set the display mode to be used for bitmaps
+            ///TODO: Add menu item to use "Heron View Analysis" display mode
             DisplayModeDescription viewMode = Rhino.RhinoDoc.ActiveDoc.Views.ActiveView.ActiveViewport.DisplayMode;
 
             if (DisplayModeDescription.FindByName(displayMode) != null)
@@ -134,11 +135,13 @@ namespace Heron
                 viewMode = DisplayModeDescription.FindByName(displayMode);
             }
 
+            Message = viewMode.EnglishName;
 
             if (run)
             {
                 for (int i = 0; i < camPlanes.Count; i++)
                 {
+                    ///TODO: setup ability to save cameras to the Rhino doc
                     ///Setup camera
                     Rhino.Display.RhinoView view = Rhino.RhinoDoc.ActiveDoc.Views.ActiveView;
                     Rhino.Display.RhinoViewport vp = view.ActiveViewport;
