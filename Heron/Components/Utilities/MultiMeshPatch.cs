@@ -36,6 +36,8 @@ namespace Heron
                 "any others will be considered holes and should be completely within the outer boundary.", GH_ParamAccess.tree);
             pManager.AddNumberParameter("Extrude Height", "extrude", "Height to extrude mesh patches.", GH_ParamAccess.tree);
             pManager[1].Optional = true;
+            Message = extrudeDir + "\n(" + totalMaxConcurrancy + " threads)";
+
         }
 
         /// <summary>
@@ -61,10 +63,6 @@ namespace Heron
             double tol = DocumentTolerance();
 
             //reserve one processor for GUI
-            totalMaxConcurrancy = System.Environment.ProcessorCount - 1;
-
-            //tells us how many threads were using
-            //Message = totalMaxConcurrancy + " threads";
 
             //create a dictionary that works in parallel
             var mPatchTree = new System.Collections.Concurrent.ConcurrentDictionary<GH_Path, GH_Mesh>();
@@ -100,23 +98,22 @@ namespace Heron
                       Polyline pL = null;
                       branchCrvs[0].TryGetPolyline(out pL);
                       branchCrvs.RemoveAt(0);
+                      if (!pL.IsClosed) { pL.Add(pL[0]); }
 
                       ///Check validity of pL
                       if (!pL.IsValid)
                       {
-                          AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Curve could not be converted to polyline or is invalid");
+                          AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Outer boundary curve could not be converted to polyline or is invalid");
                       }
-
-
 
                       ///The magic found here:
                       ///https://discourse.mcneel.com/t/mesh-with-holes-from-polylines-in-rhinowip-to-c/45589
                       Mesh mPatch = Mesh.CreatePatch(pL, tol, null, branchCrvs, null, null, true, 1);
                       mPatch.Ngons.AddPlanarNgons(tol);
+                      //mPatch.UnifyNormals();
                       mPatch.FaceNormals.ComputeFaceNormals();
                       mPatch.Normals.ComputeNormals();
                       mPatch.Compact();
-                      //mPatch.UnifyNormals();
 
                       if (height.PathExists(pth))
                       {
@@ -124,19 +121,29 @@ namespace Heron
                           {
                               GH_Convert.ToDouble(height.get_Branch(pth)[0], out offset, 0);
                               if (extrudeDir == "Extrude Z") { mPatch = mPatch.Offset(offset, true, Vector3d.ZAxis); }
-                              else { mPatch = mPatch.Offset(offset, true); }
+                              else 
+                              {
+                                  mPatch.Flip(true, true, true);
+                                  mPatch = mPatch.Offset(offset, true); 
+                              }
                           }
                       }
                       else if (height.get_FirstItem(true) != null)
                       {
                           GH_Convert.ToDouble(height.get_FirstItem(true), out offset, 0);
                           if (extrudeDir == "Extrude Z") { mPatch = mPatch.Offset(offset, true, Vector3d.ZAxis); }
-                          else { mPatch = mPatch.Offset(offset, true); }
+                          else 
+                          {
+                              mPatch.Flip(true, true, true);
+                              mPatch = mPatch.Offset(offset, true); 
+                          }
                       }
                       else
                       {
 
                       }
+
+                      if (mPatch.SolidOrientation() < 0) { mPatch.Flip(true, true, true); }
 
                       mPatchTree[pth] = new GH_Mesh(mPatch);
                   }
@@ -155,8 +162,8 @@ namespace Heron
             DA.SetDataTree(0, mTree);
         }
 
-
-        public static int totalMaxConcurrancy = 1;
+        ///Reserve one processor for GUI
+        public static int totalMaxConcurrancy = System.Environment.ProcessorCount - 1;
 
         /// Add menu items for extrusion selection
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
@@ -191,7 +198,7 @@ namespace Heron
             RecordUndoEvent("ExtrudeDir");
 
             extrudeDir = code;
-            Message = totalMaxConcurrancy + " threads | " + extrudeDir;
+            Message = extrudeDir + "\n(" + totalMaxConcurrancy + " threads)";
 
 
             ExpireSolution(true);
