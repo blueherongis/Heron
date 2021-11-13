@@ -1,29 +1,10 @@
-﻿using System;
-using System.IO;
-using System.Xml;
-using System.Xml.Linq;
-using System.Linq;
-using System.Data;
-using System.Drawing;
-using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using Grasshopper;
-using Grasshopper.Kernel;
-using Grasshopper.Kernel.Data;
-using Grasshopper.Kernel.Types;
-using Rhino;
-using Rhino.Geometry;
-using Rhino.DocObjects;
-using Rhino.Collections;
-using GH_IO;
-using GH_IO.Serialization;
+﻿using Grasshopper.Kernel;
 using OSGeo.GDAL;
 using OSGeo.OSR;
-using OSGeo.OGR;
+using Rhino.Geometry;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 
 
