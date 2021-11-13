@@ -53,7 +53,12 @@ namespace Heron
             TextureMapping tm = TextureMapping.CreatePlaneMapping(bounds.Plane, bounds.X, bounds.Y, new Interval(-1, 1));
             mesh.SetTextureCoordinates(tm, Transform.Identity, true);
             var mat = new DisplayMaterial(System.Drawing.Color.White);
-            mat.SetBitmapTexture(bitmap, true);
+
+            ///Force bitmap to redraw
+            string docBitmapName = string.Empty;
+            var docBitmap = Rhino.RhinoDoc.ActiveDoc.Bitmaps.Find(bitmap, true, out docBitmapName);
+
+            mat.SetBitmapTexture(docBitmapName, true);
             _previewItems.Add(new HeronRasterPreviewItem()
             {
                 mesh = mesh,
