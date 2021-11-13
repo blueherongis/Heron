@@ -27,7 +27,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve for map tiles", GH_ParamAccess.item);
-            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution.", GH_ParamAccess.item, 14);
+            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution.", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -66,6 +66,12 @@ namespace Heron
             var ranges = Convert.GetTileRange(boundaryBox, zoom);
             var x_range = ranges.XRange;
             var y_range = ranges.YRange;
+
+            if (x_range.Length > 100 || y_range.Length > 100)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "This tile range is too big (more than 100 tiles in the x or y direction). Check your units.");
+                return;
+            }
 
             ///Cycle through tiles to get bounding box
             List<Polyline> tileExtents = new List<Polyline>();
@@ -147,7 +153,7 @@ namespace Heron
             {
                 //You can add image files to your project resources and access them like this:
                 // return Resources.IconForThisComponent;
-                return null;
+                return Properties.Resources.vector;
             }
         }
 
