@@ -703,6 +703,8 @@ namespace Heron
             int n = (1 << zoom);
             int xtile = (int)Math.Floor((lon_deg + 180.0) / 360 * n);
             int ytile = (int)Math.Floor((1 - Math.Log(Math.Tan(lat_rad) + (1 / Math.Cos(lat_rad))) / Math.PI) / 2.0 * n);
+            if (xtile<0) { xtile = 0; }
+            if (ytile<0) { ytile = 0; }
             return new List<int> { xtile, ytile };
         }
 
@@ -739,12 +741,19 @@ namespace Heron
         {
             Point3d bndsMin = Convert.XYZToWGS(bnds.Min);
             Point3d bndsMax = Convert.XYZToWGS(bnds.Max);
+            BoundingBox worldBox = new BoundingBox(-180, -90, 0, 180, 90, 0);
+            if (!worldBox.Contains(bndsMin)) { bndsMin = worldBox.ClosestPoint(bndsMin); }
+            if (!worldBox.Contains(bndsMax)) { bndsMax = worldBox.ClosestPoint(bndsMax); }
+
             double xm = bndsMin.X;
             double xmx = bndsMax.X;
             double ym = bndsMin.Y;
             double ymx = bndsMax.Y;
             List<int> starting = Convert.DegToNum(ymx, xm, zoom);
             List<int> ending = Convert.DegToNum(ym, xmx, zoom);
+            ///Don't allow range to invert at lat/lon greater than the world
+            if (ending[0] < starting[0]) { ending[0] = starting[0]+1; }
+            if (ending[1] < starting[1]) { ending[1] = starting[1]+1; }
             var x_range = new Interval(starting[0], ending[0]);
             var y_range = new Interval(starting[1], ending[1]);
             return (x_range, y_range);
