@@ -1,36 +1,18 @@
 ﻿using System;
 using System.IO;
-using System.Xml;
-using System.Xml.Linq;
 using System.Linq;
-using System.Data;
 using System.Drawing;
-using System.Reflection;
-using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-
+using System.Net;
 using System.Windows.Forms;
 
-using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
-using Rhino;
 using Rhino.Geometry;
-using Rhino.DocObjects;
-using Rhino.Collections;
-using GH_IO;
 using GH_IO.Serialization;
 
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
@@ -51,17 +33,16 @@ namespace Heron
         {
 
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
-            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution, but takes longer to download. Max zoom is typically 19.", GH_ParamAccess.item, 14);
+            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution, but takes longer to download. Max zoom is typically 19.", GH_ParamAccess.item);
             pManager.AddTextParameter("File Location", "filePath", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item);
-            //pManager.AddTextParameter("Slippy Raster URL", "slippyURL", "Slippy raster service to query", GH_ParamAccess.item);
             pManager.AddTextParameter("Slippy Access Header", "userAgent", "A user-agent header is sometimes required for access to Slippy resources, especially OSM. This can be any string.", GH_ParamAccess.item, "");
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
             pManager[3].Optional = true;
 
-            Message = SlippySource;
-
+            if (tilesOut) { Message = SlippySource + " (tiled output)"; }
+            else { Message = SlippySource; }
 
         }
 
@@ -101,7 +82,6 @@ namespace Heron
             }
 
             string URL = slippyURL;
-            //DA.GetData<string>(4, ref URL);
 
             string userAgent = string.Empty;
             DA.GetData(4, ref userAgent);
@@ -112,6 +92,8 @@ namespace Heron
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
             GH_Structure<GH_Rectangle> imgFrame = new GH_Structure<GH_Rectangle>();
             GH_Structure<GH_String> tCount = new GH_Structure<GH_String>();
+
+            
 
 
             for (int i = 0; i < boundary.Count; i++)
@@ -134,12 +116,15 @@ namespace Heron
                 ///file path for final image
                 string imgPath = filePath + prefix + "_" + i + ".jpg";
 
-                ///location of final image file
-                mapList.Append(new GH_String(imgPath), path);
+                if (!tilesOut)
+                {
+                    //location of final image file
+                    mapList.Append(new GH_String(imgPath), path);
+                }
 
                 ///create cache folder for images
                 string cacheLoc = filePath + @"HeronCache\";
-                List<string> cachefilePaths = new List<string>();
+                List<string> cacheFilePaths = new List<string>();
                 if (!Directory.Exists(cacheLoc))
                 {
                     Directory.CreateDirectory(cacheLoc);
@@ -154,11 +139,13 @@ namespace Heron
                 var x_range = ranges.XRange;
                 var y_range = ranges.YRange;
 
-                if(x_range.Length > 100 || y_range.Length > 100)
+                if (x_range.Length > 100 || y_range.Length > 100)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "This tile range is too big (more than 100 tiles in the x or y direction). Check your units.");
                     return;
                 }
+
+                List<Rectangle3d> tileRectangles = new List<Rectangle3d>();
 
                 ///cycle through tiles to get bounding box
                 for (int y = (int)y_range.Min; y <= y_range.Max; y++)
@@ -166,9 +153,20 @@ namespace Heron
                     for (int x = (int)x_range.Min; x <= x_range.Max; x++)
                     {
                         ///add bounding box of tile to list
+                        List<Point3d> boxPts = Convert.GetTileAsPolygon(zoom, y, x).ToList();
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
-                        cachefilePaths.Add(cacheLoc + slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg");
+                        string cacheFilePath = cacheLoc + slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg";
+                        cacheFilePaths.Add(cacheFilePath);
+
                         tileTotalCount = tileTotalCount + 1;
+
+                        if (tilesOut)
+                        {
+                            mapList.Append(new GH_String(cacheFilePath), path);
+                            Rectangle3d tileRectangle = BBoxToRect(new BoundingBox(boxPts));
+                            tileRectangles.Add(tileRectangle);
+                            imgFrame.Append(new GH_Rectangle(tileRectangle), path);
+                        }
                     }
                 }
 
@@ -178,9 +176,12 @@ namespace Heron
                 BoundingBox bbox = new BoundingBox(boxPtList);
 
                 var rect = BBoxToRect(bbox);
-                imgFrame.Append(new GH_Rectangle(rect), path);
+                if (!tilesOut)
+                {
+                    imgFrame.Append(new GH_Rectangle(rect), path);
+                }
 
-                AddPreviewItem(imgPath, boundary[i], rect);
+                //AddPreviewItem(imgPath, boundary[i], rect);
 
                 ///tile range as string for (de)serialization of TileCacheMeta
                 string tileRangeString = zoom.ToString()
@@ -191,9 +192,9 @@ namespace Heron
 
                 ///check if the existing final image already covers the boundary. 
                 ///if so, no need to download more or reassemble the cached tiles.
-                if ((TileCacheMeta == tileRangeString) && Convert.CheckCacheImagesExist(cachefilePaths))
+                if ((TileCacheMeta == tileRangeString) && Convert.CheckCacheImagesExist(cacheFilePaths))
                 {
-                    if (File.Exists(imgPath))
+                    if (File.Exists(imgPath) && !tilesOut)
                     {
                         using (Bitmap imageT = new Bitmap(imgPath))
                         {
@@ -208,11 +209,24 @@ namespace Heron
                             if (imgComment == (slippySource.Replace(" ", "") + tileRangeString))
                             {
                                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using existing image.");
+                                AddPreviewItem(imgPath, boundary[i], rect);
                                 continue;
                             }
 
                         }
 
+                    }
+
+                    if (tilesOut)
+                    {
+                        for (int t = 0; t < cacheFilePaths.Count; t++)
+                        {
+                            if (File.Exists(cacheFilePaths[t]))
+                            {
+                                AddPreviewItem(cacheFilePaths[t], tileRectangles[t].ToNurbsCurve(), tileRectangles[t]);
+                            }
+                        }
+                        continue;
                     }
 
                 }
@@ -235,70 +249,94 @@ namespace Heron
                 int imgPosW = 0;
                 int imgPosH = 0;
 
-                if (run == true)
+                using (Graphics g = Graphics.FromImage(finalImage))
                 {
-                    using (Graphics g = Graphics.FromImage(finalImage))
+                    g.Clear(Color.Black);
+                    for (int y = (int)y_range.Min; y <= (int)y_range.Max; y++)
                     {
-                        g.Clear(Color.Black);
-                        for (int y = (int)y_range.Min; y <= (int)y_range.Max; y++)
+                        for (int x = (int)x_range.Min; x <= (int)x_range.Max; x++)
                         {
-                            for (int x = (int)x_range.Min; x <= (int)x_range.Max; x++)
+                            //create tileCache name 
+                            string tileCache = slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg";
+                            string tileCacheLoc = cacheLoc + tileCache;
+
+                            //check cache folder to see if tile image exists locally
+                            if (File.Exists(tileCacheLoc))
                             {
-                                //create tileCache name 
-                                string tileCache = slippySource.Replace(" ", "") + zoom + x + y + ".jpg";
-                                string tileCacheLoc = cacheLoc + tileCache;
-
-                                //check cache folder to see if tile image exists locally
-                                if (File.Exists(tileCacheLoc))
-                                {
-                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCacheLoc));
-                                    ///add tmp image to final
-                                    g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
-                                    tmpImage.Dispose();
-                                }
-
-                                else
-                                {
-                                    tileList.Add(new List<int> { zoom, y, x });
-                                    string urlAuth = Convert.GetZoomURL(x, y, zoom, slippyURL);
-
-                                    System.Net.WebClient client = new System.Net.WebClient();
-
-                                    ///insert header if required
-                                    client.Headers.Add("user-agent", userAgent);
-
-                                    client.DownloadFile(urlAuth, tileCacheLoc);
-                                    Bitmap tmpImage = new Bitmap(Image.FromFile(tileCacheLoc));
-                                    client.Dispose();
-
-                                    //add tmp image to final
-                                    g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
-                                    tmpImage.Dispose();
-                                    tileDownloadedCount = tileDownloadedCount + 1;
-                                }
-
-                                //increment x insert position, goes left to right
-                                imgPosW++;
+                                Bitmap tmpImage = new Bitmap(Image.FromFile(tileCacheLoc));
+                                ///add tmp image to final
+                                g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
+                                tmpImage.Dispose();
                             }
-                            //increment y insert position, goes top to bottom
-                            imgPosH++;
-                            imgPosW = 0;
 
+                            else
+                            {
+                                tileList.Add(new List<int> { zoom, y, x });
+                                string urlAuth = Convert.GetZoomURL(x, y, zoom, slippyURL);
+
+                                Bitmap tmpImage = new Bitmap(256, 256);
+                                System.Net.WebClient client = new System.Net.WebClient();
+
+                                ///insert header if required
+                                client.Headers.Add("user-agent", userAgent);
+                                if (run == true)
+                                {
+                                    try
+                                    {
+                                        client.DownloadFile(urlAuth, tileCacheLoc);
+                                        tmpImage = new Bitmap(Image.FromFile(tileCacheLoc));
+                                    }
+                                    catch (WebException e)
+                                    {
+                                        using (Graphics tmp = Graphics.FromImage(tmpImage)) { tmp.Clear(Color.White); }
+                                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, e.Message);
+                                    }
+                                }
+                                client.Dispose();
+
+                                //add tmp image to final
+                                g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
+                                tmpImage.Dispose();
+                                tileDownloadedCount = tileDownloadedCount + 1;
+                            }
+
+                            //increment x insert position, goes left to right
+                            imgPosW++;
                         }
-                        //garbage collection
-                        g.Dispose();
+                        //increment y insert position, goes top to bottom
+                        imgPosH++;
+                        imgPosW = 0;
 
-                        //add tile range meta data to image comments
-                        finalImage.AddCommentsToJPG(slippySource.Replace(" ", "") + tileRangeString);
-
-                        //save the image
-                        finalImage.Save(imgPath, System.Drawing.Imaging.ImageFormat.Jpeg);
                     }
+                    //garbage collection
+                    g.Dispose();
+
+                    //add tile range meta data to image comments
+                    finalImage.AddCommentsToJPG(slippySource.Replace(" ", "") + tileRangeString);
+
+                    
+
+                    //save the image
+                    finalImage.Save(imgPath, System.Drawing.Imaging.ImageFormat.Jpeg);
                 }
 
                 //garbage collection
                 finalImage.Dispose();
 
+                if (!tilesOut)
+                {
+                    AddPreviewItem(imgPath, boundary[i], rect);
+                }
+                else
+                {
+                    for (int t = 0; t < cacheFilePaths.Count; t++)
+                    {
+                        if (File.Exists(cacheFilePaths[t]))
+                        {
+                            AddPreviewItem(cacheFilePaths[t], tileRectangles[t].ToNurbsCurve(), tileRectangles[t]);
+                        }
+                    }
+                }
 
                 //add to tile count total
                 tCount.Insert(new GH_String(tileTotalCount + " tiles (" + tileDownloadedCount + " downloaded / " + (tileTotalCount - tileDownloadedCount) + " cached)"), path, 0);
@@ -361,6 +399,10 @@ namespace Heron
 
             base.AppendAdditionalComponentMenuItems(menu);
 
+            ToolStripMenuItem item = Menu_AppendItem(menu, "Tiled output", Menu_TiledOutputChecked, true, TilesOut);
+            item.ToolTipText = "If 'Tiled output' is selected, Image File and Image Frame will output each tile " +
+                "that is used to build the assembled image instead of the assembled image itself.  " +
+                "The tiled output will avoid distortions in the assembled image at lower zoom levels.";
         }
 
         private void ServiceItemOnClick(object sender, EventArgs e)
@@ -384,7 +426,12 @@ namespace Heron
             ExpireSolution(true);
         }
 
-
+        private void Menu_TiledOutputChecked(object sender, EventArgs e)
+        {
+            RecordUndoEvent("TilesOut");
+            TilesOut = !TilesOut;
+            ExpireSolution(true);
+        }
 
 
 
@@ -396,7 +443,18 @@ namespace Heron
         private string slippySourceList = Convert.GetEnpoints();
         private string slippySource = JObject.Parse(Convert.GetEnpoints())["Slippy Maps"][0]["service"].ToString();
         private string slippyURL = JObject.Parse(Convert.GetEnpoints())["Slippy Maps"][0]["url"].ToString();
+        private bool tilesOut = false;
 
+        public bool TilesOut
+        {
+            get { return tilesOut; }
+            set
+            {
+                tilesOut = value;
+                if (tilesOut) { Message = SlippySource + " (tiled output)"; }
+                else { Message = SlippySource; }
+            }
+        }
 
         public string TileCacheMeta
         {
@@ -442,6 +500,7 @@ namespace Heron
             writer.SetString("SlippySourceList", SlippySourceList);
             writer.SetString("SlippySource", SlippySource);
             writer.SetString("SlippyURL", SlippyURL);
+            writer.SetBoolean("TilesOut", TilesOut);
             return base.Write(writer);
         }
 
@@ -451,6 +510,7 @@ namespace Heron
             SlippySourceList = reader.GetString("SlippySourceList");
             SlippySource = reader.GetString("SlippySource");
             SlippyURL = reader.GetString("SlippyURL");
+            TilesOut = reader.GetBoolean("TilesOut");
             return base.Read(reader);
         }
 
@@ -475,7 +535,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("AF7AB46C-16A0-4C81-9363-24A9F940CE39"); }
+            get { return new Guid("A81D37B4-F3FE-46F7-A3B4-515A603F46D0"); }
         }
     }
 }
