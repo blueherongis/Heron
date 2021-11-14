@@ -60,7 +60,7 @@ namespace Heron
         {
 
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for Mapbox vector tiles", GH_ParamAccess.item);
-            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution.", GH_ParamAccess.item, 14);
+            pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution.", GH_ParamAccess.item);
             pManager.AddTextParameter("File Location", "filePath", "Folder to place topography image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for topography image file name", GH_ParamAccess.item);
             pManager.AddTextParameter("Mapbox Access Token", "mbToken", "Mapbox Access Token string for access to Mapbox resources. Or set an Environment Variable 'HERONMAPOXTOKEN' with your token as the string.", GH_ParamAccess.item, "");
