@@ -143,37 +143,37 @@
 		{
 			"service" : "ACS Total Population",
 			"url" : "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Total_Population_Boundaries/FeatureServer/",
-			"description" : "This layer shows total population count by sex and age group. This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis."
+			"description" : "This layer shows total population count by sex and age group. This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis.",
 			"source" : "ESRI American Community Survey"
 		},
 		{
 			"service" : "ACS Household Size",
 			"url" : "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Household_Size_Boundaries/FeatureServer/",
-			"description" : "This layer shows household size by tenure (owner or renter). This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis. This layer is symbolized to show the average household size."
+			"description" : "This layer shows household size by tenure (owner or renter). This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis. This layer is symbolized to show the average household size.",
 			"source" : "ESRI American Community Survey"
 		},
 		{
 			"service" : "ACS Housing Units by Year Built",
 			"url" : "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Housing_Units_by_Year_Built_Boundaries/FeatureServer/",
-			"description" : "his layer shows housing units by year built by tenure (owner or renter). This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis. This layer is modified every few years to change the top-end and bottom-end categories of the years."
+			"description" : "his layer shows housing units by year built by tenure (owner or renter). This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis. This layer is modified every few years to change the top-end and bottom-end categories of the years.",
 			"source" : "ESRI American Community Survey"
 		},
 		{
 			"service" : "ACS Housing Costs",
 			"url" : "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Housing_Costs_Boundaries/FeatureServer/",
-			"description" : "This layer shows housing costs as a percentage of household income. This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis. Income is based on earnings in past 12 months of survey. This layer is symbolized to show the percent of renter households that spend 30.0% or more of their household income on gross rent (contract rent plus tenant-paid utilities)."
+			"description" : "This layer shows housing costs as a percentage of household income. This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis. Income is based on earnings in past 12 months of survey. This layer is symbolized to show the percent of renter households that spend 30.0% or more of their household income on gross rent (contract rent plus tenant-paid utilities).",
 			"source" : "ESRI American Community Survey"
 		},
 		{
 			"service" : "ACS Labor Force Participation by Age",
 			"url" : "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Labor_Force_Participation_by_Age_Boundaries/FeatureServer/",
-			"description" : "This layer shows full-time, year-round vs. part-time employment by age. This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis. This layer is symbolized to show the percent of population age 65+ who worked in the past 12 months."
+			"description" : "This layer shows full-time, year-round vs. part-time employment by age. This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis. This layer is symbolized to show the percent of population age 65+ who worked in the past 12 months.",
 			"source" : "ESRI American Community Survey"
 		},
 		{
 			"service" : "ACS Travel Time to Work",
 			"url" : "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Travel_Time_to_Work_Boundaries/FeatureServer/",
-			"description" : "This layer shows workers' place of residence by commute length. This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis. "
+			"description" : "This layer shows workers' place of residence by commute length. This is shown by tract, county, and state boundaries. This service is updated annually to contain the most currently released American Community Survey (ACS) 5-year data, and contains estimates and margins of error. There are also additional calculated attributes related to this topic, which can be mapped or used within analysis.",
 			"source" : "ESRI American Community Survey"
 		},
 		{
