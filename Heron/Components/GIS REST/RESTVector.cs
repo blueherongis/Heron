@@ -42,6 +42,7 @@ namespace Heron
 
             string URL = string.Empty;
             DA.GetData<string>("REST URL", ref URL);
+            if (!URL.EndsWith("/")) { URL = URL + "/"; }
 
             string userSRStext = string.Empty;
             DA.GetData<string>("User Spatial Reference System", ref userSRStext);
@@ -105,10 +106,9 @@ namespace Heron
 
                 if (run)
                 {
-
                     //string result = Heron.Convert.HttpToJson(restquery);
 
-                    OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(restquery, 0);
+                    OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open("ESRIJSON:" + restquery, 0);
 
                     if (dataSource == null)
                     {
@@ -136,6 +136,7 @@ namespace Heron
                         ///Get the field names
                         for (int iAttr = 0; iAttr < def.GetFieldCount(); iAttr++)
                         {
+                            ///TODO: Look into GetAlternativeNameRef() for field aliases (more readable) available in GDAL 3.2
                             OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iAttr);
                             fieldnames.Append(new GH_String(fdef.GetNameRef()), new GH_Path(i, iLayer));
                         }
