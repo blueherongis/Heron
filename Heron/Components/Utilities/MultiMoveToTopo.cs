@@ -18,8 +18,8 @@ namespace Heron.Components.GIS_Tools
         /// </summary>
         public MultiMoveToTopo()
           : base("MultiMoveToTopo", "MMoveToTopo",
-              "Move breps, meshes, polylines and points to a topography mesh.  Breps and closed meshes will be moved to the lowest point on the topography mesh within their footprint.  " +
-                "Vertexes of curves and open meshes will be moved to the topography mesh.  " +
+              "Move breps, surfaces, meshes, polylines and points to a topography mesh.  Breps and closed meshes will be moved to the lowest point on the topography mesh within their footprint.  " +
+                "Vertexes of curves and open meshes and control points of surfaces will be moved to the topography mesh." +
                 "For a slower, but more detailed projection where curves and open meshes take on the vertexes of the topography mesh, " +
                 "select 'Detailed' from the component menu.",
               "Utilities")
@@ -37,7 +37,7 @@ namespace Heron.Components.GIS_Tools
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddMeshParameter("Topography Mesh", "topoMesh", "Mesh representing the topography to which to move objects.", GH_ParamAccess.item);
-            pManager.AddGeometryParameter("Feature Geometry", "featureGeomery", "Geometry to move to topography.  Geometry can be points, polylines, meshes or breps.  " +
+            pManager.AddGeometryParameter("Feature Geometry", "featureGeomery", "Geometry to move to topography.  Geometry can be points, polylines, meshes, surfaces or breps.  " +
                 "Open meshes will be flattened to topography.", GH_ParamAccess.tree);
             if (fast) { Message = "Fast"; }
             else { Message = "Detailed"; }
@@ -103,21 +103,34 @@ namespace Heron.Components.GIS_Tools
                   PolylineCurve pLineCurve = null;
                   Curve curve = null;
                   Mesh mesh = new Mesh();
+                  Surface surface = null;
                   Brep brep = new Brep();
 
                   ///Output container list
                   List<IGH_GeometricGoo> gGooList = new List<IGH_GeometricGoo>();
+                  List<IGH_GeometricGoo> fGooList = new List<IGH_GeometricGoo>();
+                  var branchFeatures = featureGoo.get_Branch(pth);
+                  BoundingBox branchBox = new BoundingBox();
 
-                  if (featureGoo.get_Branch(pth).Count > 0)
+                  if (branchFeatures.Count > 0)
                   {
-                      foreach (var bGoo in featureGoo.get_Branch(pth))
+                      foreach (var bGoo in branchFeatures)
                       {
 
                           ///Get geometry type(s) in branch
                           string geomType = string.Empty;
                           IGH_GeometricGoo fGoo = GH_Convert.ToGeometricGoo(bGoo);
-                          if (fGoo != null)
+
+                          if (fGoo != null && fGoo.IsValid)
                           {
+                              if (grouped)
+                              {
+                                  ///Need to duplicate geometry or else move vector piles on similar to the following
+                                  ///https://www.grasshopper3d.com/forum/topics/c-component-refresh-problem
+                                  fGooList.Add(fGoo.DuplicateGeometry());
+                                  branchBox.Union(fGoo.Boundingbox);
+                              }
+
                               geomType = fGoo.TypeName;
 
                               switch (geomType)
@@ -127,16 +140,33 @@ namespace Heron.Components.GIS_Tools
                                       gGooList.Add(ProjectPointToTopo(topoMesh, pt));
                                       break;
 
+                                  case "Line":
                                   case "Polyline":
                                       fGoo.CastTo<Polyline>(out pLine);
+
                                       if (fast) { gGooList.Add(ProjectPolylineToTopo(topoMesh, pLine)); }
-                                      else { gGooList.AddRange(ProjectCurveToTopo(topoMesh, pLine.ToNurbsCurve())); }
+                                      else
+                                      {
+                                          ///Lock topoMesh so it's not accessed by mutliple threads at once in a "deadlock"
+                                          ///https://docs.microsoft.com/en-us/dotnet/standard/threading/managed-threading-best-practices
+                                          lock (topoMesh)
+                                          {
+                                              gGooList.AddRange(ProjectCurveToTopo(topoMesh, pLine.ToNurbsCurve()));
+                                          }
+                                      }
+
                                       break;
 
                                   case "PolylineCurve":
                                       fGoo.CastTo<PolylineCurve>(out pLineCurve);
                                       if (fast) { gGooList.Add(ProjectPolylineToTopo(topoMesh, pLineCurve.ToPolyline())); }
-                                      else { gGooList.AddRange(ProjectCurveToTopo(topoMesh, pLineCurve.ToNurbsCurve())); }
+                                      else
+                                      {
+                                          lock (topoMesh)
+                                          {
+                                              gGooList.AddRange(ProjectCurveToTopo(topoMesh, pLineCurve.ToNurbsCurve()));
+                                          }
+                                      }
                                       break;
 
                                   case "Curve":
@@ -146,7 +176,13 @@ namespace Heron.Components.GIS_Tools
                                           if (curve.TryGetPolyline(out pLine)) { gGooList.Add(ProjectPolylineToTopo(topoMesh, pLine)); }
                                           else { gGooList.AddRange(ProjectCurveToTopo(topoMesh, curve)); }
                                       }
-                                      else { gGooList.AddRange(ProjectCurveToTopo(topoMesh, curve)); }
+                                      else
+                                      {
+                                          lock (topoMesh)
+                                          {
+                                              gGooList.AddRange(ProjectCurveToTopo(topoMesh, curve));
+                                          }
+                                      }
                                       break;
 
                                   case "Mesh":
@@ -160,14 +196,17 @@ namespace Heron.Components.GIS_Tools
                                           if (fast) { gGooList.Add(ProjectMeshToTopoFast(topoMesh, mesh)); }
                                           else
                                           {
-                                              ///Lock topoMesh so it's not accessed by mutliple threads at once in a "deadlock"
-                                              ///https://docs.microsoft.com/en-us/dotnet/standard/threading/managed-threading-best-practices
                                               lock (topoMesh)
                                               {
                                                   gGooList.Add(ProjectMeshToTopoSlow(topoMesh, topoFlat, topoFlatPoints, rTree, mesh));
                                               }
                                           }
                                       }
+                                      break;
+
+                                  case "Surface":
+                                      fGoo.CastTo<Surface>(out surface);
+                                      gGooList.Add(ProjectSurfaceToTopoFast(topoMesh, surface));
                                       break;
 
                                   case "Brep":
@@ -177,16 +216,53 @@ namespace Heron.Components.GIS_Tools
 
                                   default:
                                       AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Not able to move " + geomType + " geometry to mesh" +
-                                          ". Geometry must be a Point, Curve, Mesh or Brep.");
+                                          ". Geometry must be a Point, Curve, Mesh, Surface or Brep.");
                                       break;
                               }
                           }
                           else { }
                       }
+
+                      ///Move objects in branch a minimum distance if grouped selected
+                      ///If only one feature in a branch, not need to group
+                      if (grouped && gGooList.Count > 1)
+                      {
+                          ///Get the minimum move vector
+                          Point3d lowestPoint = new Point3d();
+                          double minDistance = double.MaxValue;
+                          Vector3d minimumVec = new Vector3d();
+                          foreach (var gi in gGooList)
+                          {
+                              if (gi != null)
+                              {
+                                  Point3d gGooMin = gi.Boundingbox.Min;
+                                  Vector3d distVector = gGooMin - branchBox.Min;
+                                  if (distVector.Length < minDistance && distVector.Length > 0 && distVector.IsValid)
+                                  {
+                                      lowestPoint = gGooMin;
+                                      minDistance = distVector.Length;
+                                      minimumVec = new Vector3d(0, 0, distVector.Z);
+                                  }
+                              }
+
+                          }
+
+                          ///Move orignal feature geometry the minimum move vector
+                          if (minDistance != double.MaxValue)
+                          {
+                              Transform transform = Transform.Translation(minimumVec);
+                              for (int f = 0; f < fGooList.Count; f++)
+                              {
+                                  fGooList[f].Transform(transform);
+                              }
+                              gooTree[pth] = fGooList;
+                          }
+                      }
+                      else
+                      {
+                          gooTree[pth] = gGooList;
+                      }
                   }
-
-                  gooTree[pth] = gGooList;
-
               });
             ///End of multi-threaded loop
 
@@ -202,7 +278,6 @@ namespace Heron.Components.GIS_Tools
             topoMesh.Dispose();
 
             DA.SetDataTree(0, gTree);
-
         }
 
         ///Projection engines
@@ -234,6 +309,7 @@ namespace Heron.Components.GIS_Tools
         public static GH_Curve ProjectPolylineToTopo(Mesh topoMesh, Polyline pLine)
         {
             GH_Curve ghCurve = new GH_Curve();
+
 
             List<Point3d> projectedPts = new List<Point3d>();
             for (int j = 0; j < pLine.Count; j++)
@@ -272,7 +348,10 @@ namespace Heron.Components.GIS_Tools
             List<GH_Curve> curves = new List<GH_Curve>();
             foreach (Curve curve in Curve.ProjectToMesh(crv, topoMesh, moveDir, tol))
             {
-                curves.Add(new GH_Curve(curve.ToNurbsCurve()));
+                if (curve.IsValid)
+                {
+                    curves.Add(new GH_Curve(curve.ToNurbsCurve()));
+                }
             }
             return curves;
         }
@@ -312,7 +391,7 @@ namespace Heron.Components.GIS_Tools
 
         public static GH_Mesh ProjectMeshToTopoSlow(Mesh topoMesh, Mesh topoFlatMesh, Point3d[] topoFlatPoints, RTree rTree, Mesh featureMesh)
         {
-            ///Should use Mesh.SplitWithProjectedPolylines available in RhinoCommon 7.0
+            ///TODO: Look into using Mesh.SplitWithProjectedPolylines available in RhinoCommon 7.0
 
             GH_Mesh ghMesh = new GH_Mesh();
             Mesh[] disjointMeshes = featureMesh.SplitDisjointPieces();
@@ -330,9 +409,10 @@ namespace Heron.Components.GIS_Tools
                 ///Get naked edges and sort list so that outer boundary is first
                 Polyline[] nakedEdges = disjointMesh.GetNakedEdges();
                 var nakedEdgesCurves = new Dictionary<Curve, double>();
-                foreach (Polyline p in nakedEdges) 
-                { 
-                    nakedEdgesCurves.Add(p.ToNurbsCurve(), AreaMassProperties.Compute(p.ToNurbsCurve()).Area); 
+                foreach (Polyline p in nakedEdges)
+                {
+                    Curve pNurbs = p.ToNurbsCurve();
+                    nakedEdgesCurves.Add(pNurbs, AreaMassProperties.Compute(pNurbs).Area);
                 }
                 var nakedEdgesSorted = from pair in nakedEdgesCurves
                                        orderby pair.Value descending
@@ -480,6 +560,49 @@ namespace Heron.Components.GIS_Tools
             public List<int> Ids { get; set; }
         }
 
+        public static GH_Surface ProjectSurfaceToTopoFast(Mesh topoMesh, Surface featureSurface)
+        {
+            GH_Surface ghSurface = new GH_Surface();
+            NurbsSurface surface = featureSurface.ToNurbsSurface();
+
+            ///Move patch verts to topo
+            for (int u = 0; u < surface.Points.CountU; u++)
+            {
+                for (int v = 0; v < surface.Points.CountV; v++)
+                {
+                    Point3d controlPt;
+                    surface.Points.GetPoint(u, v, out controlPt);
+                    Ray3d ray = new Ray3d(controlPt, moveDir);
+                    double t = Rhino.Geometry.Intersect.Intersection.MeshRay(topoMesh, ray);
+
+                    if (t >= 0.0)
+                    {
+                        surface.Points.SetPoint(u, v, ray.PointAt(t));
+                    }
+                    else
+                    {
+                        Ray3d rayOpp = new Ray3d(controlPt, -moveDir);
+                        double tOpp = Rhino.Geometry.Intersect.Intersection.MeshRay(topoMesh, rayOpp);
+                        if (tOpp >= 0.0)
+                        {
+                            surface.Points.SetPoint(u, v, rayOpp.PointAt(t));
+                        }
+                        else
+                        {
+                            //return null;
+                        }
+                    }
+                }
+
+            }
+            if (surface.IsValid)
+            {
+                GH_Convert.ToGHSurface(surface, GH_Conversion.Primary, ref ghSurface);
+                return ghSurface;
+            }
+            else { return null; }
+        }
+
         public static GH_Mesh ProjectSolidMeshToTopo(Mesh topoMesh, Mesh solidMesh)
         {
             GH_Mesh ghMesh = new GH_Mesh();
@@ -586,13 +709,12 @@ namespace Heron.Components.GIS_Tools
             return min_v;
         }
 
-        private static int totalMaxConcurrancy = 1;
-
+        private int totalMaxConcurrancy = 1;
         private static Vector3d moveDir = Vector3d.ZAxis;
-
         private static double tol = DocumentTolerance();
-
         private bool fast = true;
+        private bool grouped = true;
+
         public bool Fast
         {
             get { return fast; }
@@ -609,28 +731,47 @@ namespace Heron.Components.GIS_Tools
                 }
             }
         }
+
+        public bool Grouped
+        {
+            get { return grouped; }
+            set
+            {
+                grouped = value;
+            }
+        }
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
-            ToolStripMenuItem item = Menu_AppendItem(menu, "Detailed", Menu_DetailedChecked, true, !Fast);
+            ToolStripMenuItem item = Menu_AppendItem(menu, "Detailed", Menu_FastChecked, true, !Fast);
             item.ToolTipText = "If 'fast' is selected, vetexes of polylines and open meshes are moved to the topo mesh, " +
                 "otherwise they take on the vertexes of the topo mesh which can take significantly longer for larger topo meshes.";
+            ToolStripMenuItem groupedItem = Menu_AppendItem(menu, "Grouped", Menu_GroupedChecked, true, Grouped);
+            groupedItem.ToolTipText = "If 'grouped' is selected, all objects in a branch will be moved the same minimum distance to the topo mesh.";
         }
 
-        private void Menu_DetailedChecked(object sender, EventArgs e)
+        private void Menu_FastChecked(object sender, EventArgs e)
         {
             RecordUndoEvent("Fast");
             Fast = !Fast;
+            ExpireSolution(true);
+        }
+        private void Menu_GroupedChecked(object sender, EventArgs e)
+        {
+            RecordUndoEvent("Grouped");
+            Grouped = !Grouped;
             ExpireSolution(true);
         }
 
         public override bool Write(GH_IO.Serialization.GH_IWriter writer)
         {
             writer.SetBoolean("Fast", Fast);
+            writer.SetBoolean("Grouped", Grouped);
             return base.Write(writer);
         }
         public override bool Read(GH_IO.Serialization.GH_IReader reader)
         {
             Fast = reader.GetBoolean("Fast");
+            Grouped = reader.GetBoolean("Grouped");
             return base.Read(reader);
         }
 
