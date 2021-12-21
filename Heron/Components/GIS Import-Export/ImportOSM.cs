@@ -162,6 +162,9 @@ namespace Heron
 
                 /// loop over all objects and count them.
                 int nodes = 0, ways = 0, relations = 0;
+                Dictionary<PolylineCurve, GH_Path> bldgOutlines = new Dictionary<PolylineCurve, GH_Path>();
+                List<BuildingPart> buildingParts = new List<BuildingPart>();
+
 
                 foreach (OsmSharp.OsmGeo osmGeo in filtered)
                 {
@@ -217,15 +220,40 @@ namespace Heron
                         {
                             if (pL.IsClosed)
                             {
+                                ///Populate dictionary for sorting building parts later
+                                if(w.Tags.ContainsKey("building")) { bldgOutlines.Add(pL, waysPath); }
+
                                 CurveOrientation orient = pL.ClosedCurveOrientation(Plane.WorldXY);
                                 if (orient != CurveOrientation.CounterClockwise) pL.Reverse();
 
-                                Vector3d hVec = new Vector3d(0, 0, GetBldgHeight(osmGeo));
+                                ///Move polylines to min height
+                                double minHeightWay = GetMinBldgHeight(osmGeo);
+                                Vector3d minVec = new Vector3d(0, 0, minHeightWay);
+                                minVec.Transform(xformFromMetric);
+                                if (minHeightWay > 0.0)
+                                {
+                                    var minHeightTranslate = Transform.Translation(minVec);
+                                    pL.Transform(minHeightTranslate);
+                                }
+
+                                Vector3d hVec = new Vector3d(0, 0, GetBldgHeight(osmGeo) - minHeightWay);
                                 hVec.Transform(xformFromMetric);
 
                                 Extrusion ex = Extrusion.Create(pL, hVec.Z, true);
                                 IGH_GeometricGoo bldgGoo = GH_Convert.ToGeometricGoo(ex);
-                                buildingGoo.Append(bldgGoo, waysPath);
+
+                                ///Save building parts for sorting later and remove part from geometry goo tree
+                                if (w.Tags.ContainsKey("building:part"))
+                                {
+                                    BuildingPart bldgPart = new BuildingPart(pL, bldgGoo, fieldNames[waysPath], fieldValues[waysPath]);
+                                    buildingParts.Add(bldgPart);
+                                    fieldNames.RemovePath(waysPath);
+                                    fieldValues.RemovePath(waysPath);
+                                    geometryGoo.RemovePath(waysPath);
+                                    ways = ways - 1;
+                                }
+                                else { buildingGoo.Append(bldgGoo, waysPath); }
+
                             }
 
                         }
@@ -313,7 +341,19 @@ namespace Heron
 
                         if (pLines.Count > 0 && allClosed)
                         {
-                            //create base surface
+                            ///Move polylines to min height
+                            double minHeight = GetMinBldgHeight(osmGeo);
+                            if (minHeight > 0.0)
+                            {
+                                Vector3d minVec = new Vector3d(0, 0, minHeight);
+                                minVec.Transform(xformFromMetric);
+                                var minHeightTranslate = Transform.Translation(minVec);
+                                for (int i = 0; i < pLines.Count; i++)
+                                {
+                                    pLines[i].Transform(minHeightTranslate);
+                                }
+                            }
+                            ///Create base surface
                             Brep[] breps = Brep.CreatePlanarBreps(pLines, DocumentTolerance());
                             geometryGoo.RemovePath(relationPath);
 
@@ -324,7 +364,7 @@ namespace Heron
                                 //building massing
                                 if (r.Tags.ContainsKey("building") || r.Tags.ContainsKey("building:part"))
                                 {
-                                    Vector3d hVec = new Vector3d(0, 0, GetBldgHeight(osmGeo));
+                                    Vector3d hVec = new Vector3d(0, 0, GetBldgHeight(osmGeo) - minHeight);
                                     hVec.Transform(xformFromMetric);
 
                                     //create extrusion from base surface
@@ -339,6 +379,27 @@ namespace Heron
 
                     } ///end relation loop
                 } ///end filtered loop
+
+                ///Add building parts to subbranches under main building
+                for (int partIndex = 0; partIndex < buildingParts.Count; partIndex++)
+                {
+                    BuildingPart bldgPart = buildingParts[partIndex];
+                    Point3d partPoint = bldgPart.PartFootprint.PointAtStart;
+                    partPoint.Z = 0;
+                    foreach (KeyValuePair<PolylineCurve, GH_Path> pair in bldgOutlines)
+                    {
+                        PointContainment pc = pair.Key.Contains(partPoint, Plane.WorldXY, DocumentTolerance());
+                        if (pc != PointContainment.Outside)
+                        {
+
+                            GH_Path partPath = pair.Value.AppendElement(partIndex);
+                            fieldNames.AppendRange(bldgPart.PartFieldNames, partPath);
+                            fieldValues.AppendRange(bldgPart.PartFieldValues, partPath);
+                            buildingGoo.Append(bldgPart.PartGoo, partPath);
+                            
+                        }
+                    }
+                }
             } ///end osm source loop
 
             if (recs.IsValid) { DA.SetData(0, recs); }
@@ -348,6 +409,22 @@ namespace Heron
             DA.SetDataTree(4, buildingGoo);
 
         } ///end SolveInstance
+
+        public class BuildingPart
+        {
+            public PolylineCurve PartFootprint { get; set; }
+            public IGH_GeometricGoo PartGoo { get; set; }
+            public List<GH_String> PartFieldNames { get; set; }
+            public List<GH_String> PartFieldValues { get; set; }
+
+            public BuildingPart(PolylineCurve pL, IGH_GeometricGoo partGoo, List<GH_String> partFieldNames, List<GH_String> partFieldValues)
+            {
+                this.PartFootprint = pL;
+                this.PartGoo = partGoo;
+                this.PartFieldNames = partFieldNames;
+                this.PartFieldValues = partFieldValues;
+            }
+        }
 
 
 
@@ -435,6 +512,52 @@ namespace Heron
 
             double height = Math.Max(defaultHeight, keyHeight);
             return height;
+        }
+
+        private static double GetMinBldgHeight(OsmSharp.OsmGeo osmGeo)
+        {
+            //height determination
+            double keyHeight = 0.0;
+
+            //height from height key
+            if (osmGeo.Tags.ContainsKey("min_height"))
+            {
+                string heightText = osmGeo.Tags.GetValue("min_height").Split(' ')[0]; //clear trailing m
+
+                if (heightText.Contains("'")) //check if in feet
+                {
+                    keyHeight = System.Convert.ToDouble(heightText.Split('\'')[0]) / 3.28084; //convert feet to meters
+                }
+                //if not feet assume meters
+                else if (heightText.Contains("m") || heightText.Contains("M")) //clear trailing m with no space
+                {
+                    string[] heightWithM = Regex.Split(heightText, @"[^\d]");
+                    keyHeight = System.Convert.ToDouble(heightWithM[0]);
+                }
+                else
+                {
+                    keyHeight = System.Convert.ToDouble(heightText);
+                }
+
+            }
+
+            //height from building:levels key
+            if (osmGeo.Tags.ContainsKey("building:min_level"))
+            {
+                string levelsText = osmGeo.Tags.GetValue("building:min_level");
+                if (levelsText != null)
+                {
+                    double levelsDouble = 0;
+                    Double.TryParse(levelsText, out levelsDouble);
+                    if (levelsDouble > 0)
+                    {
+                        keyHeight = Math.Max(keyHeight, System.Convert.ToDouble(levelsText) * 3); //3 meters per floor
+                    }
+                }
+
+            }
+
+            return keyHeight;
         }
 
         /// <summary>
