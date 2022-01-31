@@ -372,12 +372,6 @@
 			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?renderingRule={%22rasterFunction%22 : %22Slope Map%22}&",
 			"description" : "This server-side function will apply an on-the-fly process to the input elevation data to generate a color visualization of slope, where flat surfaces are gray, shallow slopes are yellow, and steep slopes are red-brown.",
 			"source" : "USGS Raster"
-		},
-		{
-			"service" : "USGS 3DEP Slope Map",
-			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?renderingRule={%22rasterFunction%22 : %22Slope Map%22}&",
-			"description" : "This server-side function will apply an on-the-fly process to the input elevation data to generate a color visualization of slope, where flat surfaces are gray, shallow slopes are yellow, and steep slopes are red-brown.",
-			"source" : "USGS Raster"
 		}
 	],
 	"Slippy Maps":
