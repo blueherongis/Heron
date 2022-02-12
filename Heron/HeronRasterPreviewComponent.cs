@@ -55,15 +55,22 @@ namespace Heron
             var mat = new DisplayMaterial(System.Drawing.Color.White);
 
             ///Force bitmap to redraw
-            string docBitmapName = string.Empty;
-            var docBitmap = Rhino.RhinoDoc.ActiveDoc.Bitmaps.Find(bitmap, true, out docBitmapName);
+            //string docBitmapName = string.Empty;
+            //var docBitmap = Rhino.RhinoDoc.ActiveDoc.Bitmaps.Find(bitmap, true, out docBitmapName);
+            //mat.SetBitmapTexture(docBitmapName, true);
+            
+            mat.SetBitmapTexture(bitmap, true);
 
-            mat.SetBitmapTexture(docBitmapName, true);
             _previewItems.Add(new HeronRasterPreviewItem()
             {
                 mesh = mesh,
                 mat = mat
             });
+
+            ///Use Wait to refresh images
+            ///https://discourse.mcneel.com/t/wish-list-set-bitmap-texture-from-memory-stream/105158/5
+            ///https://mcneel.myjetbrains.com/youtrack/issue/RH-59416
+            Rhino.RhinoApp.Wait();
         }
 
         public override void DrawViewportMeshes(IGH_PreviewArgs args)
