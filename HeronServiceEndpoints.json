@@ -136,6 +136,26 @@
 			"service" : "GMRT Low",
 			"url" : "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=low",
 			"description" : "GMRT Low resolution. Will default to higher resolution if boundary is too small."
+		},
+		{
+			"service" : "USGS 3DEP Bare Earth DEM Max",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR=4326&size=2048%2C2048&imageSR=4326&format=tiff&f=image",
+			"description" : "The USGS 3D Elevation Program (3DEP) Bare Earth DEM Dynamic service is based on multi-resolution USGS DEM sources. Max will output a 2048 x 2048 pixel DEM"
+		},
+		{
+			"service" : "USGS 3DEP Bare Earth DEM High",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR=4326&size=1024%2C1024&imageSR=4326&format=tiff&f=image",
+			"description" : "The USGS 3D Elevation Program (3DEP) Bare Earth DEM Dynamic service is based on multi-resolution USGS DEM sources. High will output a 1024 x 1024 pixel DEM"
+		},
+		{
+			"service" : "USGS 3DEP Bare Earth DEM Medium",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR=4326&size=512%2C512&imageSR=4326&format=tiff&f=image",
+			"description" : "The USGS 3D Elevation Program (3DEP) Bare Earth DEM Dynamic service is based on multi-resolution USGS DEM sources. Medium will output a 512 x 512 pixel DEM"
+		},
+		{
+			"service" : "USGS 3DEP Bare Earth DEM Low",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR=4326&size=256%2C256&imageSR=4326&format=tiff&f=image",
+			"description" : "The USGS 3D Elevation Program (3DEP) Bare Earth DEM Dynamic service is based on multi-resolution USGS DEM sources. Low will output a 256 x 256 pixel DEM"
 		}
 	],
 	"REST Vector":
@@ -312,9 +332,45 @@
 			"source" : "USGS Raster"
 		},
 		{
-			"service" : "USGS HydroCached",
-			"url" : "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/export?",
-			"description" : "This service is a cached overlay of a cartographic representation of the National Hydrography Dataset (NHD). ​The NHD is a comprehensive set of digital ​geo​spatial data that encodes information about naturally occurring and constructed bodies of surface water​, paths through which water flows​, ​related features​ such as stream gages and dams​​, and additional hydrologic information​. ​It is available nationwide ​in a 1:24,000-scale seamless dataset, referred to as high resolution NHD. The NHD supports many applications, such as making maps, geocoding observations, flow modeling, data maintenance and stewardship. For additional information, go to http://nhd.usgs.gov. Additional datasets are used for small-scale hydrography representation as well​, including medium resolution NHDPlus published by EPA​; USGS Small-Scale hydrography; and bathymetry from ETOPO1 Global Relief, provided by NOAA National Centers for Environmental Information, U.S. Coastal Relief Model.",
+			"service" : "USGS 3DEP Bare Earth DEM",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?",
+			"description" : "The USGS 3D Elevation Program (3DEP) Bare Earth DEM Dynamic service is based on multi-resolution USGS DEM sources and provides dynamic functions for visualization. These functions include: Hillshade, Aspect Map, Hillshade Stretched, Multi-directional Hillshade, Slope Map, Elevation Tinted Hillshade, Contour. In addition the OGC Web Map Service (WMS) and Web Coverage Service (WCS) interfaces are enabled. Data available in this map service reflects all 3DEP DEM data published as of January 7, 2022.",
+			"source" : "USGS Raster"
+		},
+		{
+			"service" : "USGS 3DEP Hillshade Gray",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?renderingRule={%22rasterFunction%22 : %22Hillshade Gray%22}&",
+			"description" : "Provides a hillshaded surface generated dynamically using the hillshade server-side function on the elevation layer with a solar azimuth of 315 degrees and solar altitude of 45 degrees.",
+			"source" : "USGS Raster"
+		},
+		{
+			"service" : "USGS 3DEP Aspect Map",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?renderingRule={%22rasterFunction%22 : %22Aspect Map%22}&",
+			"description" : "This server-side function will apply an on-the-fly process to the input elevation data to generate a color visualization of aspect.",
+			"source" : "USGS Raster"
+		},
+		{
+			"service" : "USGS 3DEP Hillshade Elevation Tinted",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?renderingRule={%22rasterFunction%22 : %22Hillshade Elevation Tinted%22}&",
+			"description" : "This server-side function will apply an on-the-fly process to the input elevation data to generate a tinted hillshade.",
+			"source" : "USGS Raster"
+		},
+		{
+			"service" : "USGS 3DEP Grey Hillshade Elevation Fill",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?renderingRule={%22rasterFunction%22 : %22GreyHillshade_elevationFill%22}&",
+			"description" : "Provides a hillshaded surface generated dynamically using the hillshade server-side function on the elevation layer, with the voids filled in. A solar azimuth of 315 degrees and solar altitude of 45 degrees has been applied.",
+			"source" : "USGS Raster"
+		},
+		{
+			"service" : "USGS 3DEP Hillshade Multidirectional",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?renderingRule={%22rasterFunction%22 : %22Hillshade Multidirectional%22}&",
+			"description" : "A raster function template.",
+			"source" : "USGS Raster"
+		},
+		{
+			"service" : "USGS 3DEP Slope Map",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?renderingRule={%22rasterFunction%22 : %22Slope Map%22}&",
+			"description" : "This server-side function will apply an on-the-fly process to the input elevation data to generate a color visualization of slope, where flat surfaces are gray, shallow slopes are yellow, and steep slopes are red-brown.",
 			"source" : "USGS Raster"
 		}
 	],
