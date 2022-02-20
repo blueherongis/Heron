@@ -31,7 +31,7 @@ namespace Heron
     public class RESTGeocode : HeronComponent
     {
         //Class Constructor
-        public RESTGeocode() : base("ESRI REST Service Geocode", "RESTGeocode", "Get coordinates based on a Point-of-Interest or Address", "GIS REST")
+        public RESTGeocode() : base("ESRI REST Service Geocode", "RESTGeocode", "Get coordinates based on a Point-of-Interest or Address using the ESRI geocode service.", "GIS REST")
         {
 
         }

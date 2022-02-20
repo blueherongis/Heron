@@ -17,7 +17,7 @@ namespace Heron
         /// Initializes a new instance of the FlipImage class.
         /// </summary>
         public ImageFlip()
-          : base("Flip Image", "FlipImage", "Flip an image along its vertical or horizontal axis.",
+          : base("Flip Image", "FlipImage", "Flip an image along its vertical, horizontal axis or both.",
               "Utilities")
         {
         }

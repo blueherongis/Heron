@@ -34,7 +34,7 @@ namespace Heron
     public class XYtoDD : HeronComponent
     {
         //Class Constructor
-        public XYtoDD() : base("XY to Decimal Degrees", "XYtoDD", "Convert X/Y to Decimal Degrees Longitude/Latitude", "GIS Tools")
+        public XYtoDD() : base("XY to Decimal Degrees", "XYtoDD", "Convert X/Y to Decimal Degrees Longitude/Latitude in the WGS84 spatial reference system", "GIS Tools")
         {
 
         }

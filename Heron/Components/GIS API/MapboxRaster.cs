@@ -30,7 +30,7 @@ namespace Heron
         /// <summary>
         /// Initializes a new instance of the MapboxRaster class.
         /// </summary>
-        public MapboxRaster() : base("Mapbox Raster", "MapboxRaster", "Get raster imagery from a Mapbox service", "GIS API")
+        public MapboxRaster() : base("Mapbox Raster", "MapboxRaster", "Get raster imagery from a Mapbox service. Requires a Mapbox Token.", "GIS API")
         {
         }
 

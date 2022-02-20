@@ -34,7 +34,7 @@ namespace Heron
     public class DDtoXY : HeronComponent
     {
         //Class Constructor
-        public DDtoXY() : base("Decimal Degrees to XY", "DDtoXY", "Convert Decimal Degrees Longitude/Latitude to X/Y", "GIS Tools")
+        public DDtoXY() : base("Decimal Degrees to XY", "DDtoXY", "Convert WGS84 Decimal Degrees Longitude/Latitude to X/Y", "GIS Tools")
         {
 
         }

@@ -17,9 +17,10 @@ namespace Heron.Components.GIS_Tools
         /// Initializes a new instance of the MultiMoveToMesh class.
         /// </summary>
         public MultiMoveToTopo()
-          : base("MultiMoveToTopo", "MMoveToTopo",
-              "Move breps, surfaces, meshes, polylines and points to a topography mesh.  Breps and closed meshes will be moved to the lowest point on the topography mesh within their footprint.  " +
+          : base("Multi Move to Topo", "MMoveToTopo",
+              "Move breps, surfaces, meshes, polylines and points to a topography mesh.  Breps and closed meshes will be moved to the lowest point on the topography mesh within their footprint. " +
                 "Vertexes of curves and open meshes and control points of surfaces will be moved to the topography mesh." +
+                "Geometry on a branch will be moved together as a group, but can be moved independently by deselecting 'Group' from the component menu." +
                 "For a slower, but more detailed projection where curves and open meshes take on the vertexes of the topography mesh, " +
                 "select 'Detailed' from the component menu.",
               "Utilities")

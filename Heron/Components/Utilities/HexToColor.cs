@@ -13,7 +13,7 @@ namespace Heron
         /// Initializes a new instance of the ColorToHex class.
         /// </summary>
         public HexToColor()
-          : base("HexToColor", "H2C", "Convert a hexidecimal color to RGBA format.", "Utilities")
+          : base("Hex to Color", "H2C", "Convert a hexidecimal color to RGBA format.", "Utilities")
         {
         }
         public override Grasshopper.Kernel.GH_Exposure Exposure

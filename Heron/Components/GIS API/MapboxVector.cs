@@ -44,7 +44,7 @@ namespace Heron
         /// <summary>
         /// Initializes a new instance of the MapboxTopo class.
         /// </summary>
-        public MapboxVector() : base("Mapbox Vector", "MapboxVector", "Get vector data from a Mapbox service.", "GIS API")
+        public MapboxVector() : base("Mapbox Vector", "MapboxVector", "Get vector data from a Mapbox service. Requires a Mapbox Token.", "GIS API")
         {
 
         }

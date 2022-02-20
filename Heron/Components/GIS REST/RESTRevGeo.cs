@@ -37,7 +37,7 @@ namespace Heron
     public class RESTRevGeo : HeronComponent
     {
         //Class Constructor
-        public RESTRevGeo() : base("ESRI REST Service Reverse Geocode", "RESTRevGeo", "Get the closest addresses to XY coordinates", "GIS REST")
+        public RESTRevGeo() : base("ESRI REST Service Reverse Geocode", "RESTRevGeo", "Get the closest addresses to XY coordinates using the ESRI reverse geocode service.", "GIS REST")
         {
 
         }
