@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Net;
 
 using Rhino;
 using Rhino.Geometry;
@@ -820,11 +821,24 @@ namespace Heron
         ///Get list of mapping service Endpoints
         public static string GetEnpoints()
         {
-            string jsonString = string.Empty;
+            //string jsonString = string.Empty;
+            ///Get embeded endpoints if there are issues loading from the web
+            string jsonString = System.Text.Encoding.Default.GetString(Properties.Resources.HeronServiceEndpoints);
+
             using (System.Net.WebClient wc = new System.Net.WebClient())
             {
-                string URI = "https://raw.githubusercontent.com/blueherongis/Heron/master/HeronServiceEndpoints.json";
-                jsonString = wc.DownloadString(URI);
+                try
+                {
+                    ///https://www.aspsnippets.com/Articles/Net-WebClient-Could-not-create-SSLTLS-secure-channel.aspx
+                    ServicePointManager.Expect100Continue = true;
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                    string URI = "https://raw.githubusercontent.com/blueherongis/Heron/master/HeronServiceEndpoints.json";
+                    jsonString = wc.DownloadString(URI);
+                }
+                catch (System.Net.WebException e)
+                {
+                    throw e;
+                }
             }
 
             return jsonString;
