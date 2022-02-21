@@ -143,7 +143,10 @@ namespace Heron
 
                       }
 
-                      if (mPatch.SolidOrientation() < 0) { mPatch.Flip(true, true, true); }
+                      if (mPatch != null)
+                      {
+                          if (mPatch.SolidOrientation() < 0) { mPatch.Flip(true, true, true); }
+                      }
 
                       mPatchTree[pth] = new GH_Mesh(mPatch);
                   }
