@@ -13,6 +13,10 @@ using Rhino.Geometry;
 
 using Newtonsoft.Json.Linq;
 
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
 namespace Heron
 {
     public class RESTTopo : HeronComponent
@@ -22,11 +26,12 @@ namespace Heron
         /// </summary>
         public RESTTopo()
           : base("Get REST Topography", "RESTTopo",
-              "Get STRM, ALOS and GMRT topographic data from web services.  " +
+              "Get STRM, ALOS, GMRT and USGS topographic data from web services.  " +
                 "These services include global coverage from the " +
                 "Shuttle Radar Topography Mission (SRTM GL3 90m and SRTM GL1 30m), " +
                 "Advanced Land Observing Satellite (ALOS World 3D - 30m) and " +
-                "Global Multi-Resolution Topography (GMRT including bathymetry). Sources are opentopography.org and gmrt.org.",
+                "Global Multi-Resolution Topography (GMRT including bathymetry) " +
+                "and North American coverage from the U.S. Geological Survey 3D Elevation Program (USGS 3DEP). Sources are opentopography.org, gmrt.org and elevation.nationalmap.gov.",
                "GIS REST")
         {
         }
@@ -83,6 +88,10 @@ namespace Heron
             GH_Structure<GH_String> demList = new GH_Structure<GH_String>();
             GH_Structure<GH_String> demQuery = new GH_Structure<GH_String>();
 
+            ///Load in key from secrets
+            HeronConfig.LoadKeys();
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
+
             for (int i = 0; i < boundary.Count; i++)
             {
 
@@ -116,6 +125,16 @@ namespace Heron
 
                 string tQ = String.Format(topoURL, west, south, east, north);
 
+                if (topoURL.Contains("portal.opentopography.org"))
+                {
+                    demQuery.Append(new GH_String(tQ + "YourKeyHere"));
+                    tQ = tQ + HeronConfig.OpenTopographyAPIKey;
+                }
+                else
+                {
+                    demQuery.Append(new GH_String(tQ), path);
+                }
+
                 if (run)
                 {
                     System.Net.WebClient webClient = new System.Net.WebClient();
@@ -124,7 +143,6 @@ namespace Heron
                 }
 
                 demList.Append(new GH_String(folderPath + prefix + "_" + i + ".tif"), path);
-                demQuery.Append(new GH_String(tQ), path);
 
             }
 
