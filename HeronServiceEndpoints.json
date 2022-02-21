@@ -104,38 +104,68 @@
 	[
 		{
 			"service" : "SRTM GL1 (30m)",
-			"url" : "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL1&west={0}&south={1}&east={2}&north={3}",
-			"description" : "SRTM GL1 (30m) 1 Arcsecond resolution"
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL1&west={0}&south={1}&east={2}&north={3}&API_Key=",
+			"description" : "SRTM GL1 (30m) 1 Arcsecond resolution from OpenTopography.org."
+		},
+		{
+			"service" : "SRTM GL1 Ellipsoidal 30m",
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL1_E&west={0}&south={1}&east={2}&north={3}&API_Key=",
+			"description" : "SRTM GL1 Ellipsoidal 30m 1 Arcsecond resolution from OpenTopography.org."
 		},
 		{
 			"service" : "SRTM GL3 (90m)",
-			"url" : "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL3&west={0}&south={1}&east={2}&north={3}",
-			"description" : "SRTM GL3 (90m) 3 Arsecond resolution"
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=SRTMGL3&west={0}&south={1}&east={2}&north={3}&API_Key=",
+			"description" : "SRTM GL3 (90m) 3 Arsecond resolution from OpenTopography.org."
 		},
 		{
 			"service" : "ALOS World 3D (30m)",
-			"url" : "https://portal.opentopography.org/API/globaldem?demtype=AW3D30&west={0}&south={1}&east={2}&north={3}",
-			"description" : "ALOS World 3D (30m)"
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=AW3D30&west={0}&south={1}&east={2}&north={3}&API_Key=",
+			"description" : "ALOS World 3D (30m) from OpenTopography.org."
+		},
+		{
+			"service" : "ALOS World 3D Ellipsoidal, 30m",
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=AW3D30_E&west={0}&south={1}&east={2}&north={3}&API_Key=",
+			"description" : "ALOS World 3D Ellipsoidal, 30m from OpenTopography.org."
+		},
+		{
+			"service" : "SRTM15Plus (Global Bathymetry SRTM15+ V2.1)",
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=SRTM15Plus&west={0}&south={1}&east={2}&north={3}&API_Key=",
+			"description" : "SRTM15Plus (Global Bathymetry SRTM15+ V2.1) from OpenTopography.org."
+		},
+		{
+			"service" : "NASADEM (NASADEM Global DEM)",
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=NASADEM&west={0}&south={1}&east={2}&north={3}&API_Key=",
+			"description" : "NASADEM (NASADEM Global DEM) from OpenTopography.org."
+		},
+		{
+			"service" : "COP30 (Copernicus Global DSM 30m)",
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=COP30&west={0}&south={1}&east={2}&north={3}&API_Key=",
+			"description" : "COP30 (Copernicus Global DSM 30m) from OpenTopography.org."
+		},
+		{
+			"service" : "COP90 (Copernicus Global DSM 90m)",
+			"url" : "https://portal.opentopography.org/API/globaldem?demtype=COP90&west={0}&south={1}&east={2}&north={3}&API_Key=",
+			"description" : "COP90 (Copernicus Global DSM 90m) from OpenTopography.org."
 		},
 		{
 			"service" : "GMRT Max",
 			"url" : "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=max",
-			"description" : "GMRT Max"
+			"description" : "Global Multi-Resolution Topography (GMRT) & Bathymetry Max resolution."
 		},
 		{
 			"service" : "GMRT High",
 			"url" : "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=high",
-			"description" : "GMRT High resolution. Will default to highest resolution if boundary is too small."
+			"description" : "Global Multi-Resolution Topography (GMRT) & Bathymetry High resolution. Will default to highest resolution if boundary is too small."
 		},
 		{
 			"service" : "GMRT Medium",
 			"url" : "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=med",
-			"description" : "GMRT Medium resolution. Will default to higher resolution if boundary is too small."
+			"description" : "Global Multi-Resolution Topography (GMRT) & Bathymetry Medium resolution. Will default to higher resolution if boundary is too small."
 		},
 		{
 			"service" : "GMRT Low",
 			"url" : "https://www.gmrt.org/services/GridServer?west={0}&south={1}&east={2}&north={3}&layer=topo&format=geotiff&resolution=low",
-			"description" : "GMRT Low resolution. Will default to higher resolution if boundary is too small."
+			"description" : "Global Multi-Resolution Topography (GMRT) & Bathymetry Low resolution. Will default to higher resolution if boundary is too small."
 		},
 		{
 			"service" : "USGS 3DEP Bare Earth DEM Max",
