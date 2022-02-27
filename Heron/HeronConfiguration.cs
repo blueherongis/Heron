@@ -13,6 +13,8 @@ namespace Heron
         /// Enable use of UserSecrets in order to keep keys/tokens off Github.  Before compiling copy appsettings.json to 
         /// \AppData\Roaming\Microsoft\UserSecrets\6aefc65d-9849-4d4f-b9a7-16d77517db86 and rename as secrets.json.
         /// Edit secrets.json with your own keys/tokens.
+        /// Based on this approach:
+        /// https://www.frakkingsweet.com/add-usersecrets-to-net-core-console-application/
         /// </summary>
         public static class ServiceProviderBuilder
         {
