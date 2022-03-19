@@ -197,6 +197,7 @@ namespace Heron
                         }
                         catch (WebException e)
                         {
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, e.Message);
                             webC.DownloadFile(restqueryImage, folderPath + prefix + "_" + i + "." + imageType);
                             webC.Dispose();
                         }
