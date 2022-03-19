@@ -13,10 +13,6 @@ using Rhino.Geometry;
 
 using Newtonsoft.Json.Linq;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-
 namespace Heron
 {
     public class RESTTopo : HeronComponent
@@ -83,14 +79,12 @@ namespace Heron
             bool run = false;
             DA.GetData<bool>("Run", ref run);
 
-            //Dictionary<string, TopoServices> tServices = GetTopoServices();
-
             GH_Structure<GH_String> demList = new GH_Structure<GH_String>();
             GH_Structure<GH_String> demQuery = new GH_Structure<GH_String>();
 
             ///Load in key from secrets
             HeronConfig.LoadKeys();
-            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
+            //AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
 
             for (int i = 0; i < boundary.Count; i++)
             {
@@ -104,20 +98,17 @@ namespace Heron
                     return;
                 }
 
-                //offset boundary to ensure data from opentopography fully contains query boundary
+                ///Offset boundary to ensure data from opentopography fully contains query boundary
+                Curve orientedBoundary = boundary[i].ToNurbsCurve();
+                if (orientedBoundary.ClosedCurveOrientation(Plane.WorldXY) == CurveOrientation.Clockwise) { orientedBoundary.Reverse(); }
                 double offsetD = 200 * Rhino.RhinoMath.UnitScale(UnitSystem.Meters, Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem);
-                Curve offsetB = boundary[i].Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
+                Curve offsetB = orientedBoundary.Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
 
-                //Get dem frame for given boundary
+                ///Get dem frame for given boundary
                 Point3d min = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Min);
                 Point3d max = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Max);
 
-                //Query opentopography.org
-                //DEM types
-                //SRTMGL3 SRTM GL3 (90m)
-                //SRTMGL1 SRTM GL1 (30m)
-                //SRTMGL1_E SRTM GL1 (Ellipsoidal)
-                //AW3D30 ALOS World 3D 30m
+                ///Query opentopography.org
                 double west = min.X;
                 double south = min.Y;
                 double east = max.X;
@@ -146,7 +137,7 @@ namespace Heron
 
             }
 
-            //populate outputs
+            ///Populate outputs
             DA.SetDataTree(0, demList);
             DA.SetDataTree(1, demQuery);
         }
@@ -162,11 +153,6 @@ namespace Heron
 
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
-            //Dictionary<string, TopoServices> services = GetTopoServices();
-
-            //ToolStripMenuItem root = new ToolStripMenuItem("Pick a topo service");
-
-
             if (topoSourceList == "")
             {
                 topoSourceList = Convert.GetEnpoints();
@@ -184,11 +170,8 @@ namespace Heron
                 serviceName.ToolTipText = service["description"].ToString();
                 serviceName.Click += ServiceItemOnClick;
 
-                //root.DropDownItems.Add(serviceName);
                 menu.Items.Add(serviceName);
             }
-
-            //menu.Items.Add(root);
 
             base.AppendAdditionalComponentMenuItems(menu);
 
@@ -267,8 +250,6 @@ namespace Heron
         {
             get
             {
-                //You can add image files to your project resources and access them like this:
-                // return Resources.IconForThisComponent;
                 return Properties.Resources.img;
             }
         }
