@@ -1,40 +1,15 @@
-﻿using System;
-using System.IO;
-using System.Xml;
-using System.Xml.Linq;
-using System.Linq;
-using System.Data;
-using System.Drawing;
-using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using Grasshopper;
-using Grasshopper.Kernel;
-using Grasshopper.Kernel.Data;
-using Grasshopper.Kernel.Types;
-using Rhino;
-using Rhino.Geometry;
-using Rhino.DocObjects;
-using Rhino.Collections;
-using GH_IO;
-using GH_IO.Serialization;
-
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+﻿using Grasshopper.Kernel;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Serialization;
+using Rhino.DocObjects;
+using System;
+using System.Linq;
 
 namespace Heron
 {
     public class SetEAP : HeronComponent
     {
         //Class Constructor
-        public SetEAP() : base("Set EarthAnchorPoint", "SetEAP", "Set the Rhino EarthAnchorPoint", "GIS Tools")
+        public SetEAP() : base("Set EarthAnchorPoint", "SetEAP", "Set the Rhino EarthAnchorPoint using either an address or Lat/Lon coordinates", "GIS Tools")
         {
 
         }
@@ -43,10 +18,13 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddBooleanParameter("Set EAP", "set", "Set the EarthAnchorPoint", GH_ParamAccess.item, false);
-            pManager.AddNumberParameter("Latitude", "LAT", "Decimal Degree Latitude", GH_ParamAccess.item);
-            pManager.AddNumberParameter("Longitude", "LON", "Decimal Degree Longitude", GH_ParamAccess.item);
+            pManager.AddTextParameter("Point of Interest", "poi", "Point of interest or address with which to set the EarthAnchorPoint. " +
+                "If a point of interest or address is supplied, this component will query the ESRI geolocation service and set the EAP to the first coordinates in the list of candidates.", GH_ParamAccess.item);
             pManager[1].Optional = true;
+            pManager.AddTextParameter("Latitude", "LAT", "Latitude in either Decimal Degree (DD) or Degree Minute Second (DMS) format", GH_ParamAccess.item);
             pManager[2].Optional = true;
+            pManager.AddTextParameter("Longitude", "LON", "Longitude in either Decimal Degree (DD) or Degree Minute Second (DMS) format", GH_ParamAccess.item);
+            pManager[3].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -56,10 +34,14 @@ namespace Heron
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            double lat = -1;
-            double lon = -1;
+            string latString = string.Empty;
+            string lonString = string.Empty;
+            double lat = Double.NaN;
+            double lon = Double.NaN;
             bool EAP = false;
+            string address = string.Empty;
             string lonlatString = string.Empty;
+            string addressString = string.Empty;
 
             //check if EAP has been set and if so what is it
             if (!Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthLocationIsSet())
@@ -72,20 +54,74 @@ namespace Heron
                 " / Latitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLatitude.ToString();
 
             DA.GetData<bool>("Set EAP", ref EAP);
-            DA.GetData<double>("Latitude", ref lat);
-            DA.GetData<double>("Longitude", ref lon);
+            DA.GetData<string>("Point of Interest", ref address);
+            DA.GetData<string>("Latitude", ref latString);
+            DA.GetData<string>("Longitude", ref lonString);
+
+
 
             if (EAP == true)
             {
                 EarthAnchorPoint ePt = new EarthAnchorPoint();
-                ePt.EarthBasepointLatitude = lat;
-                ePt.EarthBasepointLongitude = lon;
+
+                lat = Heron.Convert.DMStoDDLat(latString);
+                lon = Heron.Convert.DMStoDDLon(lonString);
+
+                if (Double.IsNaN(lat) && !string.IsNullOrEmpty(latString))
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Latitude value is invalid. Please enter value in valid Decimal Degree format (-79.976666) " +
+                        "or valid Degree Minute Second format (79°58′36″W | 079:56:55W | 079d 58′ 36″ W | 079 58 36.0 | 079 58 36.4 E)");
+                    return;
+                }
+
+                if (Double.IsNaN(lon) && !string.IsNullOrEmpty(lonString))
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Longitude value is invalid. Please enter value in valid Decimal Degree format (40.446388) " +
+                        "or valid Degree Minute Second format (40°26′47″N | 40:26:46N | 40d 26m 47s N | 40 26 47.1 | 40 26 47.4141 N)");
+                    return;
+                }
+
+                if (!string.IsNullOrEmpty(address)  && string.IsNullOrEmpty(latString) && string.IsNullOrEmpty(lonString))
+                {
+                    string output = Heron.Convert.HttpToJson("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?Address=" + address + "&f=pjson");
+                    JObject ja = JObject.Parse(output);
+
+                    if (ja["candidates"].Count() < 1)
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "No Cadidate location found for this address");
+                        DA.SetData("Earth Anchor Point", lonlatString);
+                        return;
+                    }
+                    else
+                    {
+                        if (ja["candidates"][0]["score"].Value<int>() > 99)
+                        {
+                            addressString = "EAP set to the following address: " + ja["candidates"][0]["address"].ToString() + "\r\n";
+                            ePt.EarthBasepointLatitude = (double)ja["candidates"][0]["location"]["y"];
+                            ePt.EarthBasepointLongitude = (double)ja["candidates"][0]["location"]["x"];
+                        }
+                    }
+                }
+
+                else
+                {
+                    if (!Double.IsNaN(lat) && !Double.IsNaN(lon))
+                    {
+                        ePt.EarthBasepointLatitude = lat;
+                        ePt.EarthBasepointLongitude = lon;
+                    }
+                    else
+                    {
+                        DA.SetData("Earth Anchor Point", lonlatString);
+                        return;
+                    }
+                }
 
                 //set new EAP
                 Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint = ePt;
 
                 //new EAP to string for output
-                lonlatString = "Longitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLongitude.ToString() +
+                lonlatString = addressString + "Longitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLongitude.ToString() +
                 " / Latitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLatitude.ToString();
             }
 
@@ -103,7 +139,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{6577DC68-200C-4B3C-ADB4-78DE61D76870}"); }
+            get { return new Guid("3A9B1B9D-9DED-4B5B-9101-ED57F5239EC8"); }
         }
     }
 }
