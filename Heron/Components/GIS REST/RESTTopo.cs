@@ -12,6 +12,10 @@ using Rhino;
 using Rhino.Geometry;
 
 using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
+using System.ComponentModel;
+using System.Net;
+using System.Net.Http;
 
 namespace Heron
 {
@@ -126,20 +130,61 @@ namespace Heron
                     demQuery.Append(new GH_String(tQ), path);
                 }
 
-                if (run)
-                {
-                    System.Net.WebClient webClient = new System.Net.WebClient();
-                    webClient.DownloadFile(tQ, folderPath + prefix + "_" + i + ".tif");
-                    webClient.Dispose();
-                }
-
                 demList.Append(new GH_String(folderPath + prefix + "_" + i + ".tif"), path);
 
+                if (run && !done)
+                {
+                    Message = "Connecting with server...";
+                    ///Allow async download of topo files
+                    ///https://docs.microsoft.com/en-us/dotnet/api/system.net.webclient.downloadfilecompleted?view=net-6.0
+                    using (var webClient = new WebClient())
+                    {
+                        webClient.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadCompleted);
+                        webClient.DownloadProgressChanged += new DownloadProgressChangedEventHandler(ProgressChanged);
+                        webClient.DownloadFileAsync(new Uri(tQ), folderPath + prefix + "_" + i + ".tif");
+                        webClient.Dispose();
+                    }
+                }
+            }
+            
+            ///Populate outputs
+            if (done) 
+            { 
+                DA.SetDataTree(0, demList); 
+            }
+            else { DA.SetDataTree(0, new GH_Structure<GH_String>()); }
+            DA.SetDataTree(1, demQuery);
+            done = false;
+        }
+
+        public bool done = false;
+        private void ProgressChanged(object sender, DownloadProgressChangedEventArgs e)
+        {
+            if (e.ProgressPercentage.ToString().EndsWith("0"))
+            {
+                //Message = "Downloading file..." + e.ProgressPercentage.ToString() + "%";
+                //Grasshopper.Instances.RedrawCanvas();            
+            }
+        }
+
+        public void DownloadCompleted(object sender, AsyncCompletedEventArgs e)
+        {
+            if (e.Cancelled)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "File download cancelled.");
             }
 
-            ///Populate outputs
-            DA.SetDataTree(0, demList);
-            DA.SetDataTree(1, demQuery);
+            if (e.Error != null)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.Error.ToString());
+            }
+
+            Message = "Downloaded";
+            done = true;
+            ExpireSolution(true);
+            System.Threading.Thread.Sleep(100);
+            Message = topoSource;
+
         }
 
         ////////////////////////////
