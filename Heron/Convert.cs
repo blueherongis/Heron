@@ -24,7 +24,7 @@ using Grasshopper.Kernel.Types;
 using OSGeo.OGR;
 using OSGeo.GDAL;
 using OSGeo.OSR;
-
+using System.Text.RegularExpressions;
 
 namespace Heron
 {
@@ -856,8 +856,115 @@ namespace Heron
         }
 
         //////////////////////////////////////////////////////
+        ///Convert Degree Minute Second (DMS) format to Decimal Degree (DD)
+        ///Relies on regular expressions
+        ///Escape double quotes by adding another double quote
+        ///https://stackoverflow.com/questions/2148587/finding-quoted-strings-with-escaped-quotes-in-c-sharp-using-a-regular-expression
+        ///Regex pattern from here
+        ///https://www.regexlib.com/(A(01GR39szfGm1gLcdC4FCoPEJDFXu6LgRzwFx-1isNi69fZ3psu9BCC6xQRLCI08-mp4YPR2aya9kigMOk--fo1CP9WhvURrgSaKBoq5nBO0FZx4UYdIDOmf6CVWTvL5-0CMYvve2eO0C7V8jmxo4zhmwBNlD3k4IEHtggeP5JWiqxCVLAgvXn0aTRUgVXKmZ0))/Search.aspx?k=longitude&c=-1&m=-1&ps=20&AspxAutoDetectCookieSupport=1
+        ///https://stackoverflow.com/questions/4123455/how-do-i-match-an-entire-string-with-a-regex
+        ///https://stackoverflow.com/questions/5970961/regular-expression-javascript-convert-degrees-minutes-seconds-to-decimal-degree/5971628
+        ///https://stackoverflow.com/questions/48534863/splitting-a-string-containing-a-longitude-or-latitude-expression-in-perl
+        ///Latitude and Longitude in Degrees Minutes Seconds (DMS) zero padded, separated by spaces or : or (d, m, s) or (°, ', ") 
+        ///or run together and followed by cardinal direction initial (N,S,E,W) Longitude Degree range: -180 to 180 Latitude Degree range: -90 to 90 
+        ///Minute range: 0 to 60 Second range: 0.00 to 60.00 Note: Only seconds can have decimals places. A decimal point with no trailing digits is invalid.
+        ///Examples of valid formats
+        ///40:26:46N,079:56:55W | 40°26′47″N 079°58′36″W | 40d 26m 47s N 079d 58′ 36″ W | 90 00 00.0, 180 00 00.0 | 89 59 50.4141 S c | 00 00 00.0, 000 00 00.0
+
+        public static double DMStoDDLon(string dms)
+        {
+            ///Regex pattern for verifying DMS Longitude is with -180 to 180
+            var lonDMSPattern = @"[ ,]*(-?(180[ :°d]*00[ :\'\'m]*00(\.0+)?|(1[0-7][0-9]|0[0-9][0-9]|[0-9][0-9])[ :°d]*[0-5][0-9][ :\'\'m]*[0-5][0-9](\.\d+)?)[ :\?\""s]*(E|e|W|w)?)";
+            
+            ///Regex pattern DD Longitude is with -180 to 180
+            var lonDDPattern = @"^(\+|-)?(?:180(?:(?:\.0{1,12})?)|(?:[0-9]|[1-9][0-9]|1[0-7][0-9])(?:(?:\.[0-9]{1,12})?))$";
+            
+            ///Get rid of any white spaces
+            dms = dms.Trim();
+
+            double coordinate = Double.NaN;
+
+            ///Test if the Lon is DD format and return as double if valid
+            if (Regex.Match(dms, lonDDPattern).Success)
+            {
+                return Double.Parse(dms);
+            }
+
+            ///Else test if the Lon is DMS format and convert to double DD and return if valid
+            else if (Regex.Match(dms, lonDMSPattern).Success && Regex.Match(dms, lonDMSPattern).Value.Length == dms.Length)
+            {
+                bool sw = dms.ToLower().EndsWith("w");
+                int f = sw ? -1 : 1;
+                var bits = Regex.Matches(dms, @"[\d.]+", RegexOptions.IgnoreCase);
+                coordinate = 0;
+                double result;
+                for (int i = 0; i < bits.Count; i++)
+                {
+                    if (Double.TryParse(bits[i].ToString(), out result))
+                    {
+                        coordinate += result / f;
+                        f *= 60;
+                    }
+                }
+
+                return coordinate;
+            }
+
+            ///If DD or DMS format is invalid, return NaN
+            else
+            {
+                return coordinate;
+            }
+        }
+
+        public static double DMStoDDLat(string dms)
+        {
+            ///Regex pattern for verifying DMS Latitude is with -90 to 90
+            var latDMSPattern = @"(-?(90[ :°d]*00[ :\'\'m]*00(\.0+)?|[0-8][0-9][ :°d]*[0-5][0-9][ :\'\'m]*[0-5][0-9](\.\d+)?)[ :\?\""s]*(N|n|S|s)?)";
+            
+            ///Regex pattern DD Latitude is with -90 to 90
+            var latDDPattern = @"^(\+|-)?(?:90(?:(?:\.0{1,12})?)|(?:[0-9]|[1-8][0-9])(?:(?:\.[0-9]{1,12})?))$";
+
+            ///Get rid of any white spaces
+            dms = dms.Trim();
+
+            double coordinate = Double.NaN;
+
+            ///Test if the Lat is DD format and return as double if valid
+            if (Regex.Match(dms, latDDPattern).Success)
+            {
+                return Double.Parse(dms);
+            }
+            
+            ///Else test if the Lat is DMS format and convert to double DD and return if valid
+            else if (Regex.Match(dms, latDMSPattern).Success && Regex.Match(dms, latDMSPattern).Value.Length == dms.Length)
+            {
+                bool sw = dms.ToLower().EndsWith("s");
+                int f = sw ? -1 : 1;
+                var bits = Regex.Matches(dms, @"[\d.]+", RegexOptions.IgnoreCase);
+                coordinate = 0;
+                double result;
+                for (int i = 0; i < bits.Count; i++)
+                {
+                    if (Double.TryParse(bits[i].ToString(), out result))
+                    {
+                        coordinate += result / f;
+                        f *= 60;
+                    }
+                }
+                return coordinate;
+            }
+
+            ///If DD or DMS format is invalid, return NaN
+            else
+            {
+                return coordinate;
+            }
+        }
 
     }
+
+    //////////////////////////////////////////////////////
 
     public static class BitmapExtension
     {
