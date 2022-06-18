@@ -73,7 +73,7 @@ namespace Heron
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Yelp JSON", "json", "Yelp's JSON response", GH_ParamAccess.item);
-            pManager.AddTextParameter("URL", "url", "URL queried", GH_ParamAccess.item);
+            pManager.AddTextParameter("URL", "Url", "URL queried", GH_ParamAccess.item);
         }
 
         private bool IsSortBySelected(string sortByString)
@@ -286,11 +286,11 @@ namespace Heron
                 if (hApiKey != null)
                 {
                     ApiKey = hApiKey;
-                    Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using Yelp API key stored in Environment Variable YELPAPIKEY.");
+                    //Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using Yelp API key stored in Environment Variable YELPAPIKEY.");
                 }
                 else
                 {
-                    Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "No Yelp API key is specified.  Please get a valid token from yelp.com");
+                    //Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "No Yelp API key is specified.  Please get a valid token from yelp.com");
                     return;
                 }
             }
