@@ -100,6 +100,7 @@ namespace Heron
                 }
                 catch (Exception ex)
                 {
+                    Console.WriteLine(ex.Message);
                 }
                 return success;
             }
@@ -160,6 +161,7 @@ namespace Heron
                 }
                 catch (Exception ex)
                 {
+                    Console.WriteLine(ex.Message);
                 }
 
                 return jsonStream;
