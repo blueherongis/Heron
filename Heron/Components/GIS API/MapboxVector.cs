@@ -477,13 +477,13 @@ namespace Heron
             //write out new tile range metadata for serialization
             TileCacheMeta = tileRangeString;
 
-
+            List<string> mbAtts = new List<string> { "© Mapbox, © OpenStreetMap", "https://www.mapbox.com/about/maps/", "http://www.openstreetmap.org/copyright" };
 
             DA.SetData(0, imgFrame);
             DA.SetDataTree(1, fnames);
             DA.SetDataTree(2, fvalues);
             DA.SetDataTree(3, gGoo);
-            DA.SetDataList(4, "copyright Mapbox");
+            DA.SetDataList(4, mbAtts);
             DA.SetDataTree(5, gtype);
             DA.SetDataTree(6, gGooBuildings);
             DA.SetDataList(7, tileExtents);

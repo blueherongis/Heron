@@ -481,11 +481,12 @@ namespace Heron
 
             }
 
+            List<string> mbAtts = new List<string> { "© Mapbox, © OpenStreetMap", "https://www.mapbox.com/about/maps/", "http://www.openstreetmap.org/copyright" };
 
             DA.SetDataTree(0, mapList);
             DA.SetDataTree(1, imgFrame);
             DA.SetDataTree(2, tCount);
-            DA.SetDataList(3, "copyright Mapbox");
+            DA.SetDataList(3, mbAtts);
 
         }
 
