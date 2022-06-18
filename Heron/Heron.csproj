@@ -132,15 +132,8 @@
   <ItemGroup>
     <Compile Include="Components\Deprecated\MapboxRaster_DEPRECATED20211114.cs" />
     <Compile Include="Components\Deprecated\SlippyRaster_DEPRECATED2021114.cs" />
-    <Compile Include="Components\GIS API\MapboxIsochrone.cs" />
-    <None Include="Components\GIS API\MapboxIsochroneSpeckle.cs" />
-    <Compile Include="Components\GIS API\Yelp.cs" />
     <Compile Include="Components\GIS REST\RESTVector.cs" />
-    <Compile Include="Components\GIS Tools\DMStoDD.cs" />
-    <Compile Include="Components\GIS Tools\GdalBuffer.cs" />
-    <Compile Include="Components\GIS Tools\SetEAP.cs" />
     <Compile Include="Components\Utilities\MultiMoveToTopo.cs" />
-    <Compile Include="Components\Utilities\TopiaryFlatten.cs" />
     <Compile Include="HeronConfiguration.cs" />
     <Compile Include="SpeckleAsync\GH_AsyncComponent.cs" />
     <Compile Include="Components\Utilities\HexToColor.cs" />
@@ -151,6 +144,7 @@
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="Components\GIS API\Yelp.cs" />
     <None Include="Components\GIS Tools\GdalPoligonize.cs" />
     <Compile Include="HeronBoxPreviewComponent.cs" />
     <Compile Include="Components\Utilities\ImageFilterColors.cs" />
@@ -198,7 +192,7 @@
     <Compile Include="Components\Deprecated\RESTVector_DEPRECATED.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Components\Deprecated\SetEAP_DEPRECATED20220416.cs" />
+    <Compile Include="Components\GIS Tools\SetEAP.cs" />
     <Compile Include="Components\GIS Tools\DDtoXY.cs" />
     <Compile Include="Components\GIS REST\RESTGeocode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
