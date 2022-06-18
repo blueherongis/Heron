@@ -1,40 +1,16 @@
-﻿using System;
-using System.IO;
-using System.Xml;
-using System.Xml.Linq;
-using System.Linq;
-using System.Data;
-using System.Drawing;
-using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-
-using System.Windows.Forms;
-
-using Grasshopper;
+﻿using GH_IO.Serialization;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
-using Rhino;
-using Rhino.Geometry;
-using Rhino.DocObjects;
-using Rhino.Collections;
-using GH_IO;
-using GH_IO.Serialization;
-
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Serialization;
-
-using OSGeo.GDAL;
 using OSGeo.OGR;
 using OSGeo.OSR;
+using Rhino.Geometry;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Windows.Forms;
 
 
 namespace Heron
@@ -360,7 +336,7 @@ namespace Heron
                             for (int iAttr = 0; iAttr < def.GetFieldCount(); iAttr++)
                             {
                                 OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iAttr);
-                                fnames.Append(new GH_String(fdef.GetNameRef()), new GH_Path(layerIndex));
+                                fnames.Append(new GH_String(fdef.GetNameRef()), new GH_Path(layerIndex, t));
                             }
                         }
 
