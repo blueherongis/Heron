@@ -169,22 +169,22 @@
 		},
 		{
 			"service" : "USGS 3DEP Bare Earth DEM Max",
-			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR=4326&size=2048%2C2048&imageSR=4326&format=tiff&f=image",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR={4}&size=2048%2C2048&imageSR={4}&format=tiff&f=image",
 			"description" : "The USGS 3D Elevation Program (3DEP) Bare Earth DEM Dynamic service is based on multi-resolution USGS DEM sources. Max will output a 2048 x 2048 pixel DEM"
 		},
 		{
 			"service" : "USGS 3DEP Bare Earth DEM High",
-			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR=4326&size=1024%2C1024&imageSR=4326&format=tiff&f=image",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR={4}&size=1024%2C1024&imageSR={4}&format=tiff&f=image",
 			"description" : "The USGS 3D Elevation Program (3DEP) Bare Earth DEM Dynamic service is based on multi-resolution USGS DEM sources. High will output a 1024 x 1024 pixel DEM"
 		},
 		{
 			"service" : "USGS 3DEP Bare Earth DEM Medium",
-			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR=4326&size=512%2C512&imageSR=4326&format=tiff&f=image",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR={4}&size=512%2C512&imageSR={4}&format=tiff&f=image",
 			"description" : "The USGS 3D Elevation Program (3DEP) Bare Earth DEM Dynamic service is based on multi-resolution USGS DEM sources. Medium will output a 512 x 512 pixel DEM"
 		},
 		{
 			"service" : "USGS 3DEP Bare Earth DEM Low",
-			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR=4326&size=256%2C256&imageSR=4326&format=tiff&f=image",
+			"url" : "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox={0}%2C{1}%2C{2}%2C{3}&bboxSR={4}&size=256%2C256&imageSR={4}&format=tiff&f=image",
 			"description" : "The USGS 3D Elevation Program (3DEP) Bare Earth DEM Dynamic service is based on multi-resolution USGS DEM sources. Low will output a 256 x 256 pixel DEM"
 		}
 	],
