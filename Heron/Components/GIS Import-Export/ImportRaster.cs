@@ -120,11 +120,21 @@ namespace Heron
                     };
             srcInfo = Gdal.GDALInfo(datasource, new GDALInfoOptions(infoOptions.ToArray()));
 
-            //OSGeo.OSR.SpatialReference sr = new SpatialReference(ds.GetProjection());
-            OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
-            dst.SetWellKnownGeogCS("WGS84");
-            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(sr, dst);
-            OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(dst, sr);
+            ///Get HeronSRS
+            OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
+            heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
+            int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
+            Message = "EPSG:" + heronSRSInt;
+
+            ///Apply EAP to HeronSRS
+            Transform heronToUserSRSTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(heronSRS);
+            Transform userSRSToHeronTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
+
+            //OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
+            //dst.SetWellKnownGeogCS("WGS84");
+            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(sr, heronSRS);
+            OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(heronSRS, sr);
 
             double[] adfGeoTransform = new double[6];
             double[] invTransform = new double[6];
@@ -151,15 +161,17 @@ namespace Heron
             Point3d dsMax = new Point3d(extMaxPT[0], extMaxPT[1], extMaxPT[2]);
 
             ///Get bounding box for entire raster data
-            Rectangle3d datasourceBBox = new Rectangle3d(Plane.WorldXY, Heron.Convert.WGSToXYZ(dsMin), Heron.Convert.WGSToXYZ(dsMax));
-
+            //Rectangle3d datasourceBBox = new Rectangle3d(Plane.WorldXY, Heron.Convert.WGSToXYZ(dsMin), Heron.Convert.WGSToXYZ(dsMax));
+            dsMin.Transform(heronToUserSRSTransform);
+            dsMax.Transform(heronToUserSRSTransform);
+            Rectangle3d datasourceBBox = new Rectangle3d(Plane.WorldXY, dsMin, dsMax);
 
             ///https://gis.stackexchange.com/questions/312440/gdal-translate-bilinear-interpolation
             ///set output to georeferenced tiff as a catch-all
-            
+
             string clippedRasterFile = clippedLocation + Path.GetFileNameWithoutExtension(sourceFileLocation) + "_clipped.tif";
             string previewPNG = clippedLocation + Path.GetFileNameWithoutExtension(sourceFileLocation) + "_preview.png";
-            if (sourceFileLocation.Contains("http"))
+            if (sourceFileLocation.Contains("http://") || sourceFileLocation.Contains("https://"))
             {
                 previewPNG = clippedLocation + "ImportRaster_preview.png";
                 clippedRasterFile = clippedLocation + "ImportRaster_clipped.tif";
@@ -170,8 +182,11 @@ namespace Heron
             if (boundary != null)
             {
 
-                Point3d clipperMin = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Corner(true, false, true));
-                Point3d clipperMax = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Corner(false, true, true));
+                Point3d clipperMin = boundary.GetBoundingBox(true).Corner(true, false, true);
+                Point3d clipperMax = boundary.GetBoundingBox(true).Corner(false, true, true);
+                clipperMin.Transform(userSRSToHeronTransform);
+                clipperMax.Transform(userSRSToHeronTransform);
+
 
                 double lonWest = clipperMin.X;
                 double lonEast = clipperMax.X;
@@ -183,7 +198,7 @@ namespace Heron
                 {
                     "-of", "GTiff",
                     //"-a_nodata", "0",
-                    "-projwin_srs", "WGS84",
+                    "-projwin_srs", HeronSRS.Instance.SRS,
                     "-projwin", $"{lonWest}", $"{latNorth}", $"{lonEast}", $"{latSouth}"
                 };
 
