@@ -24,7 +24,7 @@ namespace Heron
             {
                 ///Put your secrets in the following AppData UserSecret folder
                 ///Use appsetttings.json as a template for secrets.json
-                var ghLibFile = typeof(ImportVector).Assembly.Location;
+                var ghLibFile = typeof(ImportVectorSRS).Assembly.Location;
                 var executingDirectory = Path.GetDirectoryName(ghLibFile);
                 string appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 string userSecretsFilePath = appDataFolder + @"\Microsoft\UserSecrets\6aefc65d-9849-4d4f-b9a7-16d77517db86\secrets.json";

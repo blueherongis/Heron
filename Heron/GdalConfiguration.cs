@@ -55,7 +55,7 @@ namespace RESTful
         /// </summary>
         static GdalConfiguration()
         {
-            var ghLibFile = typeof(ImportVector).Assembly.Location;
+            var ghLibFile = typeof(ImportVectorSRS).Assembly.Location;
             var executingDirectory = Path.GetDirectoryName(ghLibFile);
 
             if (string.IsNullOrEmpty(executingDirectory))
