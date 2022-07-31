@@ -123,10 +123,24 @@ namespace Heron
                 ///Using geojson as a flexiblle base file type which can be converted later with ogr2ogr
                 DataSource ds = drv.CreateDataSource("/vsimem/out.geojson", null);
 
+                ///Get HeronSRS
+                OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
+                heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
+                int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
+                Message = "EPSG:" + heronSRSInt;
+
+                ///Apply EAP to HeronSRS
+                Transform heronToUserSRSTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(heronSRS);
+                Transform userSRSToHeronTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
+
+
                 ///Use WGS84 spatial reference
                 OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
-                dst.SetWellKnownGeogCS("WGS84");
-                Transform transform = Heron.Convert.XYZToWGSTransform();
+                dst.SetFromUserInput(HeronSRS.Instance.SRS);
+                //Transform transform = Heron.Convert.XYZToWGSTransform();
+                Transform transform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
+
 
                 ///Use OGR catch-all for geometry types
                 var gtype = wkbGeometryType.wkbGeometryCollection;
