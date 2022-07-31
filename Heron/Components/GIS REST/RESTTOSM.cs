@@ -128,36 +128,9 @@ namespace Heron
                 //Curve offsetB = boundary.Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
                 //offsetB = boundary;
 
-
-                ///GDAL setup
-                RESTful.GdalConfiguration.ConfigureOgr();
-                RESTful.GdalConfiguration.ConfigureGdal();
-
-                ///Set transform from input spatial reference to Heron spatial reference
-                OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
-                heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
-                OSGeo.OSR.SpatialReference osmSRS = new OSGeo.OSR.SpatialReference("");
-                osmSRS.SetFromUserInput("WGS84");
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
-
-                ///Apply EAP to HeronSRS
-                Transform heronToUserSRSTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
-
-                ///Set transforms between source and HeronSRS
-                OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(heronSRS, osmSRS);
-
-
-
                 //Get OSM frame for given boundary
-                Point3d max = new Point3d();
-                Point3d maxM = boundary.GetBoundingBox(true).Max;
-                maxM.Transform(heronToUserSRSTransform);
-                max = Heron.Convert.OSRTransformPoint3dToPoint3d(maxM, revTransform);
-
-                Point3d min = new Point3d();
-                Point3d minM = boundary.GetBoundingBox(true).Min;
-                minM.Transform(heronToUserSRSTransform);
-                min = Heron.Convert.OSRTransformPoint3dToPoint3d(minM, revTransform);
+                Point3d min = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Min);
+                Point3d max = Heron.Convert.XYZToWGS(boundary.GetBoundingBox(true).Max);
 
                 left = min.X.ToString();
                 bottom = min.Y.ToString();

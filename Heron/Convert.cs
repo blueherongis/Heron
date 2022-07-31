@@ -86,11 +86,6 @@ namespace Heron
             OSGeo.OSR.SpatialReference rhinoSRS = new OSGeo.OSR.SpatialReference("");
             rhinoSRS.SetWellKnownGeogCS("WGS84");
 
-
-            OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
-            heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
-            var units = heronSRS.GetLinearUnits();
-
             OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, userSRS);
             //OSGeo.OGR.Geometry userAnchorPointDD = Heron.Convert.Point3dToOgrPoint(new Point3d(eapLon, eapLat, eapElev));
             OSGeo.OGR.Geometry userAnchorPointDD = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
@@ -153,69 +148,6 @@ namespace Heron
                 return transform;
             }
             return Transform.Unset;
-        }
-
-        public static Transform GetUserSRSToHeronSRSTransform(OSGeo.OSR.SpatialReference userSRS)
-        {
-            ///transform rhino EAP from rhinoSRS to userSRS
-            Plane eapPlane = EarthAnchorPoint.GetEarthAnchorPlane(out Vector3d eapNorth);
-
-            OSGeo.OSR.SpatialReference rhinoSRS = new OSGeo.OSR.SpatialReference("");
-            rhinoSRS.SetWellKnownGeogCS("WGS84");
-
-            OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
-            heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
-            var unitsToMeters = userSRS.GetLinearUnits();
-
-            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(rhinoSRS, heronSRS);
-            OSGeo.OGR.Geometry userAnchorPointDD = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
-            userAnchorPointDD.AddPoint(EarthAnchorPoint.EarthBasepointLongitude, EarthAnchorPoint.EarthBasepointLatitude, EarthAnchorPoint.EarthBasepointElevation);
-            Transform t = new Transform(1.0);
-
-            userAnchorPointDD.Transform(coordTransform);
-
-            OSGeo.OSR.CoordinateTransformation coordTransformHeronSRStoUserSRS = new OSGeo.OSR.CoordinateTransformation(heronSRS, userSRS);
-            userAnchorPointDD.Transform(coordTransformHeronSRStoUserSRS);
-
-
-            Point3d userAnchorPointPT = Heron.Convert.OgrPointToPoint3d(userAnchorPointDD, t);
-            ///Set Heron EAP plane to have same north as Rhino EAP in case the user had switched it from World Y
-            Plane userEapPlane = new Plane(userAnchorPointPT, eapPlane.XAxis, eapPlane.YAxis);
-
-            ///shift (move and rotate) from userSRS EAP to 0,0 based on SRS north direction
-            Transform scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / (Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters) / unitsToMeters)));
-
-
-            ///if SRS is geographic (ie WGS84) use Rhino's internal projection
-            ///this is still buggy as it doesn't work with other geographic systems like NAD27
-            if ((userSRS.IsProjected() == 0) && (userSRS.IsLocal() == 0))
-            {
-                userEapPlane.Transform(WGSToXYZTransform());
-                scale = WGSToXYZTransform();
-            }
-            
-            Transform shift = Transform.ChangeBasis(eapPlane, userEapPlane);
-
-            Transform shiftScale = Transform.Multiply(scale, shift);
-
-            return shiftScale;
-        }
-
-        public static Transform GetHeronSRSToUserSRSTransform(OSGeo.OSR.SpatialReference userSRS)
-        {
-            var xyzToUserSRS = GetUserSRSToHeronSRSTransform(userSRS);
-            if (xyzToUserSRS.TryGetInverse(out Transform transform))
-            {
-                return transform;
-            }
-            return Transform.Unset;
-        }
-
-        public static Point3d OSRTransformPoint3dToPoint3d(Point3d pt, OSGeo.OSR.CoordinateTransformation coordinateTransformation)
-        {
-            double[] ptArray = new double[3] { pt.X, pt.Y, pt.Z };
-            coordinateTransformation.TransformPoint(ptArray);
-            return new Point3d(ptArray[0], ptArray[1], ptArray[2]);
         }
 
         //////////////////////////////////////////////////////
@@ -757,37 +689,6 @@ namespace Heron
             }
 
             return result;
-        }
-
-        public static string DownloadHttpImage(string URL, string filename)
-        {
-            System.Net.ServicePointManager.Expect100Continue = true;
-            System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
-
-            System.Net.HttpWebRequest request = null;
-            System.Net.HttpWebResponse response = null;
-            request = (System.Net.HttpWebRequest)System.Net.HttpWebRequest.Create(URL);
-            //request.Timeout = 30000;
-            try
-            {
-                response = (System.Net.HttpWebResponse)request.GetResponse();
-
-                using (var file = File.OpenWrite(filename))
-                using (Stream stream = response.GetResponseStream())
-                {
-                    if (stream == null)
-                    {
-                        return "No response from the server.";
-                    }
-                    else { stream.CopyTo(file); }
-                }
-            }
-            catch (Exception e)
-            {
-                return e.Message;
-            }
-
-            return "";
         }
 
         ////////////////////////////////////////
