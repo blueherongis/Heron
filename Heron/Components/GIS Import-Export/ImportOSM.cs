@@ -81,28 +81,6 @@ namespace Heron
             Transform xformToMetric = new Transform(scaleToMetric);
             Transform xformFromMetric = new Transform(scaleFromMetric);
 
-            ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
-            RESTful.GdalConfiguration.ConfigureGdal();
-
-            ///Set transform from input spatial reference to Heron spatial reference
-            OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
-            heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
-            OSGeo.OSR.SpatialReference osmSRS = new OSGeo.OSR.SpatialReference("");
-            osmSRS.SetFromUserInput("WGS84");
-            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
-            int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
-            Message = "EPSG:" + heronSRSInt;
-
-            ///Apply EAP to HeronSRS
-            Transform userSRSToModelTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(heronSRS);
-            Transform heronToUserSRSTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
-
-            ///Set transforms between source and HeronSRS
-            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(osmSRS, heronSRS);
-            OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(heronSRS, osmSRS);
-
-
             ///Declare trees
             Rectangle3d recs = new Rectangle3d();
             GH_Structure<GH_String> fieldNames = new GH_Structure<GH_String>();
@@ -116,12 +94,10 @@ namespace Heron
             if (boundary != null)
             {
                 Point3d maxM = boundary.GetBoundingBox(true).Corner(true, false, true);
-                maxM.Transform(heronToUserSRSTransform);
-                max = Heron.Convert.OSRTransformPoint3dToPoint3d(maxM, revTransform);
+                max = Heron.Convert.XYZToWGS(maxM);
 
                 Point3d minM = boundary.GetBoundingBox(true).Corner(false, true, true);
-                minM.Transform(heronToUserSRSTransform);
-                min = Heron.Convert.OSRTransformPoint3dToPoint3d(minM, revTransform);
+                min = Heron.Convert.XYZToWGS(minM);
             }
 
             /// get extents (why is this not part of OsmSharp?)
@@ -132,10 +108,8 @@ namespace Heron
                 double minlon = System.Convert.ToDouble(xdoc.Root.Element("bounds").Attribute("minlon").Value);
                 double maxlat = System.Convert.ToDouble(xdoc.Root.Element("bounds").Attribute("maxlat").Value);
                 double maxlon = System.Convert.ToDouble(xdoc.Root.Element("bounds").Attribute("maxlon").Value);
-                Point3d boundsMin = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d(minlon, minlat, 0), coordTransform);
-                boundsMin.Transform(userSRSToModelTransform);
-                Point3d boundsMax = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d(maxlon, maxlat, 0), coordTransform);
-                boundsMax.Transform(userSRSToModelTransform);
+                Point3d boundsMin = Heron.Convert.WGSToXYZ(new Point3d(minlon, minlat, 0));
+                Point3d boundsMax = Heron.Convert.WGSToXYZ(new Point3d(maxlon, maxlat, 0));
 
                 recs = new Rectangle3d(Plane.WorldXY, boundsMin, boundsMax);
             }
@@ -206,9 +180,7 @@ namespace Heron
                         fieldValues.AppendRange(GetValues(osmGeo), nodesPath);
 
                         //get geometry for node
-                        //Point3d nPoint = Heron.Convert.WGSToXYZ(new Point3d((double)n.Longitude, (double)n.Latitude, 0));
-                        Point3d nPoint = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d((double)n.Longitude, (double)n.Latitude, 0), coordTransform);
-                        nPoint.Transform(userSRSToModelTransform);
+                        Point3d nPoint = Heron.Convert.WGSToXYZ(new Point3d((double)n.Longitude, (double)n.Latitude, 0));
                         geometryGoo.Append(new GH_Point(nPoint), nodesPath);
 
                         //increment nodes
@@ -231,11 +203,7 @@ namespace Heron
                         foreach (long j in w.Nodes)
                         {
                             OsmSharp.Node n = (OsmSharp.Node)sourceMem.Get(OsmGeoType.Node, j);
-                            //wayNodes.Add(Heron.Convert.WGSToXYZ(new Point3d((double)n.Longitude, (double)n.Latitude, 0)));
-                            Point3d nPt = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d((double)n.Longitude, (double)n.Latitude, 0), coordTransform);
-                            nPt.Transform(userSRSToModelTransform);
-                            wayNodes.Add(nPt);
-
+                            wayNodes.Add(Heron.Convert.WGSToXYZ(new Point3d((double)n.Longitude, (double)n.Latitude, 0)));
                         }
 
                         PolylineCurve pL = new PolylineCurve(wayNodes);
@@ -322,9 +290,7 @@ namespace Heron
                                 {
                                     long memNodeId = rMem.Id;
                                     OsmSharp.Node memN = (OsmSharp.Node)sourceMem.Get(rMem.Type, rMem.Id);
-                                    //Point3d memPoint = Heron.Convert.WGSToXYZ(new Point3d((double)memN.Longitude, (double)memN.Latitude, 0));
-                                    Point3d memPoint = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d((double)memN.Longitude, (double)memN.Latitude, 0), coordTransform);
-                                    memPoint.Transform(userSRSToModelTransform);
+                                    Point3d memPoint = Heron.Convert.WGSToXYZ(new Point3d((double)memN.Longitude, (double)memN.Latitude, 0));
                                     geometryGoo.Append(new GH_Point(memPoint), memberPath);
                                 }
 
@@ -340,10 +306,7 @@ namespace Heron
                                     foreach (long memNodeId in memWay.Nodes)
                                     {
                                         OsmSharp.Node memNode = (OsmSharp.Node)sourceMem.Get(OsmGeoType.Node, memNodeId);
-                                        //memNodes.Add(Heron.Convert.WGSToXYZ(new Point3d((double)memNode.Longitude, (double)memNode.Latitude, 0)));
-                                        Point3d memPt = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d((double)memNode.Longitude, (double)memNode.Latitude, 0), coordTransform);
-                                        memPt.Transform(userSRSToModelTransform);
-                                        memNodes.Add(memPt);
+                                        memNodes.Add(Heron.Convert.WGSToXYZ(new Point3d((double)memNode.Longitude, (double)memNode.Latitude, 0)));
                                     }
 
                                     PolylineCurve memPolyline = new PolylineCurve(memNodes);
@@ -368,8 +331,6 @@ namespace Heron
                         //end members loop
 
                         bool allClosed = true;
-                        var pLinesJoined = Curve.JoinCurves(pLines); ///try to join ways that may not already be closed ie SF City Hall
-                        pLines = pLinesJoined.ToList();
                         foreach (Curve pc in pLines)
                         {
                             if (!pc.IsClosed)
@@ -564,30 +525,6 @@ namespace Heron
                     if (pyramidBrep[0].IsSolid) { roof = GH_Convert.ToGeometricGoo(pyramidBrep[0]); }
                     break;
 
-                case "dome":
-                    double domeHeight = centroid.DistanceTo(pL.PointAtStart);
-                    double baseHeight = height - min_height - roofHeight + (roofHeight - domeHeight);
-                    
-                    var topArc = new Point3d (centroid.X,centroid.Y,height);
-                    var bottomArc = new Point3d(pL.PointAtStart.X, pL.PointAtStart.Y, pL.PointAtStart.Z + baseHeight);
-
-                    Arc arc = new Arc(bottomArc, Vector3d.ZAxis, topArc);          
-
-                    if (baseHeight > 0) 
-                    {
-                        Line podiumLine = new Line(pL.PointAtStart, bottomArc);
-                        Curve revCurve = Curve.JoinCurves(new List<Curve>() { podiumLine.ToNurbsCurve(), arc.ToNurbsCurve() })[0];
-                        var sweep = RevSurface.Create(revCurve, new Line(centroid, topArc));
-                        roof = GH_Convert.ToGeometricGoo(sweep.ToBrep().CapPlanarHoles(DocumentTolerance()));
-                    }
-                    else 
-                    {
-                        var sweep = RevSurface.Create(arc.ToNurbsCurve(), new Line(centroid, topArc));
-                        roof = GH_Convert.ToGeometricGoo(sweep.ToBrep().CapPlanarHoles(DocumentTolerance()));
-                    }
-
-                    break;
-                    
                 case "skillion":
                     Line frontEdge = new Line();
                     Line backEdge = new Line();

@@ -134,20 +134,12 @@ namespace Heron
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Data source SRS: EPSG:" + sr.GetAttrValue("AUTHORITY", 1));
                 }
             }
-            ///Get HeronSRS
-            OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
-            heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
-            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
-            int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
-            Message = "EPSG:" + heronSRSInt;
 
-            ///Apply EAP to HeronSRS
-            Transform heronToUserSRSTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(heronSRS);
-            Transform userSRSToHeronTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
-
-            ///Set transforms between source and HeronSRS
-            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(sr, heronSRS);
-            OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(heronSRS, sr);
+            //OSGeo.OSR.SpatialReference sr = new SpatialReference(ds.GetProjection());
+            OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
+            dst.SetWellKnownGeogCS("WGS84");
+            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(sr, dst);
+            OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(dst, sr);
 
             double[] adfGeoTransform = new double[6];
             double[] invTransform = new double[6];
@@ -163,7 +155,7 @@ namespace Heron
             double eX = adfGeoTransform[0] + adfGeoTransform[1] * width + adfGeoTransform[2] * height;
             double eY = adfGeoTransform[3] + adfGeoTransform[4] * width + adfGeoTransform[5] * height;
 
-            ///Transform to Heron SRS
+            ///Transform to WGS84
             double[] extMinPT = new double[3] { oX, eY, 0 };
             double[] extMaxPT = new double[3] { eX, oY, 0 };
             coordTransform.TransformPoint(extMinPT);
@@ -171,10 +163,7 @@ namespace Heron
             Point3d dsMin = new Point3d(extMinPT[0], extMinPT[1], extMinPT[2]);
             Point3d dsMax = new Point3d(extMaxPT[0], extMaxPT[1], extMaxPT[2]);
 
-            dsMin.Transform(heronToUserSRSTransform);
-            dsMax.Transform(heronToUserSRSTransform);
-            Rectangle3d dsbox = new Rectangle3d(Plane.WorldXY, dsMin, dsMax);
-
+            Rectangle3d dsbox = new Rectangle3d(Plane.WorldXY, Heron.Convert.WGSToXYZ(dsMin), Heron.Convert.WGSToXYZ(dsMax));
 
             double pixelWidth = dsbox.Width / width;
             double pixelHeight = dsbox.Height / height;
@@ -203,8 +192,7 @@ namespace Heron
                 ///Offsets to mesh/boundary based on pixel size
                 Point3d clipperMinPreAdd = clippingBoundary.GetBoundingBox(true).Corner(true, false, true);
                 Point3d clipperMinPostAdd = new Point3d(clipperMinPreAdd.X, clipperMinPreAdd.Y, clipperMinPreAdd.Z);
-                clipperMinPostAdd.Transform(userSRSToHeronTransform);
-                Point3d clipperMin = clipperMinPostAdd;
+                Point3d clipperMin = Heron.Convert.XYZToWGS(clipperMinPostAdd);
 
                 Point3d clipperMaxPreAdd = clippingBoundary.GetBoundingBox(true).Corner(false, true, true);
                 ///add/subtract pixel width if desired to get closer to boundary
@@ -213,15 +201,14 @@ namespace Heron
                 if (clip) 
                 { 
                     clipperMaxPostAdd = new Point3d(clipperMaxPreAdd.X + pixelWidth, clipperMaxPreAdd.Y - pixelHeight, clipperMaxPreAdd.Z);
-                    clipperMaxPostAdd.Transform(userSRSToHeronTransform);
-                    clipperMax = clipperMaxPostAdd;
+                    clipperMax = Heron.Convert.XYZToWGS(clipperMaxPostAdd);
                 }
                 else 
                 { 
                     clipperMaxPostAdd = new Point3d(clipperMaxPreAdd.X, clipperMaxPreAdd.Y, clipperMaxPreAdd.Z);
-                    clipperMaxPostAdd.Transform(userSRSToHeronTransform);
-                    clipperMax = clipperMaxPostAdd;
+                    clipperMax = Heron.Convert.XYZToWGS(clipperMaxPostAdd);
                 }
+
 
                 double lonWest = clipperMin.X;
                 double lonEast = clipperMax.X;
@@ -232,17 +219,12 @@ namespace Heron
                 {
                     "-of", "GTiff",
                     "-a_nodata", "0",
-                    "-projwin_srs", HeronSRS.Instance.SRS,
+                    "-projwin_srs", "WGS84",
                     "-projwin", $"{lonWest}", $"{latNorth}", $"{lonEast}", $"{latSouth}"
                 };
 
                 using (Dataset clippedDataset = Gdal.wrapper_GDALTranslate(clippedTopoFile, datasource, new GDALTranslateOptions(translateOptions), null, null))
                 {
-                    ///Correct vertical units. Typically, vertical datum is in meters even if horizontal is feet.
-                    var linearUnits = sr.GetLinearUnits();
-                    var verticalCorrection = 1.0;
-                    if (sr.IsVertical() == 0) { verticalCorrection = 1 / linearUnits; }
-                     
                     Band band = clippedDataset.GetRasterBand(1);
                     width = clippedDataset.RasterXSize;
                     height = clippedDataset.RasterYSize;
@@ -275,12 +257,9 @@ namespace Heron
                             ///convert to WGS84
                             double[] wgsPT = new double[3] { gcol, grow, pixel };
                             coordTransform.TransformPoint(wgsPT);
-                            Point3d pt = new Point3d(wgsPT[0], wgsPT[1], wgsPT[2]*verticalCorrection);
+                            Point3d pt = new Point3d(wgsPT[0], wgsPT[1], wgsPT[2]);
 
-                            //verts.Add(Heron.Convert.WGSToXYZ(pt));
-                            pt.Transform(heronToUserSRSTransform);
-                            verts.Add(pt);
-
+                            verts.Add(Heron.Convert.WGSToXYZ(pt));
                         }
 
                         /*Parallel.For(Urow, Lrow - 1, rowP =>
@@ -323,7 +302,6 @@ namespace Heron
                     band.Dispose();
                 }
                 Gdal.Unlink("/vsimem/topoclipped.tif");
-
             }
 
             datasource.Dispose();

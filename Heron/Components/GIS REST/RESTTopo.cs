@@ -17,9 +17,6 @@ using System.ComponentModel;
 using System.Net;
 using System.Net.Http;
 
-using OSGeo.OSR;
-using OSGeo.OGR;
-
 namespace Heron
 {
     public class RESTTopo : HeronComponent
@@ -93,24 +90,6 @@ namespace Heron
             HeronConfig.LoadKeys();
             //AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
 
-            ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
-
-            ///Set transform from input spatial reference to Heron spatial reference
-            ///TODO: verify the userSRS is valid
-            OSGeo.OSR.SpatialReference wgsSRS = new OSGeo.OSR.SpatialReference("");
-            wgsSRS.SetFromUserInput("WGS84");
-            OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
-            heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
-            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
-            int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
-            //Message = TopoSource + "\r\nEPSG:" + heronSRSInt;
-
-            ///Apply EAP to HeronSRS
-            Transform userSRSToModelTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
-            //Transform heronToUserSRSTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
-
-
             for (int i = 0; i < boundary.Count; i++)
             {
 
@@ -130,43 +109,16 @@ namespace Heron
                 Curve offsetB = orientedBoundary.Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
 
                 ///Get dem frame for given boundary
-                //Point3d min = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Min);
-                //Point3d max = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Max);
+                Point3d min = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Min);
+                Point3d max = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Max);
 
-                Point3d min = offsetB.GetBoundingBox(true).Min;
-                Point3d max = offsetB.GetBoundingBox(true).Max;
-                //min.Transform(userSRSToModelTransform);
-                //max.Transform(userSRSToModelTransform);
-                OSGeo.OGR.Geometry minOGR = Heron.Convert.Point3dToOgrPoint(min, userSRSToModelTransform);
-                minOGR.AssignSpatialReference(heronSRS);
-                minOGR.TransformTo(wgsSRS);
-                OSGeo.OGR.Geometry maxOGR = Heron.Convert.Point3dToOgrPoint(max, userSRSToModelTransform) ;
-                maxOGR.AssignSpatialReference(heronSRS);
-                maxOGR.TransformTo(wgsSRS);
-
-                double west = 0.0, south = 0.0, east = 0.0, north = 0.0;
                 ///Query opentopography.org
-                if (topoURL.Contains("arcgis"))
-                {
-                    min.Transform(userSRSToModelTransform);
-                    max.Transform(userSRSToModelTransform);
-                    west = min.X;
-                    south = min.Y;
-                    east = max.X;
-                    north = max.Y;
-                }
-                else
-                {
-                    west = minOGR.GetX(0);
-                    south = minOGR.GetY(0);
-                    east = maxOGR.GetX(0);
-                    north = maxOGR.GetY(0);
-                }
-
+                double west = min.X;
+                double south = min.Y;
+                double east = max.X;
+                double north = max.Y;
 
                 string tQ = String.Format(topoURL, west, south, east, north);
-                tQ = tQ.Replace("bboxSR=4326", "bboxSR=" + heronSRSInt);
-                tQ = tQ.Replace("imageSR=4326", "imageSR=" + heronSRSInt);
 
                 if (topoURL.Contains("portal.opentopography.org"))
                 {
@@ -210,8 +162,8 @@ namespace Heron
         {
             if (e.ProgressPercentage.ToString().EndsWith("0"))
             {
-                Message = "Downloading file..." + e.ProgressPercentage.ToString() + "%";
-                Grasshopper.Instances.RedrawCanvas();            
+                //Message = "Downloading file..." + e.ProgressPercentage.ToString() + "%";
+                //Grasshopper.Instances.RedrawCanvas();            
             }
         }
 
@@ -229,10 +181,10 @@ namespace Heron
 
             Message = "Downloaded";
             done = true;
+            ExpireSolution(true);
             System.Threading.Thread.Sleep(100);
             Message = topoSource;
-            Grasshopper.Instances.RedrawCanvas();
-            ExpireSolution(true);
+
         }
 
         ////////////////////////////
