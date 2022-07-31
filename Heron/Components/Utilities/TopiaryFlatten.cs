@@ -13,7 +13,7 @@ namespace Heron
 
         public TopiaryFlatten()
           : base("Topiary Flatten", "TF", "Flatten branches by a set depth from the deepest path in a data tree. " +
-                "The resulting tree will look more like a topiary. This can be usedful for data trees with uneven path depths.", "Utilities")
+                "The resulting tree will look more like a topiary. This can be useful for data trees with uneven path depths.", "Utilities")
         {
         }
 
@@ -23,7 +23,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddGenericParameter("Data Tree", "DT", "Data tree to flatten to a topiary.", GH_ParamAccess.tree);
-            pManager.AddIntegerParameter("Number of Branches", "N", "The number of branches to merge from the deepest path branch count." +
+            pManager.AddIntegerParameter("Number of Branches", "N", "The number of branches to merge from the deepest path branch count.  " +
                 "For instance, if N=2 and the path with the most branches is 4, any path in the tree with a depth greater than 2 will be flattened up into 2.", GH_ParamAccess.item);
         }
 
@@ -87,7 +87,7 @@ namespace Heron
         {
             get
             {
-                return null;
+                return Properties.Resources.shp;
             }
         }
 
