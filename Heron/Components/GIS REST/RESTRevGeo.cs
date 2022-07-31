@@ -94,13 +94,34 @@ namespace Heron
             //GetAsyncClass deldata = new GetAsyncClass();
             //jsonDelegate del = new jsonDelegate(deldata.GetAsyncJson);
 
+            ///GDAL setup
+            RESTful.GdalConfiguration.ConfigureOgr();
+            RESTful.GdalConfiguration.ConfigureGdal();
+
+            ///Set transform from input spatial reference to Heron spatial reference
+            OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
+            heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
+            OSGeo.OSR.SpatialReference osmSRS = new OSGeo.OSR.SpatialReference("");
+            osmSRS.SetFromUserInput("WGS84");
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
+
+            ///Apply EAP to HeronSRS
+            Transform heronToUserSRSTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
+
+            ///Set transforms between source and HeronSRS
+            OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(heronSRS, osmSRS);
+
+
             for (int a = 0; a < xyz.Branches.Count; a++)
             {
                 IList branch = xyz.Branches[a];
                 GH_Path path = xyz.Paths[a];
                 foreach (GH_Point pt in branch)
                 {
-                    Point3d geopt = Heron.Convert.XYZToWGS(pt.Value);
+                    Point3d userPt = pt.Value;
+                    userPt.Transform(heronToUserSRSTransform);
+                    //Point3d geopt = Heron.Convert.XYZToWGS(pt.Value);
+                    Point3d geopt = Heron.Convert.OSRTransformPoint3dToPoint3d(userPt,revTransform);
                     string webrequest = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=" + geopt.X + "%2C+" + geopt.Y + "&distance=200&outSR=&f=pjson";
 
                     //Synchronous method

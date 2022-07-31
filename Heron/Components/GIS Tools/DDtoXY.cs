@@ -1,33 +1,6 @@
-﻿using System;
-using System.IO;
-using System.Xml;
-using System.Xml.Linq;
-using System.Linq;
-using System.Data;
-using System.Drawing;
-using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using Grasshopper;
-using Grasshopper.Kernel;
-using Grasshopper.Kernel.Data;
-using Grasshopper.Kernel.Types;
-using Rhino;
+﻿using Grasshopper.Kernel;
 using Rhino.Geometry;
-using Rhino.DocObjects;
-using Rhino.Collections;
-using GH_IO;
-using GH_IO.Serialization;
-
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Serialization;
+using System;
 
 namespace Heron
 {
@@ -57,8 +30,28 @@ namespace Heron
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
+            ///GDAL setup
+            RESTful.GdalConfiguration.ConfigureOgr();
+
+            ///Set transform from input spatial reference to Heron spatial reference
+            OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
+            heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
+            OSGeo.OSR.SpatialReference wgsSRS = new OSGeo.OSR.SpatialReference("");
+            wgsSRS.SetFromUserInput("WGS84");
+            //AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
+            int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
+            Message = "EPSG:" + heronSRSInt;
+
+            ///Apply EAP to HeronSRS
+            Transform userSRSToModelTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(heronSRS);
+            Transform wgsToHeronSRSTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(wgsSRS);
+
+            ///Set transforms between source and HeronSRS
+            OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(wgsSRS, heronSRS);
+
             ///Dump out the transform first
-            DA.SetData("Transform", Heron.Convert.WGSToXYZTransform());
+            DA.SetData("Transform", wgsToHeronSRSTransform);
+
 
             /// Then, we need to retrieve all data from the input parameters.
             /// We'll start by declaring variables and assigning them starting values.
@@ -82,8 +75,10 @@ namespace Heron
                 return;
             }
 
-            /// Finally assign the point to the output parameter.
-            DA.SetData("xyPoint", Heron.Convert.WGSToXYZ(new Point3d(lon, lat, 0)));
+            Point3d dd = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d(lon, lat, 0), coordTransform);
+            dd.Transform(userSRSToModelTransform);
+            DA.SetData("xyPoint", dd);
+
         }
 
         protected override System.Drawing.Bitmap Icon
