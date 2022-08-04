@@ -288,7 +288,7 @@ namespace Heron
 
             int t = 0;
 
-            foreach (string mvtTile in cachefilePaths)// cachefilePaths)
+            foreach (string mvtTile in cachefilePaths)
             {
 
                 OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("MVT");
@@ -343,6 +343,7 @@ namespace Heron
                         ///Loop through geometry
                         OSGeo.OGR.Feature feat;
 
+                        bool hasValues = false;
                         int m = 0;
                         ///error "Self-intersection at or near point..." when zoom gets below 12 for water
                         ///this is an issue with the way mvt simplifies geometries at lower zoom levels and is a known problem
@@ -362,7 +363,11 @@ namespace Heron
                                 continue;
                             }
 
-                            if (feat == null) break;
+                            if (feat == null)
+                            {
+                                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"Some features in Layer #{iLayer} {layer.GetName()} had no or invalid geometry and were skipped.");
+                                break;
+                            }
 
 
                             OSGeo.OGR.Geometry geom = feat.GetGeometryRef();
@@ -432,12 +437,21 @@ namespace Heron
 
                                 }
 
+                                ///If there are value for the layer's fields then we can return true
+                                hasValues = true;
+
                             }
                             m++;
                             geom.Dispose();
                             feat.Dispose();
 
                         }///end while loop through features
+
+                        ///Some Mapbox tiles seem to have features with fields but no values or geometry, so we need to discard these layers to avoid a data tree mismatch
+                        if (!hasValues)
+                        {
+                            fnames.RemovePath(new GH_Path(layerIndex, t));
+                        }
 
                     }///end layer by name
 
