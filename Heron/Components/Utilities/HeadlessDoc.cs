@@ -16,15 +16,14 @@ using Rhino.Geometry;
 
 namespace Heron
 {
-    public class HeadlessDoc : GH_TaskCapableComponent<VisualCenter.SolveResults>
+    public class HeadlessDoc : HeronComponent
     {
         /// <summary>
         /// Initializes a new instance of the VisualCenter class.
         /// </summary>
         public HeadlessDoc()
           : base("Headless Doc", "HD",
-              "Make a new instance of a headless doc for working in Compute.",
-              "Heron_kpf", "Utilities")
+              "Make a new instance of a headless doc for working in Compute.", "Utilities")
         {
         }
 
@@ -54,6 +53,8 @@ namespace Heron
         }
 
         public static RhinoDoc headlessDoc { get; private set;}
+
+        public static bool useHeadless { get; private set; }
         /// <summary>
         /// This is the method that actually does the work.
         /// </summary>
@@ -70,9 +71,10 @@ namespace Heron
             {
                 headlessDoc = Rhino.RhinoDoc.Create(null);
                 headlessDoc.AdjustModelUnitSystem((Rhino.UnitSystem)units, false);
-                string message = "new headless doc created in " + headlessDoc.ModelUnitSystem.ToString() + " and model absolute tolerance of " + headlessDoc.ModelAbsoluteTolerance.ToString();
+                string message = "new headless doc created in " + headlessDoc.ModelUnitSystem.ToString() + " with model absolute tolerance of " + headlessDoc.ModelAbsoluteTolerance.ToString();
                 DA.SetData(0, message);
             }
+            useHeadless = true;
             
         }
 

@@ -200,17 +200,19 @@
     <Compile Include="Components\Deprecated\RESTVector_DEPRECATED20220730.cs" />
     <Compile Include="Components\GIS Tools\DMStoDD.cs" />
     <Compile Include="Components\GIS Tools\GdalBuffer.cs" />
+    <Compile Include="Components\GIS Tools\SetEAPHeadless.cs" />
     <Compile Include="Components\GIS Tools\SetEAP.cs" />
     <Compile Include="Components\GIS Tools\SetSRS.cs" />
     <Compile Include="Components\Utilities\MultiMoveToTopo.cs" />
     <Compile Include="Components\Utilities\TopiaryFlatten.cs" />
     <Compile Include="Components\Utilities\HeadlessDoc.cs" />
+    <Compile Include="Convert.cs" />
     <Compile Include="GdalConfiguration.cs" />
     <Compile Include="HeronConfiguration.cs" />
     <Compile Include="HeronSRS.cs" />
     <Compile Include="Components\Utilities\HexToColor.cs" />
     <Compile Include="Components\Utilities\ColorToHex.cs" />
-    <Compile Include="Convert.cs" />
+    <Compile Include="ConvertCompute.cs" />
     <Compile Include="Components\GIS Import-Export\ExportVector.cs" />
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

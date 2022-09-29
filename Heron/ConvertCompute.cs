@@ -28,21 +28,11 @@ using System.Text.RegularExpressions;
 
 namespace Heron
 {
-    class Convert
+    class ConvertCompute
     {
-        private static RhinoDoc ActiveDoc 
-        { 
-            get => ActiveDoc;
-            set
-            {
-                if (HeadlessDoc.useHeadless == true)
-                    ActiveDoc = HeadlessDoc.headlessDoc;
-                else
-                    ActiveDoc = RhinoDoc.ActiveDoc;
-            }
-        }
-        private static EarthAnchorPoint EarthAnchorPoint => ActiveDoc.EarthAnchorPoint;
+        private static EarthAnchorPoint EarthAnchorPoint = HeadlessDoc.headlessDoc.EarthAnchorPoint;
 
+        private static RhinoDoc ActiveDoc = HeadlessDoc.headlessDoc;
         //////////////////////////////////////////////////////
         ///Basic Rhino transforms
         ///Using Rhino's EarthAnchorPoint to Transform.  GetModelToEarthTransform() translates to WGS84.
@@ -1076,7 +1066,8 @@ namespace Heron
 
     //////////////////////////////////////////////////////
 
-    public static class BitmapExtension
+    /*
+    private static class BitmapExtension
     {
         public static void AddCommentsToJPG(this Bitmap bitmap, string comment)
         {
@@ -1120,5 +1111,6 @@ namespace Heron
             return comment;
         }
     }
+    */
 
 }
