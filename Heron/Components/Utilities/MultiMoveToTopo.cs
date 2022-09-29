@@ -794,7 +794,7 @@ namespace Heron.Components.GIS_Tools
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("c12afc88-293d-46dd-9265-dea64f5840dd"); }
+            get { return new Guid("b9daee35-bb9a-46d6-bd5c-40784a2b8b47"); }
         }
     }
 }

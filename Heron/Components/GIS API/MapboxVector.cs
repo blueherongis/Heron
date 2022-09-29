@@ -111,9 +111,9 @@ namespace Heron
 
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
 
 
             GH_Curve imgFrame;
@@ -663,7 +663,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("3c62dda0-3162-4041-88a3-074739c34711"); }
+            get { return new Guid("52fefad8-e0cb-468d-951f-179452c69745"); }
         }
     }
 }

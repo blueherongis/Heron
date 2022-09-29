@@ -94,7 +94,7 @@ namespace Heron
             //AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             ///Set transform from input spatial reference to Heron spatial reference
             ///TODO: verify the userSRS is valid
@@ -352,7 +352,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("C91EC97A-7275-4498-A16C-C2B87BB697A4"); }
+            get { return new Guid("6f8bf0a9-757a-4388-8f25-1d31883a2a0e"); }
         }
     }
 }

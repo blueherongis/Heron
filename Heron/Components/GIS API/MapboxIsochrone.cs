@@ -169,7 +169,7 @@ namespace Heron
             List<string> urls = new List<string>();
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
 
             ///Set transform from input spatial reference to Rhino spatial reference
@@ -454,7 +454,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("fbfe3ed5-6629-44da-94a9-ba518f38b0f0"); }
+            get { return new Guid("acbe476e-9468-4f1c-95ec-81c48220a1f2"); }
         }
     }
 }

@@ -193,7 +193,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("b223faa4-c788-4e15-b29a-70d0413532b1"); }
+            get { return new Guid("c2a0f22d-8dba-4694-a5d9-948a962b5837"); }
         }
 
 

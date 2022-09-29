@@ -130,8 +130,8 @@ namespace Heron
 
 
                 ///GDAL setup
-                RESTful.GdalConfiguration.ConfigureOgr();
-                RESTful.GdalConfiguration.ConfigureGdal();
+                Heron.GdalConfiguration.ConfigureOgr();
+                Heron.GdalConfiguration.ConfigureGdal();
 
                 ///Set transform from input spatial reference to Heron spatial reference
                 OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
@@ -338,7 +338,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("2360BE7D-668C-41F2-9006-0575E189C677"); }
+            get { return new Guid("0821de4c-a1d1-4f9e-84ec-e033e3668865"); }
         }
     }
 }

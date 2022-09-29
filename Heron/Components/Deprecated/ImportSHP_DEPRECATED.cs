@@ -24,7 +24,6 @@ using GH_IO.Serialization;
 using OSGeo.GDAL;
 using OSGeo.OSR;
 using OSGeo.OGR;
-using RESTful;
 
 namespace Heron
 {
@@ -113,7 +112,7 @@ namespace Heron
 
             //Get the spatial refernce of the input Shapefile
             string sRef;
-            sr.ExportToWkt(out sRef);
+            //sr.ExportToWkt(out sRef);
 
             OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(sr, dst);
             OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(dst, sr);
@@ -285,7 +284,7 @@ namespace Heron
             DA.SetData(0, def.GetName());
             DA.SetDataList(1, fc);
             DA.SetData(2, rec);
-            DA.SetData(3, sRef);
+            //DA.SetData(3, sRef);
             DA.SetDataList(4, fieldnames);
             DA.SetDataTree(5, fset);
             DA.SetDataTree(6, gset);
@@ -304,7 +303,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{6F523D95-DEF0-4F0C-9F00-AAE214C99D71}"); }
+            get { return new Guid("{b92addc7-022f-4fb8-8f07-8c9db1e1b3b4}"); }
         }
     }
 }

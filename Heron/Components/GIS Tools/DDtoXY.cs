@@ -31,7 +31,7 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             ///Set transform from input spatial reference to Heron spatial reference
             OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
@@ -91,7 +91,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{78543216-14B5-422C-85F8-BB575FBED3D2}"); }
+            get { return new Guid("{b7454e90-e12f-4916-bfbc-8f5f95d9ee4b}"); }
         }
     }
 }

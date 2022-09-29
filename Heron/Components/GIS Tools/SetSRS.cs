@@ -48,9 +48,9 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
 
 
             string heronSRSstring = HeronSRS.Instance.SRS;
@@ -110,7 +110,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("F6F84573-99C2-4B65-A684-4D55175151B1"); }
+            get { return new Guid("0d50a9bf-4b17-448c-82b9-920cfbe3a75d"); }
         }
     }
 }

@@ -61,7 +61,7 @@ namespace Heron
             string IMG_file = string.Empty;
             DA.GetData<string>(1, ref IMG_file);
 
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
 
             Dataset datasource = Gdal.Open(IMG_file, Access.GA_ReadOnly);
@@ -388,7 +388,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{48DC69A0-DA95-4629-A6F5-A813D87D9187}"); }
+            get { return new Guid("{bbe184a2-59d1-42d6-8cce-855d949a20e3}"); }
         }
     }
 }

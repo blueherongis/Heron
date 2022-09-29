@@ -83,7 +83,7 @@ namespace Heron
             string dstInfo = string.Empty;
             string dstOutput = string.Empty;
 
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
             ///Specific settings for getting WMS images
             OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
@@ -183,7 +183,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("c9056659-a5f8-4cc0-89f3-0e2f22b08afc"); }
+            get { return new Guid("f7ee2c4e-843f-417e-8d25-6a321520b769"); }
         }
     }
 }

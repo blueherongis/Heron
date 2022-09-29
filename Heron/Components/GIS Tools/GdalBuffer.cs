@@ -54,7 +54,7 @@ namespace Heron.Components.GIS_Tools
             GH_Structure<IGH_GeometricGoo> gGooBuffered = new GH_Structure<IGH_GeometricGoo>();
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             ///Use WGS84 spatial reference
             OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
@@ -262,7 +262,7 @@ namespace Heron.Components.GIS_Tools
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("e71dd99c-d9d1-41fc-a201-f569a382493a"); }
+            get { return new Guid("d3c9252f-5863-4f44-915d-7c390c26b9dc"); }
         }
     }
 }

@@ -83,7 +83,7 @@ namespace Heron
             string dstInfo = string.Empty;
             string dstOutput = string.Empty;
 
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.OGR.Ogr.RegisterAll();
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Look here for more information about options:");
@@ -211,7 +211,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("A8639E93-009D-4094-87E6-D34959C73849"); }
+            get { return new Guid("956c5e19-6826-450e-897c-5885aef679e1"); }
         }
     }
 }

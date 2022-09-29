@@ -80,7 +80,7 @@ namespace Heron
             DA.GetData<string>("Image Type", ref imageType);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             ///TODO: implement SetCRS here.
             ///Option to set CRS here to user-defined.  Needs a SetCRS global variable.
@@ -289,7 +289,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{EB41AAA3-C9DA-42DE-8B58-D4A1CBDADCC8}"); }
+            get { return new Guid("{57b7382d-b521-4cce-be6d-30e18569a987}"); }
         }
     }
 }

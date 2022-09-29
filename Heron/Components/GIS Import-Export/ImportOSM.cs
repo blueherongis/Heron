@@ -82,8 +82,8 @@ namespace Heron
             Transform xformFromMetric = new Transform(scaleFromMetric);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureGdal();
 
             ///Set transform from input spatial reference to Heron spatial reference
             OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
@@ -914,7 +914,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("437b4c39-08ef-459b-a863-3c2e8dc1ce17"); }
+            get { return new Guid("cf3a2c64-28a6-4d31-8612-e2591cc4a44b"); }
         }
     }
 }

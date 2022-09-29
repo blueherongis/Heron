@@ -95,8 +95,8 @@ namespace Heron
             //jsonDelegate del = new jsonDelegate(deldata.GetAsyncJson);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureGdal();
 
             ///Set transform from input spatial reference to Heron spatial reference
             OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
@@ -226,7 +226,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{D2AB5B62-333D-46FC-B01D-EA9AAAC979F0}"); }
+            get { return new Guid("{a4c71bd1-e3ab-46bf-9484-f7f3bd09d383}"); }
         }
 
 

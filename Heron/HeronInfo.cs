@@ -15,7 +15,7 @@ namespace Heron
         {
             get
             {
-                return "Heron";
+                return "Heron_kpf";
             }
         }
         public override string AuthorName
@@ -46,9 +46,9 @@ namespace Heron
         {
             get
             {
-                return new System.Guid("{94830583-1656-43FB-8415-6FD290548DD1}");
+                return new System.Guid("{DA3BA33C-1A77-4592-9173-EE120198CC2C}");
             }
-        }
+}
 
         public override Bitmap Icon
         {
@@ -66,8 +66,8 @@ namespace Heron
     {
         public override Grasshopper.Kernel.GH_LoadingInstruction PriorityLoad()
         {
-            Grasshopper.Instances.ComponentServer.AddCategoryIcon("Heron", Properties.Resources.heron_favicon);
-            Grasshopper.Instances.ComponentServer.AddCategorySymbolName("Heron", 'H');
+            Grasshopper.Instances.ComponentServer.AddCategoryIcon("Heron_kpf", Properties.Resources.heron_favicon);
+            Grasshopper.Instances.ComponentServer.AddCategorySymbolName("Heron_kpf", '2');
             return Grasshopper.Kernel.GH_LoadingInstruction.Proceed;
         }
     }

@@ -92,7 +92,7 @@ namespace Heron
             ///Some preliminary testing has been done to read SHP, GeoJSON, OSM, KML, MVT, GML and GDB
             ///It can be spotty with KML, MVT and GML and doesn't throw informative errors.  Likely has to do with getting a valid CRS and 
             ///TODO: resolve errors with reading KML, MVT, GML.
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
             string userSRStext = HeronSRS.Instance.SRS;
 
 
@@ -614,7 +614,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{CE8D1508-BCF7-4DD6-AFF8-958E22031A14}"); }
+            get { return new Guid("{bc957363-dbc8-4d49-a2e2-6f17bd050eb7}"); }
         }
     }
 }

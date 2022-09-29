@@ -44,7 +44,7 @@ namespace Heron
             string clippedLocation = string.Empty;
             DA.GetData<string>(2, ref clippedLocation);
 
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
             ///Specific settings for getting WMS images
             OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
@@ -252,7 +252,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{6834C93A-5FC3-40AE-A7C3-153E96232990}"); }
+            get { return new Guid("{a8692eda-3aac-4ff6-ae9d-33601fe77565}"); }
         }
     }
 }

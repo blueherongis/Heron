@@ -73,8 +73,8 @@ namespace Heron
             DA.GetData<bool>("Run", ref run);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureGdal();
 
             ///Set transform from input spatial reference to Heron spatial reference
             ///TODO: verify the userSRS is valid
@@ -318,7 +318,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{4E3E3725-B8C0-4B2E-A488-DD19B213624E}"); }
+            get { return new Guid("{dc88bb7f-7bd9-427a-8240-44286a6ca3c4}"); }
         }
     }
 }

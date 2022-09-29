@@ -99,7 +99,7 @@ namespace Heron
             DA.GetData<bool>("Export", ref export);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.GDAL.Gdal.SetConfigOption("OGR_SKIP", "KML");
 
             string driverType = drvType;
@@ -641,7 +641,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("7bddff1a-8a4b-4fb8-bd97-0800bcdb6aed"); }
+            get { return new Guid("620b5dd7-6b01-4048-81d8-43ae0527b617"); }
         }
     }
 }

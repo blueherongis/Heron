@@ -80,7 +80,7 @@ namespace Heron
               }
               */
 
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
 
             //string memFilename = "/vsimem/inmemfile";
@@ -309,7 +309,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{E941555F-26ED-4F74-BEB3-B4E9182454F4}"); }
+            get { return new Guid("{272ede93-0e0a-4787-8fab-70755cdd6fe3}"); }
         }
     }
 }

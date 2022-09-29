@@ -557,7 +557,7 @@ namespace Heron
         }
         private DataSource CreateDataSource(string shpFilePath)
         {
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
             OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
 
@@ -579,7 +579,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{CCDA0ABF-ED36-4502-95EA-FD3024376F46}"); }
+            get { return new Guid("{9647c4e5-7985-4eae-ad7f-b1dc16c14a7f}"); }
         }
     }
 }

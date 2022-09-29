@@ -56,7 +56,7 @@ namespace Heron
             DA.GetData<bool>("run", ref run);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             ///TODO: implement SetCRS here.
             ///Option to set CRS here to user-defined.  Needs a SetCRS global variable.
@@ -367,7 +367,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{9324AECD-F345-4507-9C04-34D017378976}"); }
+            get { return new Guid("{325d77ea-6847-492e-875b-8e3682b1e635}"); }
         }
     }
 }
