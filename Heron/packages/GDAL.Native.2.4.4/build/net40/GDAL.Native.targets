@@ -1,0 +1,143 @@
+﻿<!--
+ *
+ * Adapted from System.Data.SQLite.Core.targets -
+ *
+ * WARNING: This MSBuild file requires MSBuild 4.0 features.
+ *
+ * Written by Joe Mistachkin and David Archer.
+ * Released to the public domain, use at your own risk!
+ *
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+  ******************************************************************************
+  **                          Load Per-User Settings                          **
+  ******************************************************************************
+  -->
+
+  <!--
+      NOTE: If the per-user settings file exists, import it now.  The contained
+            settings, if any, will override the default ones provided below.
+  -->
+  <Import Condition="'$(MSBuildThisFileDirectory)' != '' And
+                     HasTrailingSlash('$(MSBuildThisFileDirectory)') And
+                     Exists('$(MSBuildThisFileDirectory)GDAL.Native.targets.user')"
+          Project="$(MSBuildThisFileDirectory)GDAL.targets.user" />
+
+  <!--
+  ******************************************************************************
+  **                    GDAL Interop Library Build Items                      **
+  ******************************************************************************
+  -->
+
+  <ItemGroup>
+    <GDALInteropFiles 
+      Condition="'$(MSBuildThisFileDirectory)' != '' And HasTrailingSlash('$(MSBuildThisFileDirectory)')"
+                        Include="$(MSBuildThisFileDirectory)..\gdal\**\*.*" />
+  </ItemGroup>
+
+  <!--
+  ******************************************************************************
+  **                    GDAL Interop Library Content Items                    **
+  ******************************************************************************
+  -->
+
+  <ItemGroup Condition="'$(ContentGDALInteropFiles)' != '' And
+                        '$(ContentGDALInteropFiles)' != 'false' And
+                        '@(GDALInteropFiles)' != ''">
+    <Content Include="@(GDALInteropFiles)">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!--
+  ******************************************************************************
+  **                    GDAL Interop Library Build Targets                    **
+  ******************************************************************************
+  -->
+
+  <Target Name="CopyGDALInteropFiles"
+          Condition="'$(CopyGDALInteropFiles)' != 'false' And
+                     '$(OutDir)' != '' And
+                     HasTrailingSlash('$(OutDir)') And
+                     Exists('$(OutDir)')"
+          Inputs="@(GDALInteropFiles)"
+          Outputs="@(GDALInteropFiles -> '$(OutDir)gdal\%(RecursiveDir)%(Filename)%(Extension)')">
+    <!--
+        NOTE: Copy "SQLite.Interop.dll" and all related files, for every
+              architecture that we support, to the build output directory.
+    -->
+    <Copy SourceFiles="@(GDALInteropFiles)"
+          DestinationFiles="@(GDALInteropFiles -> '$(OutDir)gdal\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <!--
+  ******************************************************************************
+  -->
+
+  <Target Name="CleanGDALInteropFiles"
+          Condition="'$(CleanGDALInteropFiles)' != 'false' And
+                     '$(OutDir)' != '' And
+                     HasTrailingSlash('$(OutDir)') And
+                     Exists('$(OutDir)')">
+    <!--
+        NOTE: Delete GDAL Interop Files and all related files, for every
+              architecture that we support, from the build output directory.
+    -->
+    <Delete Files="@(GDALInteropFiles -> '$(OutDir)gdal\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <!--
+  ******************************************************************************
+  -->
+
+  <Target Name="CollectGDALInteropFiles"
+          Condition="'$(CollectGDALInteropFiles)' != 'false'">
+    <ItemGroup>
+      <FilesForPackagingFromProject Include="@(GDALInteropFiles)">
+        <DestinationRelativePath>bin\%(RecursiveDir)%(Filename)%(Extension)</DestinationRelativePath>
+      </FilesForPackagingFromProject>
+    </ItemGroup>
+  </Target>
+
+  <!--
+  ******************************************************************************
+  **                   GDAL Interop Library Build Properties                  **
+  ******************************************************************************
+  -->
+
+  <PropertyGroup>
+    <PostBuildEventDependsOn>
+      $(PostBuildEventDependsOn);
+      CopyGDALInteropFiles;
+    </PostBuildEventDependsOn>
+    <BuildDependsOn>
+      $(BuildDependsOn);
+      CopyGDALInteropFiles;
+    </BuildDependsOn>
+    <CleanDependsOn>
+      $(CleanDependsOn);
+      CleanGDALInteropFiles;
+    </CleanDependsOn>
+  </PropertyGroup>
+
+  <!--
+  ******************************************************************************
+  **                 GDAL Interop Library Publish Properties                  **
+  **                       for Visual Studio 201x                             **
+  ******************************************************************************
+  -->
+
+  <PropertyGroup Condition="'$(VisualStudioVersion)' == '' Or
+                            '$(VisualStudioVersion)' == '10.0' Or
+                            '$(VisualStudioVersion)' == '11.0' Or
+                            '$(VisualStudioVersion)' == '12.0' Or
+                            '$(VisualStudioVersion)' == '14.0' Or
+                            '$(VisualStudioVersion)' == '15.0'">
+    <PipelineCollectFilesPhaseDependsOn>
+      CollectGDALInteropFiles;
+      $(PipelineCollectFilesPhaseDependsOn);
+    </PipelineCollectFilesPhaseDependsOn>
+  </PropertyGroup>
+</Project>

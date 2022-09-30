@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32630.192
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Heron", "Heron.csproj", "{A3CC60C1-0145-4237-8E81-1E96326B62A2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug Rhino 7|Any CPU = Debug Rhino 7|Any CPU
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A3CC60C1-0145-4237-8E81-1E96326B62A2}.Debug Rhino 7|Any CPU.ActiveCfg = Debug Rhino 7|Any CPU
+		{A3CC60C1-0145-4237-8E81-1E96326B62A2}.Debug Rhino 7|Any CPU.Build.0 = Debug Rhino 7|Any CPU
+		{A3CC60C1-0145-4237-8E81-1E96326B62A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3CC60C1-0145-4237-8E81-1E96326B62A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3CC60C1-0145-4237-8E81-1E96326B62A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3CC60C1-0145-4237-8E81-1E96326B62A2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FEB6C25C-B67F-49E0-9428-F3C738AFC302}
+	EndGlobalSection
+EndGlobal
