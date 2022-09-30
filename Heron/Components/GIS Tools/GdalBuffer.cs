@@ -54,7 +54,7 @@ namespace Heron.Components.GIS_Tools
             GH_Structure<IGH_GeometricGoo> gGooBuffered = new GH_Structure<IGH_GeometricGoo>();
 
             ///GDAL setup
-            Heron.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureOgr();
 
             ///Use WGS84 spatial reference
             OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");

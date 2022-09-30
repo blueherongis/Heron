@@ -557,7 +557,7 @@ namespace Heron
         }
         private DataSource CreateDataSource(string shpFilePath)
         {
-            Heron.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
             OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
 

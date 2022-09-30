@@ -111,9 +111,9 @@ namespace Heron
 
 
             ///GDAL setup
-            Heron.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
-            Heron.GdalConfiguration.ConfigureGdal();
+            //Heron.GdalConfiguration.ConfigureGdal();
 
 
             GH_Curve imgFrame;

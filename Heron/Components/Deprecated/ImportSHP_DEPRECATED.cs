@@ -71,8 +71,8 @@ namespace Heron
             DA.GetData<string>("Shapefile Location", ref shpfilePath);
 
             ////int SRef = 3857;
-            GdalConfiguration.ConfigureOgr();
-            GdalConfiguration.ConfigureGdal();
+            //GdalConfiguration.ConfigureOgr();
+            //GdalConfiguration.ConfigureGdal();
 
             OSGeo.OGR.Driver drv = OSGeo.OGR.Ogr.GetDriverByName("ESRI Shapefile");
             OSGeo.OGR.DataSource ds = OSGeo.OGR.Ogr.Open(shpfilePath, 0);

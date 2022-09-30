@@ -169,7 +169,7 @@ namespace Heron
             List<string> urls = new List<string>();
 
             ///GDAL setup
-            Heron.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
 
             ///Set transform from input spatial reference to Rhino spatial reference

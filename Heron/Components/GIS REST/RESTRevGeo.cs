@@ -95,8 +95,8 @@ namespace Heron
             //jsonDelegate del = new jsonDelegate(deldata.GetAsyncJson);
 
             ///GDAL setup
-            Heron.GdalConfiguration.ConfigureOgr();
-            Heron.GdalConfiguration.ConfigureGdal();
+            //Heron.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureGdal();
 
             ///Set transform from input spatial reference to Heron spatial reference
             OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");

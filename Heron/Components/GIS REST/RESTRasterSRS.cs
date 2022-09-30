@@ -73,8 +73,8 @@ namespace Heron
             DA.GetData<bool>("Run", ref run);
 
             ///GDAL setup
-            Heron.GdalConfiguration.ConfigureOgr();
-            Heron.GdalConfiguration.ConfigureGdal();
+            //Heron.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureGdal();
 
             ///Set transform from input spatial reference to Heron spatial reference
             ///TODO: verify the userSRS is valid

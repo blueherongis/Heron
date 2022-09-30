@@ -48,9 +48,9 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             ///GDAL setup
-            Heron.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
-            Heron.GdalConfiguration.ConfigureGdal();
+            //Heron.GdalConfiguration.ConfigureGdal();
 
 
             string heronSRSstring = HeronSRS.Instance.SRS;

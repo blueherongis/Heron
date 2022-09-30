@@ -80,7 +80,7 @@ namespace Heron
               }
               */
 
-            Heron.GdalConfiguration.ConfigureGdal();
+            //Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
 
             //string memFilename = "/vsimem/inmemfile";

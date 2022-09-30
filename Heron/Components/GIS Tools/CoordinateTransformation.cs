@@ -48,7 +48,7 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             ///GDAL setup
-            Heron.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureOgr();
 
             ///Working with data trees allows us to only call the osr coordinate transformation once, which seems to be expensive
             GH_Structure<GH_Point> sourcePoints = new GH_Structure<GH_Point>();

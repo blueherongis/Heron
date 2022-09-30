@@ -31,8 +31,9 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             ///GDAL setup
+            Heron.GdalConfiguration.ConfigureGdal();
             Heron.GdalConfiguration.ConfigureOgr();
-
+           
             ///Set transform from input spatial reference to Heron spatial reference
             OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
             heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
