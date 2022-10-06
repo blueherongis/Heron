@@ -9,7 +9,7 @@ namespace Heron
     public class SetEAP : HeronComponent
     {
         //Class Constructor
-        public SetEAP() : base("Set EarthAnchorPoint", "SetEAP", "Set the Rhino EarthAnchorPoint using either an address or Lat/Lon coordinates", "GIS Tools")
+        public SetEAP() : base("Set EarthAnchorPoint", "SetEAP_Compute", "Set the Rhino EarthAnchorPoint using either an address or Lat/Lon coordinates", "GIS Tools")
         {
 
         }

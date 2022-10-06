@@ -44,14 +44,16 @@ namespace Heron
             string addressString = string.Empty;
 
             //check if EAP has been set and if so what is it
-            if (!HeadlessDoc.headlessDoc.EarthAnchorPoint.EarthLocationIsSet())
+            if (!HeadlessDoc.useHeadless)
             {
                 lonlatString = "The Earth Anchor Point has not been set yet";
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "EAP has not been set yet");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Headless doc has not been instantiated yet.");
             }
 
+            /*
             else lonlatString = "Longitude: " + HeadlessDoc.headlessDoc.EarthAnchorPoint.EarthBasepointLongitude.ToString() +
                 " / Latitude: " + HeadlessDoc.headlessDoc.EarthAnchorPoint.EarthBasepointLatitude.ToString();
+            */
 
             DA.GetData<bool>("Set EAP", ref EAP);
             DA.GetData<string>("Point of Interest", ref address);

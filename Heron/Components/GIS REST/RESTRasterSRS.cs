@@ -19,7 +19,7 @@ namespace Heron
     public class RESTRasterSRS : HeronRasterPreviewComponent
     {
         //Class Constructor
-        public RESTRasterSRS() : base("Get REST Raster", "RESTRaster", "Get raster imagery from ArcGIS REST Services.  " +
+        public RESTRasterSRS() : base("Get REST Raster", "RESTRaster_Compute", "Get raster imagery from ArcGIS REST Services.  " +
             "Use the SetSRS component to set the spatial reference system used by this component.", "GIS REST")
         {
 
@@ -78,9 +78,19 @@ namespace Heron
 
             ///Set transform from input spatial reference to Heron spatial reference
             ///TODO: verify the userSRS is valid
+            /*
             OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
             heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
+            int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
+            Message = "EPSG:" + heronSRSInt;
+            */
+
+            OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
+            heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
+            OSGeo.OSR.SpatialReference wgsSRS = new OSGeo.OSR.SpatialReference("");
+            wgsSRS.SetFromUserInput("WGS84");
+            //AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
             int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
             Message = "EPSG:" + heronSRSInt;
 

@@ -363,8 +363,7 @@
   <Import Project="..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets" Condition="Exists('..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets')" />
   <Import Project="..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets" Condition="Exists('..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets')" />
   <PropertyGroup>
-    <PostBuildEvent>xcopy "$(TargetDir)$(TargetName).gha" "C:\Program Files\Rhino 7\Plug-ins\Grasshopper\Components" /s /i /y
-xcopy "$(TargetDir)$(TargetName).pdb" "C:\Program Files\Rhino 7\Plug-ins\Grasshopper\Components" /s /i /y</PostBuildEvent>
+    <PostBuildEvent>xcopy "$(TargetDir)" "C:\Program Files\Rhino 7\Plug-ins\Grasshopper\Components" /s /i /y</PostBuildEvent>
   </PropertyGroup>
   <Import Project="packages\GDAL.Native.2.4.4\build\net40\GDAL.Native.targets" Condition="Exists('packages\GDAL.Native.2.4.4\build\net40\GDAL.Native.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

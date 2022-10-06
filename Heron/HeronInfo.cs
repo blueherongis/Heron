@@ -67,7 +67,7 @@ namespace Heron
         public override Grasshopper.Kernel.GH_LoadingInstruction PriorityLoad()
         {
             Grasshopper.Instances.ComponentServer.AddCategoryIcon("Heron_kpf", Properties.Resources.heron_favicon);
-            Grasshopper.Instances.ComponentServer.AddCategorySymbolName("Heron_kpf", '2');
+            Grasshopper.Instances.ComponentServer.AddCategorySymbolName("Heron_kpf", 'H');
             return Grasshopper.Kernel.GH_LoadingInstruction.Proceed;
         }
     }

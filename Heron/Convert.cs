@@ -30,15 +30,16 @@ namespace Heron
 {
     class Convert
     {
-        private static RhinoDoc ActiveDoc 
-        { 
-            get => ActiveDoc;
-            set
+        public static RhinoDoc ActiveDoc 
+        {
+            get
             {
-                if (HeadlessDoc.useHeadless == true)
-                    ActiveDoc = HeadlessDoc.headlessDoc;
+                if (HeadlessDoc.useHeadless)
+                {
+                    return HeadlessDoc.headlessDoc;
+                }
                 else
-                    ActiveDoc = RhinoDoc.ActiveDoc;
+                    return RhinoDoc.ActiveDoc;
             }
         }
         private static EarthAnchorPoint EarthAnchorPoint => ActiveDoc.EarthAnchorPoint;
@@ -54,6 +55,16 @@ namespace Heron
         ///May be able to swap out the semimajor/semiminor axis radii used by default Rhino WGS84 to use other geographic coordinate systems
         ///
 
+        public static double ScaleToMetric()
+        {
+             return Rhino.RhinoMath.UnitScale(HeadlessDoc.headlessDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
+        }
+
+        public static double ScaleFromMetric()
+        {
+            return Rhino.RhinoMath.UnitScale(Rhino.UnitSystem.Meters, HeadlessDoc.headlessDoc.ModelUnitSystem);
+        }
+        
         public static Point3d XYZToWGS(Point3d xyz)
         {
             var point = new Point3d(xyz);
@@ -134,11 +145,11 @@ namespace Heron
             Plane userEapPlane = new Plane(userAnchorPointPT, userAnchorEastVec, userAnchorNorthVec);
 
             ///shift (move and rotate) from userSRS EAP to 0,0 based on SRS north direction
-            Transform scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters)));
+            Transform scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / Rhino.RhinoMath.UnitScale(ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters)));
 
             if (userSRS.GetLinearUnitsName().ToUpper().Contains("FEET") || userSRS.GetLinearUnitsName().ToUpper().Contains("FOOT"))
             {
-                scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Feet)));
+                scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / Rhino.RhinoMath.UnitScale(ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Feet)));
             }
 
             ///if SRS is geographic (ie WGS84) use Rhino's internal projection
@@ -194,7 +205,7 @@ namespace Heron
             Plane userEapPlane = new Plane(userAnchorPointPT, eapPlane.XAxis, eapPlane.YAxis);
 
             ///shift (move and rotate) from userSRS EAP to 0,0 based on SRS north direction
-            Transform scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / (Rhino.RhinoMath.UnitScale(Rhino.RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters) / unitsToMeters)));
+            Transform scale = Transform.Scale(new Point3d(0.0, 0.0, 0.0), (1 / (Rhino.RhinoMath.UnitScale(ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters) / unitsToMeters)));
 
 
             ///if SRS is geographic (ie WGS84) use Rhino's internal projection
@@ -278,7 +289,7 @@ namespace Heron
 
         public static Curve OgrRingToCurve(OSGeo.OGR.Geometry ring, Transform transform)
         {
-            double tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance;
+            double tol = ActiveDoc.ModelAbsoluteTolerance;
             List<Point3d> ptList = new List<Point3d>();
             for (int i = 0; i < ring.GetPointCount(); i++)
             {
@@ -309,7 +320,7 @@ namespace Heron
 
         public static Mesh OgrPolygonToMesh(OSGeo.OGR.Geometry polygon, Transform transform)
         {
-            double tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance;
+            double tol = ActiveDoc.ModelAbsoluteTolerance;
             List<Curve> pList = new List<Curve>();
             OSGeo.OGR.Geometry sub_geom;
 
@@ -398,7 +409,7 @@ namespace Heron
 
         public static Mesh OgrMultiPolyToMesh(OSGeo.OGR.Geometry multipoly, Transform transform)
         {
-            double tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance;
+            double tol = ActiveDoc.ModelAbsoluteTolerance;
             OSGeo.OGR.Geometry sub_geom;
             List<Mesh> mList = new List<Mesh>();
 
@@ -899,7 +910,7 @@ namespace Heron
             {
                 //get the four corners
                 Polyline tile = GetTileAsPolygon(x, y, z);
-                return (Rhino.Geometry.Intersect.Intersection.CurveCurve(polygon, tile.ToNurbsCurve(), Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance, Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance).Count > 0);
+                return (Rhino.Geometry.Intersect.Intersection.CurveCurve(polygon, tile.ToNurbsCurve(), ActiveDoc.ModelAbsoluteTolerance, ActiveDoc.ModelAbsoluteTolerance).Count > 0);
             }
         }
 

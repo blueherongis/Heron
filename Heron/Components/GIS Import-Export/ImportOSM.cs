@@ -24,7 +24,7 @@ namespace Heron
     public class ImportOSM : HeronComponent
     {
         public ImportOSM()
-          : base("Import OSM", "ImportOSM",
+          : base("Import OSM", "ImportOSM_Compute",
               "Import vector OpenStreetMap data clipped to a boundary. Nodes, Ways and Relations are organized onto their own branches in the output.",
               "GIS Import | Export")
         {
@@ -78,8 +78,8 @@ namespace Heron
             List<string> filterKeyValue = new List<string>();
             DA.GetDataList<string>(3, filterKeyValue);
 
-            Transform xformToMetric = new Transform(scaleToMetric);
-            Transform xformFromMetric = new Transform(scaleFromMetric);
+            Transform xformToMetric = new Transform(Convert.ScaleToMetric());
+            Transform xformFromMetric = new Transform(Convert.ScaleFromMetric());
 
             ///GDAL setup
             //Heron.GdalConfiguration.ConfigureOgr();
@@ -758,8 +758,8 @@ namespace Heron
             return values;
         }
 
-        private static double scaleToMetric = Rhino.RhinoMath.UnitScale(RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
-        private static double scaleFromMetric = Rhino.RhinoMath.UnitScale(Rhino.UnitSystem.Meters, RhinoDoc.ActiveDoc.ModelUnitSystem);
+        //private static double scaleToMetric = Convert.ScaleToMetric();
+        //private static double scaleFromMetric = Convert.ScaleFromMetric();
 
         private static double GetHeightDimensioned (string heightText)
         {
@@ -783,7 +783,7 @@ namespace Heron
                     keyHeight = System.Convert.ToDouble(heightText);
                 }
             }
-            double keyHeightScaled = keyHeight * scaleFromMetric;
+            double keyHeightScaled = keyHeight * Convert.ScaleFromMetric();
             return keyHeightScaled;
         }
 
@@ -799,7 +799,7 @@ namespace Heron
                     keyHeight = Math.Max(keyHeight, System.Convert.ToDouble(levelsText) * 3); //3 meters per floor
                 }
             }
-            return keyHeight*scaleFromMetric;
+            return keyHeight*Convert.ScaleFromMetric();
         }
 
         private static double GetBldgHeight(OsmSharp.OsmGeo osmGeo)
@@ -807,7 +807,7 @@ namespace Heron
             ///Height determination
             ///https://wiki.openstreetmap.org/wiki/Simple_3D_Buildings
             
-            double defaultHeight = 2.0 * 3 * scaleFromMetric; //default number of floors (2) at 3 meters per floor
+            double defaultHeight = 2.0 * 3 * Convert.ScaleFromMetric(); //default number of floors (2) at 3 meters per floor
             double keyHeightDimensioned = 0.0;
             double keyHeightLevels = 0.0;
 

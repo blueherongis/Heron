@@ -26,7 +26,7 @@ namespace Heron
         /// Initializes a new instance of the MyComponent1 class.
         /// </summary>
         public RESTOSM()
-          : base("Get REST OSM", "OSMRest",
+          : base("Get REST OSM", "OSMRest_Compute",
               "Get an OSM vector file within a boundary from web services such as the Overpass API.  " +
                 "Use a search term to filter results and increase speed. ",
                "GIS REST")
@@ -99,7 +99,7 @@ namespace Heron
 
             /// hardcoded timout integer
             /// TODO: add this as a menu item that can be customized
-            int timeout = 60;
+            int timeout = 600;
 
             string URL = osmURL;
 
@@ -191,20 +191,21 @@ namespace Heron
                 DA.SetDataTree(1, osmQuery);
             }
 
-
+            bool downloaded = false;
             if (run)
             {
                 System.Net.WebClient webClient = new System.Net.WebClient();
                 webClient.DownloadFile(oQ, folderPath + prefix + ".osm");
+                downloaded = true;
                 webClient.Dispose();
             }
 
-            osmList.Append(new GH_String(folderPath + prefix + ".osm"));
-
-
-
-            //populate outputs
-            DA.SetDataTree(0, osmList);
+            if (downloaded)
+            {
+                osmList.Append(new GH_String(folderPath + prefix + ".osm"));
+                //populate outputs
+                DA.SetDataTree(0, osmList);
+            }
 
         }
 
