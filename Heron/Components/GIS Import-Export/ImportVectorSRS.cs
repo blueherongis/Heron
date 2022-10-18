@@ -243,7 +243,7 @@ namespace Heron
                 }
 
                 ///Check if boundary is contained in extent
-                if (!recUser.IsValid || ((recUser.Height == 0) && (recUser.Width == 0)))
+                if (!recUser.IsValid || ((recUser.Height == 0) && (recUser.Width == 0) && clipIt == true))
                 {
                     ///Get field data if even if no geometry is present in the layer
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more vector datasource bounds are not valid.");
