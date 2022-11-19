@@ -130,16 +130,22 @@ namespace Heron
                 int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
                 Message = "EPSG:" + heronSRSInt;
 
-                ///Apply EAP to HeronSRS
-                Transform heronToUserSRSTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(heronSRS);
-                Transform userSRSToHeronTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
-
-
                 ///Use WGS84 spatial reference
                 OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
                 dst.SetFromUserInput(HeronSRS.Instance.SRS);
-                //Transform transform = Heron.Convert.XYZToWGSTransform();
-                Transform transform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
+                
+                ///Apply EAP to HeronSRS
+                Transform heronToUserSRSTransform = new Transform(1);
+                Transform userSRSToHeronTransform = new Transform(1);
+                Transform transform = new Transform(1);
+                ///Allow no transform for a straight export of coordinates if EAP is not set
+                if (RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthLocationIsSet())
+                {
+                    ///Apply EAP to HeronSRS
+                    heronToUserSRSTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(heronSRS);
+                    userSRSToHeronTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
+                    transform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
+                }
 
 
                 ///Use OGR catch-all for geometry types
