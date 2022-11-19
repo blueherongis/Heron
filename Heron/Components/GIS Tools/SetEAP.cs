@@ -43,16 +43,6 @@ namespace Heron
             string lonlatString = string.Empty;
             string addressString = string.Empty;
 
-            //check if EAP has been set and if so what is it
-            if (!Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthLocationIsSet())
-            {
-                lonlatString = "The Earth Anchor Point has not been set yet";
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "EAP has not been set yet");
-            }
-
-            else lonlatString = "Longitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLongitude.ToString() +
-                " / Latitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLatitude.ToString();
-
             DA.GetData<bool>("Set EAP", ref EAP);
             DA.GetData<string>("Point of Interest", ref address);
             DA.GetData<string>("Latitude", ref latString);
@@ -81,7 +71,7 @@ namespace Heron
                     return;
                 }
 
-                if (!string.IsNullOrEmpty(address)  && string.IsNullOrEmpty(latString) && string.IsNullOrEmpty(lonString))
+                if (!string.IsNullOrEmpty(address) && string.IsNullOrEmpty(latString) && string.IsNullOrEmpty(lonString))
                 {
                     string output = Heron.Convert.HttpToJson("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?Address=" + address + "&f=pjson");
                     JObject ja = JObject.Parse(output);
@@ -110,23 +100,28 @@ namespace Heron
                         ePt.EarthBasepointLatitude = lat;
                         ePt.EarthBasepointLongitude = lon;
                     }
-                    else
-                    {
-                        DA.SetData("Earth Anchor Point", lonlatString);
-                        return;
-                    }
+                }
+                
+                if ((ePt.EarthBasepointLatitude > -90) && (ePt.EarthBasepointLatitude < 90) && (ePt.EarthBasepointLongitude > -180) && (ePt.EarthBasepointLongitude < 180))
+                {
+                    //set new EAP
+                    Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint = ePt;
                 }
 
-                //set new EAP
-                Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint = ePt;
-
-                //new EAP to string for output
-                lonlatString = addressString + "Longitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLongitude.ToString() +
-                " / Latitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLatitude.ToString();
             }
 
+            //check if EAP has been set and if so what is it
+            if (!Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthLocationIsSet())
+            {
+                lonlatString = "The Earth Anchor Point has not been set yet";
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "EAP has not been set yet");
+            }
+
+            else lonlatString = "Longitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLongitude.ToString() +
+                " / Latitude: " + Rhino.RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthBasepointLatitude.ToString();
 
             DA.SetData("Earth Anchor Point", lonlatString);
+
         }
 
         protected override System.Drawing.Bitmap Icon
