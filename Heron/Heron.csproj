@@ -150,6 +150,8 @@
     <Compile Include="Components\Deprecated\RESTVector_DEPRECATED20220730.cs" />
     <Compile Include="Components\GIS Tools\DMStoDD.cs" />
     <Compile Include="Components\GIS Tools\GdalBuffer.cs" />
+    <Compile Include="Components\GIS Tools\GdalFillNoData.cs" />
+    <Compile Include="Components\GIS Tools\GdalInfo.cs" />
     <Compile Include="Components\GIS Tools\SetEAP.cs" />
     <Compile Include="Components\GIS Tools\SetSRS.cs" />
     <Compile Include="Components\Utilities\MultiMoveToTopo.cs" />
