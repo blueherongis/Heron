@@ -21,6 +21,11 @@ namespace Heron.Components.GIS_Tools
         {
         }
 
+        public override Grasshopper.Kernel.GH_Exposure Exposure
+        {
+            get { return GH_Exposure.tertiary; }
+        }
+
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
