@@ -102,9 +102,9 @@ namespace Heron
                     {
                         if (File.Exists(dstFileLocation))
                         {
-                            if (options.Contains("-overwrite"))
+                            if (options.Contains("-overwrite") || options.Contains("-append"))
                             {
-                                File.Delete(dstFileLocation);
+                                if (options.Contains("-overwrite")) { File.Delete(dstFileLocation); }
                                 Dataset dst = Gdal.wrapper_GDALVectorTranslateDestName(dstFileLocation, src, new GDALVectorTranslateOptions(ogr2ogrOptions), null, null);
                                 dst.Dispose();
                                 dstInfo = string.Join("\r\n", OGRInfo(dstFileLocation));
