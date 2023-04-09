@@ -149,8 +149,22 @@ namespace Heron.Components.GIS_Tools
                             point.CastTo<Point3d>(out pt);
                             pts.Add(pt);
                         }
-                        var bufferPts = Heron.Convert.Point3dsToOgrMultiPoint(pts, transform).Buffer(buffDist, quadsecs);
-                        gGooBuffered.AppendRange(Heron.Convert.OgrGeomToGHGoo(bufferPts, revTransform), new GH_Path(a));
+
+                        if (pts.Count == buffList.Count)
+                        {
+                            OSGeo.OGR.Geometry bufferedSubPts = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPolygon25D);
+                            for (int ptIndex = 0; ptIndex < crvs.Count; ptIndex++)
+                            {
+                                bufferedSubPts.AddGeometry(Heron.Convert.Point3dToOgrPoint(pts[ptIndex], transform).Buffer(buffList[ptIndex].Value, quadsecs));
+                            }
+                            gGooBuffered.AppendRange(Heron.Convert.OgrGeomToGHGoo(bufferedSubPts.Buffer(0, quadsecs), revTransform), new GH_Path(a));
+                        }
+                        else
+                        {
+                            var bufferPts = Heron.Convert.Point3dsToOgrMultiPoint(pts, transform).Buffer(buffDist, quadsecs);
+                            gGooBuffered.AppendRange(Heron.Convert.OgrGeomToGHGoo(bufferPts, revTransform), new GH_Path(a));
+                        }
+
                         break;
 
                     case "Curve":
@@ -169,13 +183,37 @@ namespace Heron.Components.GIS_Tools
                         }
                         if (allClosed)
                         {
-                            var bufferCrvs = Heron.Convert.CurvesToOgrPolygon(crvs, transform).Buffer(buffDist, quadsecs);
-                            gGooBuffered.AppendRange(Heron.Convert.OgrGeomToGHGoo(bufferCrvs, revTransform), new GH_Path(a));
+                            if (crvs.Count == buffList.Count)
+                            {
+                                OSGeo.OGR.Geometry bufferedSubCrvs = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPolygon25D);
+                                for (int crvIndex = 0; crvIndex < crvs.Count; crvIndex++)
+                                {
+                                    bufferedSubCrvs.AddGeometry(Heron.Convert.CurveToOgrPolygon(crvs[crvIndex], transform).Buffer(buffList[crvIndex].Value, quadsecs));
+                                }
+                                gGooBuffered.AppendRange(Heron.Convert.OgrGeomToGHGoo(bufferedSubCrvs.Buffer(0, quadsecs), revTransform), new GH_Path(a));
+                            }
+                            else
+                            {
+                                var bufferCrvs = Heron.Convert.CurvesToOgrPolygon(crvs, transform).Buffer(buffDist, quadsecs);
+                                gGooBuffered.AppendRange(Heron.Convert.OgrGeomToGHGoo(bufferCrvs, revTransform), new GH_Path(a));
+                            }
                         }
                         else
                         {
-                            var bufferCrvs = Heron.Convert.CurvesToOgrMultiLinestring(crvs, transform).Buffer(buffDist, quadsecs);
-                            gGooBuffered.AppendRange(Heron.Convert.OgrGeomToGHGoo(bufferCrvs, revTransform), new GH_Path(a));
+                            if (crvs.Count == buffList.Count)
+                            {
+                                OSGeo.OGR.Geometry bufferedSubCrvs = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPolygon25D);
+                                for (int crvIndex = 0; crvIndex<crvs.Count; crvIndex ++)
+                                {
+                                    bufferedSubCrvs.AddGeometry(Heron.Convert.CurveToOgrLinestring(crvs[crvIndex], transform).Buffer(buffList[crvIndex].Value, quadsecs));
+                                }
+                                gGooBuffered.AppendRange(Heron.Convert.OgrGeomToGHGoo(bufferedSubCrvs.Buffer(0,quadsecs), revTransform), new GH_Path(a));
+                            }
+                            else
+                            {
+                                var bufferCrvs = Heron.Convert.CurvesToOgrMultiLinestring(crvs, transform).Buffer(buffDist, quadsecs);
+                                gGooBuffered.AppendRange(Heron.Convert.OgrGeomToGHGoo(bufferCrvs, revTransform), new GH_Path(a));
+                            }
                         }
                         
                         break;
