@@ -64,8 +64,8 @@ namespace Heron.Components.GIS_Tools
             ///Use WGS84 spatial reference
             OSGeo.OSR.SpatialReference dst = new OSGeo.OSR.SpatialReference("");
             dst.SetWellKnownGeogCS("WGS84");
-            Transform transform = new Transform(1);// Heron.Convert.XYZToWGSTransform();
-            Transform revTransform = new Transform(1);//Heron.Convert.WGSToXYZTransform();
+            Transform transform = new Transform(1);
+            Transform revTransform = new Transform(1);
 
             ///Create virtual datasource to be converted later
             ///Using geojson as a flexiblle base file type which can be converted later with ogr2ogr
