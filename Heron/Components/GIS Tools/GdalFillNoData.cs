@@ -103,7 +103,7 @@ namespace Heron
                 }
             }
 
-            DA.SetData(2, dstOutput);
+            DA.SetData(0, dstOutput);
 
         }
 
