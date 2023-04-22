@@ -31,10 +31,10 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class RESTVector_DEPRECATED : HeronComponent
+    public class RESTVector_DEPRECATED_OBSOLETE : HeronComponent
     {
         //Class Constructor
-        public RESTVector_DEPRECATED() : base("Get REST Vector", "RESTVector", "Get vector data from ArcGIS REST Services", "GIS REST")
+        public RESTVector_DEPRECATED_OBSOLETE() : base("Get REST Vector", "RESTVector", "Get vector data from ArcGIS REST Services", "GIS REST")
         {
 
         }

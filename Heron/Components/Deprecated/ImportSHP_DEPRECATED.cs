@@ -28,10 +28,10 @@ using RESTful;
 
 namespace Heron
 {
-    public class ImportSHP : HeronComponent
+    public class ImportSHP_OBSOLETE : HeronComponent
     {
         //Class Constructor
-        public ImportSHP() : base("Import SHP", "ImportSHP", "Import a Shapefile clipped to a boundary", "GIS Tools")
+        public ImportSHP_OBSOLETE() : base("Import SHP", "ImportSHP", "Import a Shapefile clipped to a boundary", "GIS Tools")
         {
 
         }

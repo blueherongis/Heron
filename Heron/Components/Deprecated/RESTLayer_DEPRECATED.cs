@@ -30,10 +30,10 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class RESTLayer_DEPRECATED : HeronComponent
+    public class RESTLayer_DEPRECATED_OBSOLETE : HeronComponent
     {
         //Class Constructor
-        public RESTLayer_DEPRECATED() : base("Get REST Service Layers DEPRECATED", "RESTLayer_D", "Discover ArcGIS REST Service Layers", "GIS REST")
+        public RESTLayer_DEPRECATED_OBSOLETE() : base("Get REST Service Layers DEPRECATED", "RESTLayer_D", "Discover ArcGIS REST Service Layers", "GIS REST")
         {
 
         }

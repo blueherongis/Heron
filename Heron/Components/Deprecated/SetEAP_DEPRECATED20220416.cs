@@ -31,10 +31,10 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class SetEAP_DEPRECATED20220416 : HeronComponent
+    public class SetEAP_DEPRECATED20220416_OBSOLETE : HeronComponent
     {
         //Class Constructor
-        public SetEAP_DEPRECATED20220416() : base("Set EarthAnchorPoint", "SetEAP", "Set the Rhino EarthAnchorPoint", "GIS Tools")
+        public SetEAP_DEPRECATED20220416_OBSOLETE() : base("Set EarthAnchorPoint", "SetEAP", "Set the Rhino EarthAnchorPoint", "GIS Tools")
         {
 
         }

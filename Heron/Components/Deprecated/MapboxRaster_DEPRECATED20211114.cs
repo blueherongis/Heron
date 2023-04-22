@@ -34,12 +34,12 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class MapboxRaster_DEPRECATED20211114 : HeronRasterPreviewComponent
+    public class MapboxRaster_DEPRECATED20211114_OBSOLETE : HeronRasterPreviewComponent
     {
         /// <summary>
         /// Initializes a new instance of the MapboxRaster class.
         /// </summary>
-        public MapboxRaster_DEPRECATED20211114() : base("Mapbox Raster", "MapboxRaster", "Get raster imagery from a Mapbox service", "GIS API")
+        public MapboxRaster_DEPRECATED20211114_OBSOLETE() : base("Mapbox Raster", "MapboxRaster", "Get raster imagery from a Mapbox service", "GIS API")
         {
         }
 

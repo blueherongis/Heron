@@ -16,10 +16,10 @@ using System.Windows.Forms;
 
 namespace Heron
 {
-    public class RESTRaster_DEPRECATED20220730 : HeronRasterPreviewComponent
+    public class RESTRaster_DEPRECATED20220730_OBSOLETE : HeronRasterPreviewComponent
     {
         //Class Constructor
-        public RESTRaster_DEPRECATED20220730() : base("Get REST Raster", "RESTRaster", "Get raster imagery from ArcGIS REST Services", "GIS REST")
+        public RESTRaster_DEPRECATED20220730_OBSOLETE() : base("Get REST Raster", "RESTRaster", "Get raster imagery from ArcGIS REST Services", "GIS REST")
         {
 
         }

@@ -8,10 +8,10 @@ using System.Windows.Forms;
 
 namespace Heron
 {
-    public class RESTVector_DEPRECATED20220730 : HeronComponent
+    public class RESTVector_DEPRECATED20220730_OBSOLETE : HeronComponent
     {
         //Class Constructor
-        public RESTVector_DEPRECATED20220730() : base("Get REST Vector", "RESTVector", "Get vector data from ArcGIS REST Services", "GIS REST")
+        public RESTVector_DEPRECATED20220730_OBSOLETE() : base("Get REST Vector", "RESTVector", "Get vector data from ArcGIS REST Services", "GIS REST")
         {
 
         }

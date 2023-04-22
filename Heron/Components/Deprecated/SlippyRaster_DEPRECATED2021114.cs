@@ -34,12 +34,12 @@ using Newtonsoft.Json.Serialization;
 
 namespace Heron
 {
-    public class SlippyRaster_DEPRECATED20211114 : HeronRasterPreviewComponent
+    public class SlippyRaster_DEPRECATED20211114_OBSOLETE : HeronRasterPreviewComponent
     {
         /// <summary>
         /// Initializes a new instance of the SlippyRaster class.
         /// </summary>
-        public SlippyRaster_DEPRECATED20211114()
+        public SlippyRaster_DEPRECATED20211114_OBSOLETE()
           : base("Slippy Raster", "Slippy Raster", "Get raster imagery from a tile-based map service", "GIS API")
         {
         }

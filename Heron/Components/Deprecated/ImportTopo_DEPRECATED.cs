@@ -29,10 +29,10 @@ using OSGeo.OGR;
 
 namespace Heron
 {
-    public class ImportTopo_DEPRECATED : HeronComponent
+    public class ImportTopo_OBSOLETE : HeronComponent
     {
         //Class Constructor
-        public ImportTopo_DEPRECATED() : base("Import Topo DEPRECATED", "ImportTopo_D", "Create a topographic mesh from a raster file (IMG, HGT, ASCII, DEM, TIF, etc) clipped to a boundary", "GIS Import | Export")
+        public ImportTopo_OBSOLETE() : base("Import Topo DEPRECATED", "ImportTopo_D", "Create a topographic mesh from a raster file (IMG, HGT, ASCII, DEM, TIF, etc) clipped to a boundary", "GIS Import | Export")
         {
 
         }

@@ -12,10 +12,10 @@ using System.Collections.Generic;
 
 namespace Heron
 {
-    public class ImportVector_DEPRECATED20220730 : HeronComponent
+    public class ImportVector_DEPRECATED20220730_OBSOLETE : HeronComponent
     {
         //Class Constructor
-        public ImportVector_DEPRECATED20220730() : base("Import Vector", "ImportVector_old", "Import vector GIS data clipped to a boundary, including SHP, GeoJSON, OSM, KML, MVT and GDB folders.", "GIS Import | Export")
+        public ImportVector_DEPRECATED20220730_OBSOLETE() : base("Import Vector", "ImportVector_old", "Import vector GIS data clipped to a boundary, including SHP, GeoJSON, OSM, KML, MVT and GDB folders.", "GIS Import | Export")
         {
 
         }
