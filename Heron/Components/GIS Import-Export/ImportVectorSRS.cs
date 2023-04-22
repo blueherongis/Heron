@@ -155,7 +155,7 @@ namespace Heron
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"Layer #{iLayer} {ogrLayer.GetName()} has {featureCount} features");
 
                 ///Get the spatial reference of the input vector file and set to WGS84 if not known
-                OSGeo.OSR.SpatialReference sourceSRS = new SpatialReference(Osr.SRS_WKT_WGS84);
+                OSGeo.OSR.SpatialReference sourceSRS = new SpatialReference(Osr.SRS_WKT_WGS84_LAT_LONG);
                 string spatialReference = GetSpatialReferenceSRS(ogrLayer, iLayer, dataSource, sourceSRS);
                 sourceSRS.SetFromUserInput(spatialReference);
 
@@ -169,7 +169,7 @@ namespace Heron
                     OSGeo.OGR.Geometry sourceOrigin = new OSGeo.OGR.Geometry(wkbGeometryType.wkbPoint);
                     sourceOrigin.AddPoint(0.0, 0.0, 0.0);
                     sourceOrigin.AssignSpatialReference(sourceSRS);
-                    sourceOrigin.TransformTo(new SpatialReference(Osr.SRS_WKT_WGS84));
+                    sourceOrigin.TransformTo(new SpatialReference(Osr.SRS_WKT_WGS84_LAT_LONG));
                     EarthAnchorPoint eap = new EarthAnchorPoint();
                     eap.EarthBasepointLatitude = sourceOrigin.GetY(0);
                     eap.EarthBasepointLongitude = sourceOrigin.GetX(0);
@@ -490,7 +490,7 @@ namespace Heron
                 else
                 {
                     sourceSRS = layer.GetSpatialRef();
-                    sourceSRS.ExportToWkt(out spatialReference);
+                    sourceSRS.ExportToWkt(out spatialReference, null);
                     try
                     {
                         int sourceSRSInt = Int16.Parse(sourceSRS.GetAuthorityCode(null));

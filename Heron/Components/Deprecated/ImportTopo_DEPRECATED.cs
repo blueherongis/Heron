@@ -99,7 +99,7 @@ namespace Heron
 
             ///Get the spatial reference of the input raster file and set to WGS84 if not known
             ///Set up transform from source to WGS84
-            OSGeo.OSR.SpatialReference sr = new SpatialReference(Osr.SRS_WKT_WGS84);
+            OSGeo.OSR.SpatialReference sr = new SpatialReference(Osr.SRS_WKT_WGS84_LAT_LONG);
             if (ds.GetProjection() == null)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Coordinate Reference System (CRS) is missing.  CRS set automatically set to WGS84.");
@@ -117,12 +117,12 @@ namespace Heron
                     SpatialReference srEsri = sr;
                     srEsri.MorphFromESRI();
                     string projEsri = string.Empty;
-                    srEsri.ExportToWkt(out projEsri);
+                    srEsri.ExportToWkt(out projEsri, null);
 
                     ///If no SRS exists, check Ground Control Points SRS
                     SpatialReference srGCP = new SpatialReference(ds.GetGCPProjection());
                     string projGCP = string.Empty;
-                    srGCP.ExportToWkt(out projGCP);
+                    srGCP.ExportToWkt(out projGCP, null);
 
                     if (!string.IsNullOrEmpty(projEsri))
                     {

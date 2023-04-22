@@ -106,12 +106,12 @@ namespace Heron
                     SpatialReference srEsri = sr;
                     srEsri.MorphFromESRI();
                     string projEsri = string.Empty;
-                    srEsri.ExportToWkt(out projEsri);
+                    srEsri.ExportToWkt(out projEsri, null);
 
                     ///If no SRS exists, check Ground Control Points SRS
                     SpatialReference srGCP = new SpatialReference(datasource.GetGCPProjection());
                     string projGCP = string.Empty;
-                    srGCP.ExportToWkt(out projGCP);
+                    srGCP.ExportToWkt(out projGCP, null);
 
                     if (!string.IsNullOrEmpty(projEsri))
                     {
@@ -157,8 +157,11 @@ namespace Heron
                             var gcHandle = GCHandle.Alloc(ptr, GCHandleType.Pinned);
                             try
                             {
-                                var dss = new SWIGTYPE_p_p_GDALDatasetShadow(gcHandle.AddrOfPinnedObject(), false, null);
-                                Dataset dst = Gdal.wrapper_GDALWarpDestName(dstFileLocation, 1, dss, new GDALWarpAppOptions(translateOptions), null, null);
+                                //var dss = new SWIGTYPE_p_p_GDALDatasetShadow(gcHandle.AddrOfPinnedObject(), false, null);
+                                //Dataset dst = Gdal.wrapper_GDALWarpDestName(dstFileLocation, 1, dss, new GDALWarpAppOptions(translateOptions), null, null);
+                                Dataset[] dss = new Dataset[1];
+                                dss[0] = Gdal.Open(datasourceFileLocation, Access.GA_ReadOnly);
+                                Dataset dst = Gdal.Warp(dstFileLocation, dss, new GDALWarpAppOptions(translateOptions), null, null);
                                 if (dst == null)
                                 {
                                     throw new Exception("GdalWarp failed: " + Gdal.GetLastErrorMsg());

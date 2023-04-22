@@ -6,7 +6,7 @@
  * Author:   Felix Obermaier
  *
  ******************************************************************************
- * Copyright (c) 2012, Felix Obermaier
+ * Copyright (c) 2012-2018, Felix Obermaier
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -29,8 +29,10 @@
 
 using Heron;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Gdal = OSGeo.GDAL.Gdal;
 using Ogr = OSGeo.OGR.Ogr;
 
@@ -38,55 +40,104 @@ namespace RESTful
 {
     public static partial class GdalConfiguration
     {
-        private static bool _configuredOgr;
-        private static bool _configuredGdal;
+        private static volatile bool _configuredOgr;
+        private static volatile bool _configuredGdal;
+        private static volatile bool _usable;
 
-        /// <summary>
-        /// Function to determine which platform we're on
-        /// </summary>
-        private static string GetPlatform()
-        {
-            return IntPtr.Size == 4 ? "x86" : "x64";
-        }
+        [DllImport("kernel32", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern bool SetDefaultDllDirectories(uint directoryFlags);
+        //               LOAD_LIBRARY_SEARCH_DEFAULT_DIRS
+        private const uint DllSearchFlags = 0x00001000;
 
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool AddDllDirectory(string lpPathName);
 
         /// <summary>
         /// Construction of Gdal/Ogr
         /// </summary>
         static GdalConfiguration()
         {
-            var ghLibFile = typeof(ImportVectorSRS).Assembly.Location;
-            var executingDirectory = Path.GetDirectoryName(ghLibFile);
+            string executingDirectory = null, gdalPath = null, nativePath = null;
+            try
+            {
+                if (!IsWindows)
+                {
+                    const string notSet = "_Not_set_";
+                    string tmp = Gdal.GetConfigOption("GDAL_DATA", notSet);
+                    _usable = tmp != notSet;
+                    return;
+                }
 
-            if (string.IsNullOrEmpty(executingDirectory))
-                throw new InvalidOperationException("cannot get executing directory");
+                //var ghLibFile = typeof(ImportVectorSRS).Assembly.Location;
+                //var executingDirectory = Path.GetDirectoryName(ghLibFile);
+                string executingAssemblyFile = new Uri(Assembly.GetExecutingAssembly().GetName().CodeBase).LocalPath;
+                executingDirectory = Path.GetDirectoryName(executingAssemblyFile);
 
-            var gdalPath = Path.Combine(executingDirectory, "gdal");
-            var nativePath = Path.Combine(gdalPath, GetPlatform());
+                if (string.IsNullOrEmpty(executingDirectory))
+                    throw new InvalidOperationException("cannot get executing directory");
 
-            // Prepend native path to environment path, to ensure the
-            // right libs are being used.
-            var path = Environment.GetEnvironmentVariable("Path");
-            path = nativePath + ";" + Path.Combine(nativePath, "plugins") + ";" + path;
-            Environment.SetEnvironmentVariable("Path", path);
 
-            // Set the additional GDAL environment variables.
-            var gdalData = Path.Combine(gdalPath, "data");
-            Environment.SetEnvironmentVariable("GDAL_DATA", gdalData);
-            Gdal.SetConfigOption("GDAL_DATA", gdalData);
+                // modify search place and order
+                SetDefaultDllDirectories(DllSearchFlags);
 
-            var driverPath = Path.Combine(nativePath, "plugins");
-            Environment.SetEnvironmentVariable("GDAL_DRIVER_PATH", driverPath);
-            Gdal.SetConfigOption("GDAL_DRIVER_PATH", driverPath);
+                gdalPath = Path.Combine(executingDirectory, "gdal");
+                nativePath = Path.Combine(gdalPath, GetPlatform());
+                if (!Directory.Exists(nativePath))
+                    throw new DirectoryNotFoundException($"GDAL native directory not found at '{nativePath}'");
+                if (!File.Exists(Path.Combine(nativePath, "gdal_wrap.dll")))
+                    throw new FileNotFoundException(
+                        $"GDAL native wrapper file not found at '{Path.Combine(nativePath, "gdal_wrap.dll")}'");
 
-            Environment.SetEnvironmentVariable("GEOTIFF_CSV", gdalData);
-            Gdal.SetConfigOption("GEOTIFF_CSV", gdalData);
+                // Add directories
+                AddDllDirectory(nativePath);
+                AddDllDirectory(Path.Combine(nativePath, "plugins"));
 
-            var projSharePath = Path.Combine(gdalPath, "share");
-            Environment.SetEnvironmentVariable("PROJ_LIB", projSharePath);
-            Gdal.SetConfigOption("PROJ_LIB", projSharePath);
+                // Set the additional GDAL environment variables.
+                string gdalData = Path.Combine(gdalPath, "data");
+                Environment.SetEnvironmentVariable("GDAL_DATA", gdalData);
+                Gdal.SetConfigOption("GDAL_DATA", gdalData);
 
-            OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
+                string driverPath = Path.Combine(nativePath, "plugins");
+                Environment.SetEnvironmentVariable("GDAL_DRIVER_PATH", driverPath);
+                Gdal.SetConfigOption("GDAL_DRIVER_PATH", driverPath);
+
+                Environment.SetEnvironmentVariable("GEOTIFF_CSV", gdalData);
+                Gdal.SetConfigOption("GEOTIFF_CSV", gdalData);
+
+                string projSharePath = Path.Combine(gdalPath, "share");
+                Environment.SetEnvironmentVariable("PROJ_LIB", projSharePath);
+                Gdal.SetConfigOption("PROJ_LIB", projSharePath);
+                OSGeo.OSR.Osr.SetPROJSearchPaths(new[] { projSharePath });
+				
+				string certificateFile = Path.Combine(gdalPath, "curl-ca-bundle.crt");
+                Gdal.SetConfigOption("GDAL_CURL_CA_BUNDLE", certificateFile);
+
+                OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
+                ///To be backwards compatible with the way Heron uses coordinate order
+                OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
+
+
+                _usable = true;
+            }
+            catch (Exception e)
+            {
+                _usable = false;
+                Trace.WriteLine(e, "error");
+                Trace.WriteLine($"Executing directory: {executingDirectory}", "error");
+                Trace.WriteLine($"gdal directory: {gdalPath}", "error");
+                Trace.WriteLine($"native directory: {nativePath}", "error");
+
+                //throw;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating if the GDAL package is set up properly.
+        /// </summary>
+        public static bool Usable
+        {
+            get { return _usable; }
         }
 
         /// <summary>
@@ -95,6 +146,7 @@ namespace RESTful
         /// <remarks>Be sure to call this function before using Gdal/Ogr/Osr</remarks>
         public static void ConfigureOgr()
         {
+            if (!_usable) return;
             if (_configuredOgr) return;
 
             // Register drivers
@@ -110,6 +162,7 @@ namespace RESTful
         /// <remarks>Be sure to call this function before using Gdal/Ogr/Osr</remarks>
         public static void ConfigureGdal()
         {
+            if (!_usable) return;
             if (_configuredGdal) return;
 
             // Register drivers
@@ -119,14 +172,39 @@ namespace RESTful
             PrintDriversGdal();
         }
 
+
+        /// <summary>
+        /// Function to determine which platform we're on
+        /// </summary>
+        private static string GetPlatform()
+        {
+            return Environment.Is64BitProcess ? "x64" : "x86";
+        }
+
+        /// <summary>
+        /// Gets a value indicating if we are on a windows platform
+        /// </summary>
+        private static bool IsWindows
+        {
+            get
+            {
+                var res = !(Environment.OSVersion.Platform == PlatformID.Unix ||
+                            Environment.OSVersion.Platform == PlatformID.MacOSX);
+
+                return res;
+            }
+        }
         private static void PrintDriversOgr()
         {
 #if DEBUG
-            var num = Ogr.GetDriverCount();
-            for (var i = 0; i < num; i++)
+            if (_usable)
             {
-                var driver = Ogr.GetDriver(i);
-                Console.WriteLine(string.Format("OGR {0}: {1}", i, driver.name));
+                var num = Ogr.GetDriverCount();
+                for (var i = 0; i < num; i++)
+                {
+                    var driver = Ogr.GetDriver(i);
+                    Trace.WriteLine($"OGR {i}: {driver.GetName()}", "Debug");
+                }
             }
 #endif
         }
@@ -134,11 +212,14 @@ namespace RESTful
         private static void PrintDriversGdal()
         {
 #if DEBUG
-            var num = Gdal.GetDriverCount();
-            for (var i = 0; i < num; i++)
+            if (_usable)
             {
-                var driver = Gdal.GetDriver(i);
-                Console.WriteLine(string.Format("GDAL {0}: {1}-{2}", i, driver.ShortName, driver.LongName));
+                var num = Gdal.GetDriverCount();
+                for (var i = 0; i < num; i++)
+                {
+                    var driver = Gdal.GetDriver(i);
+                    Trace.WriteLine($"GDAL {i}: {driver.ShortName}-{driver.LongName}");
+                }
             }
 #endif
         }

@@ -111,7 +111,7 @@ namespace Heron
 
                 ///Get the spatial reference of the input vector file and set to WGS84 if not known
                 ///
-                OSGeo.OSR.SpatialReference sourceSRS = new SpatialReference(Osr.SRS_WKT_WGS84);
+                OSGeo.OSR.SpatialReference sourceSRS = new SpatialReference(Osr.SRS_WKT_WGS84_LAT_LONG);
                 string spatialReference = GetSpatialReference(ogrLayer, iLayer, dataSource, sourceSRS);
                 sourceSRS.SetFromUserInput(spatialReference);
                 spatialReferences.Append(new GH_String(spatialReference), new GH_Path(iLayer));
@@ -518,7 +518,7 @@ namespace Heron
                 else
                 {
                     sourceSRS = layer.GetSpatialRef();
-                    sourceSRS.ExportToWkt(out spatialReference);
+                    sourceSRS.ExportToWkt(out spatialReference, null);
                     try
                     {
                         int sourceSRSInt = Int16.Parse(sourceSRS.GetAuthorityCode(null));
