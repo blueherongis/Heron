@@ -113,7 +113,7 @@ namespace Heron
 
             //Get the spatial refernce of the input Shapefile
             string sRef;
-            sr.ExportToWkt(out sRef);
+            sr.ExportToWkt(out sRef, null);
 
             OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(sr, dst);
             OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(dst, sr);

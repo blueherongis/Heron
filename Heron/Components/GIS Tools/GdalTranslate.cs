@@ -109,12 +109,12 @@ namespace Heron
                     SpatialReference srEsri = sr;
                     srEsri.MorphFromESRI();
                     string projEsri = string.Empty;
-                    srEsri.ExportToWkt(out projEsri);
+                    srEsri.ExportToWkt(out projEsri, null);
 
                     ///If no SRS exists, check Ground Control Points SRS
                     SpatialReference srGCP = new SpatialReference(datasource.GetGCPProjection());
                     string projGCP = string.Empty;
-                    srGCP.ExportToWkt(out projGCP);
+                    srGCP.ExportToWkt(out projGCP, null);
 
                     if (!string.IsNullOrEmpty(projEsri))
                     {
