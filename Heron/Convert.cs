@@ -267,7 +267,9 @@ namespace Heron
 
         public static Curve OgrRingToCurve(OSGeo.OGR.Geometry ring, Transform transform)
         {
-            double tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance;
+            ///Set tol if in a headless environment ie Hops or Compute
+            double tol = 0.001;
+            if (Rhino.RhinoDoc.ActiveDoc != null) { tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance; }
             List<Point3d> ptList = new List<Point3d>();
             for (int i = 0; i < ring.GetPointCount(); i++)
             {
@@ -298,7 +300,9 @@ namespace Heron
 
         public static Mesh OgrPolygonToMesh(OSGeo.OGR.Geometry polygon, Transform transform)
         {
-            double tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance;
+            ///Set tol if in a headless environment ie Hops or Compute
+            double tol = 0.001;
+            if (Rhino.RhinoDoc.ActiveDoc != null) { tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance; }
             List<Curve> pList = new List<Curve>();
             OSGeo.OGR.Geometry sub_geom;
 
@@ -330,13 +334,16 @@ namespace Heron
                 pList.RemoveAt(0);
                 mPatch = Rhino.Geometry.Mesh.CreatePatch(pL, tol, null, pList, null, null, true, 1);
 
-                ///Adds ngon capability
-                ///https://discourse.mcneel.com/t/create-ngon-mesh-rhinocommon-c/51796/12
-                mPatch.Ngons.AddPlanarNgons(tol);
-                mPatch.FaceNormals.ComputeFaceNormals();
-                mPatch.Normals.ComputeNormals();
-                mPatch.Compact();
-                mPatch.UnifyNormals();
+                if (mPatch != null)
+                {
+                    ///Adds ngon capability
+                    ///https://discourse.mcneel.com/t/create-ngon-mesh-rhinocommon-c/51796/12
+                    mPatch.Ngons.AddPlanarNgons(tol);
+                    mPatch.FaceNormals.ComputeFaceNormals();
+                    mPatch.Normals.ComputeNormals();
+                    mPatch.Compact();
+                    mPatch.UnifyNormals();
+                }
             }
 
             return mPatch;
@@ -387,7 +394,9 @@ namespace Heron
 
         public static Mesh OgrMultiPolyToMesh(OSGeo.OGR.Geometry multipoly, Transform transform)
         {
-            double tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance;
+            ///Set tol if in a headless environment ie Hops or Compute
+            double tol = 0.001;
+            if (Rhino.RhinoDoc.ActiveDoc != null) { tol = Rhino.RhinoDoc.ActiveDoc.ModelAbsoluteTolerance; }
             OSGeo.OGR.Geometry sub_geom;
             List<Mesh> mList = new List<Mesh>();
 
@@ -395,8 +404,11 @@ namespace Heron
             {
                 sub_geom = multipoly.GetGeometryRef(i);
                 Mesh mP = Heron.Convert.OgrPolygonToMesh(sub_geom, transform);
-                mP.UnifyNormals();
-                mList.Add(mP);
+                if (mP != null)
+                {
+                    mP.UnifyNormals();
+                    mList.Add(mP);
+                }
                 sub_geom.Dispose();
             }
             Mesh m = new Mesh();
@@ -455,7 +467,7 @@ namespace Heron
         public static List<IGH_GeometricGoo> OgrGeomToGHGoo(OSGeo.OGR.Geometry geom, Transform transform)
         {
             List<IGH_GeometricGoo> gGoo = new List<IGH_GeometricGoo>();
-
+            
             switch (geom.GetGeometryType())
             {
                 case wkbGeometryType.wkbGeometryCollection:
