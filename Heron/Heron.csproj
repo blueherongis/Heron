@@ -145,6 +145,7 @@
     <None Include="Components\GIS API\MapboxIsochroneSpeckle.cs" />
     <Compile Include="Components\GIS API\Yelp.cs" />
     <Compile Include="Components\GIS Import-Export\ImportVectorLite.cs" />
+    <Compile Include="Components\Deprecated\ImportVectorSRS_DEPRECATED20230506.cs" />
     <Compile Include="Components\GIS Import-Export\ImportVectorSRS.cs" />
     <Compile Include="Components\GIS REST\RESTRasterSRS.cs" />
     <Compile Include="Components\GIS REST\RESTVectorSRS.cs" />
