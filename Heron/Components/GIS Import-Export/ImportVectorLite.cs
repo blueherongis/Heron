@@ -24,7 +24,7 @@ namespace Heron
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("Vector Data Location", "filePath", "File path for the vector data input", GH_ParamAccess.tree);
+            pManager.AddTextParameter("File Path", "filepath", "File path(s) for the vector data source(s).", GH_ParamAccess.tree);
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -41,7 +41,7 @@ namespace Heron
             ///Gather GHA inputs
             //string shpFilePath = string.Empty;
             GH_Structure<GH_String> shpFilePathTree = new GH_Structure<GH_String>();
-            DA.GetDataTree<GH_String>("Vector Data Location", out shpFilePathTree);
+            DA.GetDataTree<GH_String>("File Path", out shpFilePathTree);
 
             ///GDAL setup
             RESTful.GdalConfiguration.ConfigureOgr();
@@ -60,13 +60,15 @@ namespace Heron
 
             Transform transform = new Transform(1);
 
-            foreach (var filepathPath in shpFilePathTree.Paths)
+            for (int filepathBranchIndex = 0; filepathBranchIndex < shpFilePathTree.Branches.Count; filepathBranchIndex++)
             {
-                for (int index = 0; index < shpFilePathTree.get_Branch(filepathPath).Count; index++)
+                for (int index = 0; index < shpFilePathTree.get_Branch(filepathBranchIndex).Count; index++)
                 {
-                    var path = filepathPath.AppendElement(index);
-                    string dataSourceString = shpFilePathTree.get_DataItem(filepathPath, index).ToString();
-                    //GH_Convert.ToString_Primary(shpFilePathTree[path], ref dataSourceString);
+
+                    var path = shpFilePathTree.get_Path(filepathBranchIndex).AppendElement(index);
+
+                    string dataSourceString = shpFilePathTree.get_Branch(filepathBranchIndex)[index].ToString();
+
                     DataSource dataSource = CreateDataSourceSRS(dataSourceString);
                     List<OSGeo.OGR.Layer> layerSet = GetLayersSRS(dataSource);
 
