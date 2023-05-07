@@ -109,43 +109,46 @@ namespace Heron
                       ///The magic found here:
                       ///https://discourse.mcneel.com/t/mesh-with-holes-from-polylines-in-rhinowip-to-c/45589
                       Mesh mPatch = Mesh.CreatePatch(pL, tol, null, branchCrvs, null, null, true, 1);
-                      mPatch.Ngons.AddPlanarNgons(tol);
-                      //mPatch.UnifyNormals();
-                      mPatch.FaceNormals.ComputeFaceNormals();
-                      mPatch.Normals.ComputeNormals();
-                      mPatch.Compact();
-
-                      if (height.PathExists(pth))
-                      {
-                          if (height.get_Branch(pth).Count > 0)
-                          {
-                              GH_Convert.ToDouble(height.get_Branch(pth)[0], out offset, 0);
-                              if (extrudeDir == "Extrude Z") { mPatch = mPatch.Offset(offset, true, Vector3d.ZAxis); }
-                              else 
-                              {
-                                  mPatch.Flip(true, true, true);
-                                  mPatch = mPatch.Offset(offset, true); 
-                              }
-                          }
-                      }
-                      else if (height.get_FirstItem(true) != null)
-                      {
-                          GH_Convert.ToDouble(height.get_FirstItem(true), out offset, 0);
-                          if (extrudeDir == "Extrude Z") { mPatch = mPatch.Offset(offset, true, Vector3d.ZAxis); }
-                          else 
-                          {
-                              mPatch.Flip(true, true, true);
-                              mPatch = mPatch.Offset(offset, true); 
-                          }
-                      }
-                      else
-                      {
-
-                      }
-
                       if (mPatch != null)
                       {
-                          if (mPatch.SolidOrientation() < 0) { mPatch.Flip(true, true, true); }
+                          mPatch.Ngons.AddPlanarNgons(tol);
+                          //mPatch.UnifyNormals();
+                          mPatch.FaceNormals.ComputeFaceNormals();
+                          mPatch.Normals.ComputeNormals();
+                          mPatch.Compact();
+
+                          if (height.PathExists(pth))
+                          {
+                              if (height.get_Branch(pth).Count > 0)
+                              {
+                                  GH_Convert.ToDouble(height.get_Branch(pth)[0], out offset, 0);
+                                  if (extrudeDir == "Extrude Z") { mPatch = mPatch.Offset(offset, true, Vector3d.ZAxis); }
+                                  else
+                                  {
+                                      mPatch.Flip(true, true, true);
+                                      mPatch = mPatch.Offset(offset, true);
+                                  }
+                              }
+                          }
+                          else if (height.get_FirstItem(true) != null)
+                          {
+                              GH_Convert.ToDouble(height.get_FirstItem(true), out offset, 0);
+                              if (extrudeDir == "Extrude Z") { mPatch = mPatch.Offset(offset, true, Vector3d.ZAxis); }
+                              else
+                              {
+                                  mPatch.Flip(true, true, true);
+                                  mPatch = mPatch.Offset(offset, true);
+                              }
+                          }
+                          else
+                          {
+
+                          }
+
+                          if (mPatch != null)
+                          {
+                              if (mPatch.SolidOrientation() < 0) { mPatch.Flip(true, true, true); }
+                          }
                       }
 
                       mPatchTree[pth] = new GH_Mesh(mPatch);
