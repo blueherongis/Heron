@@ -78,7 +78,9 @@ namespace Heron
             List<string> filterKeyValue = new List<string>();
             DA.GetDataList<string>(3, filterKeyValue);
 
+            scaleToMetric = Rhino.RhinoMath.UnitScale(RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
             Transform xformToMetric = new Transform(scaleToMetric);
+            scaleFromMetric = Rhino.RhinoMath.UnitScale(Rhino.UnitSystem.Meters, RhinoDoc.ActiveDoc.ModelUnitSystem);
             Transform xformFromMetric = new Transform(scaleFromMetric);
 
             ///GDAL setup
