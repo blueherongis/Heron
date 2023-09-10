@@ -272,8 +272,11 @@ namespace Heron
 
                                 Vector3d hVec = new Vector3d(0, 0, GetBldgHeight(osmGeo) - minHeightWay);
                                 //hVec.Transform(xformFromMetric);
-
+                                
                                 Extrusion ex = Extrusion.Create(pL, hVec.Z, true);
+                                ///Catch rare issue where counterclockwise pL and positive Z still extrude negative.  Seems like a Rhino bug.
+                                ///https://discourse.mcneel.com/t/heron-plugin-building-height-problem/164757/10
+                                if (ex.PathTangent.Z < 0) ex = Extrusion.Create(pL, -hVec.Z, true);
                                 IGH_GeometricGoo bldgGoo = GH_Convert.ToGeometricGoo(ex);
 
                                 ///Save building parts for sorting later and remove part from geometry goo tree
