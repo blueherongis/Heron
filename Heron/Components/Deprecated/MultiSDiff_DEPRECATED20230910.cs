@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Windows.Forms;
-using GH_IO.Serialization;
+
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
@@ -9,12 +8,12 @@ using Rhino.Geometry;
 
 namespace Heron
 {
-    public class MultiSDiff : HeronComponent
+    public class MultiSDiff_DEPRECATED20230910_OBSOLETE : HeronComponent
     {
         /// <summary>
         /// Initializes a new instance of the MultiSDiff class.
         /// </summary>
-        public MultiSDiff()
+        public MultiSDiff_DEPRECATED20230910_OBSOLETE()
           : base("Multi SDiff", "MSDiff",
               "This multithreaded boolean solid difference (SDiff) component spreads the branches of input over threads for the boolean operation. " +
                 "Any failed difference breps will be discarded to the Bad Breps output.  " +
@@ -24,9 +23,10 @@ namespace Heron
         {
         }
 
+        ///Retiring this component to add faster boolean difference algo
         public override Grasshopper.Kernel.GH_Exposure Exposure
         {
-            get { return GH_Exposure.tertiary; }
+            get { return GH_Exposure.hidden; }
         }
 
         /// <summary>
@@ -62,14 +62,14 @@ namespace Heron
             double tol = DocumentTolerance();
 
             ///Reserve one processor for GUI
-            //int totalMaxConcurrancy = System.Environment.ProcessorCount - 1;
+            int totalMaxConcurrancy = System.Environment.ProcessorCount - 1;
 
             ///Tells us how many threads were using
             Message = totalMaxConcurrancy + " threads";
 
             ///Declare dictionaries that work in parallel to hold the successful boolean results and
             ///the unsuccessful boolean cutters
-            var mainBrepsMT = new System.Collections.Concurrent.ConcurrentDictionary<GH_Path, List<GH_Brep>>();
+            var mainBrepsMT = new System.Collections.Concurrent.ConcurrentDictionary<GH_Path, GH_Brep>();
             var badBrepsMT = new System.Collections.Concurrent.ConcurrentDictionary<GH_Path, List<GH_Brep>>();
 
             ///Start of the parallel engine
@@ -80,17 +80,9 @@ namespace Heron
               {
 
                   List<GH_Brep> badBrep = new List<GH_Brep>();
+
                   Brep mainBrep = new Brep();
                   GH_Convert.ToBrep(sBreps.get_Branch(pth)[0], ref mainBrep, 0);
-
-                  List<Brep> solidBreps = new List<Brep>();
-                  foreach(var s_GH in sBreps.get_Branch(pth))
-                  {
-                      Brep s_Rhino = new Brep();
-                      GH_Convert.ToBrep(s_GH, ref s_Rhino, 0);
-                      solidBreps.Add(s_Rhino);
-                  }
-
                   List<Brep> diffBreps = new List<Brep>();
                   foreach (var d_GH in dBreps.get_Branch(pth))
                   {
@@ -106,36 +98,21 @@ namespace Heron
                   ///This allows the boolean operation to continue without failing
                   ///and bad cutter breps can be discarded to a list that can be used for troubleshooting
                   ///haven't noticed a hit big hit on performance
-                  if (Slow)
-                  {
-                      foreach (Brep b in diffBreps)
-                      {
-                          Brep[] breps = new Brep[] { };
-                          breps = Brep.CreateBooleanDifference(mainBrep, b, tol);
-                          if ((breps == null) || (breps.Length < 1))
-                          {
-                              badBrep.Add(new GH_Brep(b));
-                          }
-                          else
-                          {
-                              mainBrep = breps[0];
-                          }
-                      }
-                      mainBrepsMT[pth] = new List<GH_Brep>() { new GH_Brep(mainBrep) };
-                      badBrepsMT[pth] = badBrep;
-                  }
-                  else
+                  foreach (Brep b in diffBreps)
                   {
                       Brep[] breps = new Brep[] { };
-                      breps = Brep.CreateBooleanDifference(solidBreps, diffBreps, tol);
-                      var bs = new List<GH_Brep>();
-                      foreach(var b in breps)
+                      breps = Brep.CreateBooleanDifference(mainBrep, b, tol);
+                      if ((breps == null) || (breps.Length < 1))
                       {
-                          bs.Add(new GH_Brep(b));
+                          badBrep.Add(new GH_Brep(b));
                       }
-                      mainBrepsMT[pth] = bs;
+                      else
+                      {
+                          mainBrep = breps[0];
+                      }
                   }
-
+                  mainBrepsMT[pth] = new GH_Brep(mainBrep);
+                  badBrepsMT[pth] = badBrep;
               });
             ///End of the parallel engine
             ///
@@ -144,9 +121,9 @@ namespace Heron
             GH_Structure<GH_Brep> mainBreps = new GH_Structure<GH_Brep>();
             GH_Structure<GH_Brep> badBreps = new GH_Structure<GH_Brep>();
 
-            foreach (KeyValuePair<GH_Path, List<GH_Brep>> p in mainBrepsMT)
+            foreach (KeyValuePair<GH_Path, GH_Brep> p in mainBrepsMT)
             {
-                mainBreps.AppendRange(p.Value, p.Key);
+                mainBreps.Append(p.Value, p.Key);
             }
 
             foreach (KeyValuePair<GH_Path, List<GH_Brep>> b in badBrepsMT)
@@ -158,45 +135,6 @@ namespace Heron
             DA.SetDataTree(1, badBreps);
 
         }
-
-
-
-        ///Reserve one processor for GUI
-        public static int totalMaxConcurrancy = System.Environment.ProcessorCount - 1;
-
-        private bool slow = false;
-
-        public bool Slow
-        {
-            get { return slow; }
-            set { slow = value; }
-        }
-
-        public override bool Write(GH_IO.Serialization.GH_IWriter writer)
-        {
-            writer.SetBoolean("Slow", Slow);
-            return base.Write(writer);
-        }
-        public override bool Read(GH_IO.Serialization.GH_IReader reader)
-        {
-            Slow = reader.GetBoolean("Slow");
-            return base.Read(reader);
-        }
-
-        protected override void AppendAdditionalComponentMenuItems(System.Windows.Forms.ToolStripDropDown menu)
-        {
-            ToolStripMenuItem slowItem = Menu_AppendItem(menu, "Check for bad cutting breps (slower).", Menu_PointsOnlyClicked, true, Slow);
-            slowItem.ToolTipText = "If this component fails, try checking for bad cutting breps.  " +
-                "This will force the compoent to step through each cutting brep and discard the bad ones to the Bad Breps output.";
-        }
-
-        private void Menu_PointsOnlyClicked(object sender, EventArgs e)
-        {
-            RecordUndoEvent("Slow");
-            Slow = !Slow;
-            ExpireSolution(true);
-        }
-
 
         /// <summary>
         /// Provides an Icon for the component.
@@ -216,7 +154,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("391BEA31-F003-43E1-A59F-62A267997368"); }
+            get { return new Guid("94a1165e-7fed-45a7-8c08-449bea06d503"); }
         }
     }
 }
