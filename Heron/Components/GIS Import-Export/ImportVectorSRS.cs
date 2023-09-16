@@ -3,6 +3,7 @@ using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
 using OSGeo.OSR;
 using OSGeo.OGR;
+using OSGeo.GDAL;
 using Rhino.Geometry;
 using Rhino.DocObjects;
 using System;
@@ -151,16 +152,28 @@ namespace Heron
 
                     string dataSourceString = shpFilePathTree.get_DataItem(index).ToString();
 
+
+                    ///TODO: Look into translating data to HeronSRS first with Ogr2Ogr
+                    ///Create virtual datasource to be converted later
+                    ///Using geojson as a flexible base file type which can be converted later with ogr2ogr
+                    //OSGeo.OGR.Driver memDriver = Ogr.GetDriverByName("GeoJSON");
+                    //DataSource ds = memDriver.CreateDataSource("/vsimem/out.geojson", null);
+                    //string options = "-overwrite -t_srs " + HeronSRS.Instance.SRS;
+                    //var re = new System.Text.RegularExpressions.Regex("(?<=\")[^\"]*(?=\")|[^\" ]+");
+                    //string[] ogr2ogrOptions = re.Matches(options).Cast<Match>().Select(m => m.Value).ToArray();
+
+
                     ///Load the datasource
                     DataSource dataSource = CreateDataSourceSRS(dataSourceString);
                     List<OSGeo.OGR.Layer> layerSet = GetLayersSRS(dataSource);
+
 
 
                     ///Loop through each layer. Layers usually occur in Geodatabase GDB format. SHP usually has only one layer.
                     for (int iLayer = 0; iLayer < dataSource.GetLayerCount(); iLayer++)
                     {
                         OSGeo.OGR.Layer ogrLayer = dataSource.GetLayerByIndex(iLayer);
-
+                        
                         var layerPath = path.AppendElement(iLayer);
 
                         if (ogrLayer == null)
@@ -204,6 +217,7 @@ namespace Heron
                         Transform heronSRSToSourceSRSTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(sourceSRS);
                         ///Need to refresh transform in this context in order to deal with scenario where no EAP is set yet--envelopePolyline returns null.  Not sure why the refresh is needed...
                         userSRSToHeronSRSTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(heronSRS);
+
 
                         ///Get bounding box based on OGR envelope.  When using a different SRS from the source, the envelope will be skewed, so 
                         OSGeo.OGR.Geometry envelopeRing = new OSGeo.OGR.Geometry(wkbGeometryType.wkbLinearRing);
@@ -313,7 +327,10 @@ namespace Heron
 
                                 if (geomUser.GetSpatialReference() == null) { geomUser.AssignSpatialReference(sourceSRS); }
 
+                                ///Transforming each feature is a bottleneck
+                                ///TODO: Look into transforming the datasource instead of each feature
                                 geomUser.TransformTo(heronSRS);
+
 
                                 if (feat.GetGeometryRef() != null)
                                 {
@@ -490,7 +507,7 @@ namespace Heron
             if (layer.GetSpatialRef() == null)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Spatial Reference System (SRS) is missing.  SRS set automatically set to WGS84.");
-                Driver driver = dataSource.GetDriver();
+                OSGeo.OGR.Driver driver = dataSource.GetDriver();
                 if (driver.GetName() == "MVT") { sourceSRS.SetFromUserInput("EPSG:3857"); }
                 else { sourceSRS.SetFromUserInput("WGS84"); } ///this seems to work where SetWellKnownGeogCS doesn't
 
