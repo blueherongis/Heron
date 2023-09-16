@@ -27,7 +27,6 @@
  * DEALINGS IN THE SOFTWARE.
  *****************************************************************************/
 
-using Heron;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -36,7 +35,7 @@ using System.Runtime.InteropServices;
 using Gdal = OSGeo.GDAL.Gdal;
 using Ogr = OSGeo.OGR.Ogr;
 
-namespace RESTful
+namespace Heron
 {
     public static partial class GdalConfiguration
     {
