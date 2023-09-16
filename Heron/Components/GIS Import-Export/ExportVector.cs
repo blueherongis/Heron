@@ -99,7 +99,7 @@ namespace Heron
             DA.GetData<bool>("Export", ref export);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.GDAL.Gdal.SetConfigOption("OGR_SKIP", "KML");
 
             string driverType = drvType;

@@ -70,7 +70,7 @@ namespace Heron
             string dstInfo = string.Empty;
             string dstOutput = string.Empty;
 
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
             ///Specific settings for getting WMS images
             OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");

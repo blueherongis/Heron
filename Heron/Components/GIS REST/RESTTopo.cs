@@ -94,7 +94,7 @@ namespace Heron
             //AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             ///Set transform from input spatial reference to Heron spatial reference
             ///TODO: verify the userSRS is valid

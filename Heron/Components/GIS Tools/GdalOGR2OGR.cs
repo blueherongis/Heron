@@ -83,7 +83,7 @@ namespace Heron
             string dstInfo = string.Empty;
             string dstOutput = string.Empty;
 
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.OGR.Ogr.RegisterAll();
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Look here for more information about options:");

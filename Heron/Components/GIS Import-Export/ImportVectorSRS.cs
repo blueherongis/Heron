@@ -68,7 +68,7 @@ namespace Heron
             ///Some preliminary testing has been done to read SHP, GeoJSON, OSM, KML, MVT, GML and GDB
             ///It can be spotty with KML, MVT and GML and doesn't throw informative errors.  Likely has to do with getting a valid CRS and 
             ///TODO: resolve errors with reading KML, MVT, GML.
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
             string userSRStext = HeronSRS.Instance.SRS;
 
 
@@ -566,7 +566,7 @@ namespace Heron
         }
         private DataSource CreateDataSourceSRS(string shpFilePath)
         {
-            //RESTful.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureOgr();
             //OSGeo.OGR.Ogr.RegisterAll();
             OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
 

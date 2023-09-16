@@ -24,7 +24,6 @@ using GH_IO.Serialization;
 using OSGeo.GDAL;
 using OSGeo.OSR;
 using OSGeo.OGR;
-using RESTful;
 
 namespace Heron
 {

@@ -56,7 +56,7 @@ namespace Heron
             DA.GetData<bool>("run", ref run);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             ///TODO: implement SetCRS here.
             ///Option to set CRS here to user-defined.  Needs a SetCRS global variable.

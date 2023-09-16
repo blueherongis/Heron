@@ -61,7 +61,7 @@ namespace Heron
             string IMG_file = string.Empty;
             DA.GetData<string>(1, ref IMG_file);
 
-            RESTful.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
 
             Dataset datasource = Gdal.Open(IMG_file, Access.GA_ReadOnly);

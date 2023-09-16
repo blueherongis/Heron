@@ -125,8 +125,8 @@ namespace Heron
             /*
             ///Save for later development of warping
             ///Setup for warping
-            RESTful.GdalConfiguration.ConfigureGdal();
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             OSGeo.OSR.SpatialReference userSRS = new OSGeo.OSR.SpatialReference("");
             userSRS.SetFromUserInput("WGS84");

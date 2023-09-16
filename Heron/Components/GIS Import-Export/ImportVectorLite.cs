@@ -44,7 +44,7 @@ namespace Heron
             DA.GetDataTree<GH_String>("File Path", out shpFilePathTree);
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             ///Declare trees
             GH_Structure<GH_Curve> featureExtents = new GH_Structure<GH_Curve>();
@@ -374,7 +374,7 @@ namespace Heron
         }
         private DataSource CreateDataSourceSRS(string shpFilePath)
         {
-            //RESTful.GdalConfiguration.ConfigureOgr();
+            //Heron.GdalConfiguration.ConfigureOgr();
             //OSGeo.OGR.Ogr.RegisterAll();
             //OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
             if (shpFilePath.ToLower().EndsWith("gml"))

@@ -272,7 +272,7 @@ namespace Heron
             }
 
             ///GDAL setup
-            RESTful.GdalConfiguration.ConfigureOgr();
+            Heron.GdalConfiguration.ConfigureOgr();
             OSGeo.OGR.Ogr.RegisterAll();
 
             ///Set transform from input spatial reference to Rhino spatial reference
