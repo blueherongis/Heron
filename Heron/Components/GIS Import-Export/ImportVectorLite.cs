@@ -85,7 +85,7 @@ namespace Heron
                             return;
                         }
 
-                        long count = ogrLayer.GetFeatureCount(1);
+                        long? count = ogrLayer.GetFeatureCount(1);
                         int featureCount = System.Convert.ToInt32(count);
 
                         AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, $"Layer #{iLayer} {ogrLayer.GetName()} has {featureCount} features");
@@ -132,14 +132,16 @@ namespace Heron
                         int m = 0;
                         while ((feat = ogrLayer.GetNextFeature()) != null)
                         {
-                            OSGeo.OGR.Geometry geomUser = feat.GetGeometryRef().Clone();
-                            OSGeo.OGR.Geometry sub_geomUser;
-                            var featurePath = layerPath.AppendElement(m);
-
-                            if (geomUser.GetSpatialReference() == null) { geomUser.AssignSpatialReference(sourceSRS); }
-
                             if (feat.GetGeometryRef() != null)
                             {
+                                OSGeo.OGR.Geometry geomUser = feat.GetGeometryRef().Clone();
+                                OSGeo.OGR.Geometry sub_geomUser;
+                                var featurePath = layerPath.AppendElement(m);
+
+                                if (geomUser.GetSpatialReference() == null) { geomUser.AssignSpatialReference(sourceSRS); }
+
+                                //if (feat.GetGeometryRef() != null)
+                                //{
                                 if (!pointsOnly)
                                 {
                                     ///Convert GDAL geometries to IGH_GeometricGoo
@@ -267,10 +269,11 @@ namespace Heron
                                         ///End Get Feature Values
                                     }
                                 }
+                                //}
+                                m++;
+                                geomUser.Dispose();
+                                feat.Dispose();
                             }
-                            m++;
-                            geomUser.Dispose();
-                            feat.Dispose();
                         }///end while loop through features
 
                         ogrLayer.Dispose();
@@ -278,6 +281,7 @@ namespace Heron
                     }///end loop through layers
 
                     dataSource.Dispose();
+
                 }
             }///end loop through data sources
 
@@ -349,7 +353,6 @@ namespace Heron
         {
             List<OSGeo.OGR.Layer> layerSet = new List<OSGeo.OGR.Layer>();
 
-
             for (int layerIndex = 0; layerIndex < dataSource.GetLayerCount(); layerIndex++)
             {
                 OSGeo.OGR.Layer layer = dataSource.GetLayerByIndex(layerIndex);
@@ -359,25 +362,57 @@ namespace Heron
                     Console.WriteLine("Couldn't fetch advertised layer " + layerIndex);
                     System.Environment.Exit(-1);
                 }
+
                 else
                 {
                     layerSet.Add(layer);
                 }
+                layer.Dispose();
             }
+
             return layerSet;
         }
         private DataSource CreateDataSourceSRS(string shpFilePath)
         {
             //RESTful.GdalConfiguration.ConfigureOgr();
             //OSGeo.OGR.Ogr.RegisterAll();
-            OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
-
-            if (dataSource == null)
+            //OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
+            if (shpFilePath.ToLower().EndsWith("gml"))
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
+                OSGeo.GDAL.Dataset dataSet = OSGeo.GDAL.Gdal.OpenEx(shpFilePath, 0, null, new string[] { 
+                    "REMOVE_UNUSED_LAYERS=YES", 
+                    "REMOVE_UNUSED_FIELDS=YES" 
+                    //"VALIDATE=YES",
+                    //"XSD=https://schemas.opengis.net/citygml/building/1.0/building.xsd"
+                    //"EXPOSE_METADATA_LAYERS=YES"
+                    //"REFRESH_CACHE=YES"
+                }, null);
+                string tempDS = "/vsimem/temp.gpkg";
+                OSGeo.GDAL.Gdal.wrapper_GDALVectorTranslateDestName(tempDS, dataSet, new OSGeo.GDAL.GDALVectorTranslateOptions(new string[] { }), null, null);
+                OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(tempDS, 0);
+
+                if (dataSource == null)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
+                }
+                dataSet.Dispose();
+                ///Release vsimem file if used for GML import
+                ///Get the following error: '...failed: attempt to write a readonly database'
+                //OSGeo.GDAL.Gdal.Unlink(tempDS);
+                //OSGeo.OGR.Ogr.GetDriverByName("GPKG").DeleteDataSource(tempDS);
+                return dataSource;
             }
 
-            return dataSource;
+            else
+            {
+                OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
+                if (dataSource == null)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "The vector datasource was unreadable by this component. It may not a valid file type for this component or otherwise null/empty.");
+                }
+                return dataSource;
+            }
+
         }
 
 
