@@ -9,7 +9,7 @@ using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
 using Rhino.Geometry;
 
-using laszip.net;
+using LASzip.Net;
 
 namespace Heron
 {
@@ -68,15 +68,20 @@ namespace Heron
 
             List<string> info = new List<string>();
 
-            var lazReader = new laszip_dll();
+            var lazReader = new laszip();
             var compressed = true;
-            lazReader.laszip_open_reader(filename, ref compressed);
+            lazReader.open_reader(filename, out compressed);
             var numberOfPoints = lazReader.header.number_of_point_records;
             List<laszip_vlr> vlrs = lazReader.header.vlrs;
+            double version = Double.Parse(lazReader.header.version_major + "." + lazReader.header.version_minor);
+            ///According to v1.3 and v1.4 spec, color depth should be stored as 16 bit, not 8 bit, so RGB color values need to be corrected by dividing by 256 to get values GH_Colour can use.
+            int colorDepthCorrection = 1;
+            if (version > 1.2) colorDepthCorrection = 256;
 
             info.Add("Points: " + lazReader.header.number_of_point_records.ToString("N0"));
             info.Add("Returns: " + lazReader.header.number_of_points_by_return.Length);
             info.Add("File source ID: " + lazReader.header.file_source_ID);
+            info.Add("LAS/LAZ Version: " + version);
             info.Add("Created on: " + lazReader.header.file_creation_day + " day of " + lazReader.header.file_creation_year);
             info.Add("Created with: " + Encoding.Default.GetString(lazReader.header.generating_software));
 
@@ -109,17 +114,20 @@ namespace Heron
             for (int pointIndex = 0; pointIndex<numberOfPoints; pointIndex++)
             {
                 ///Read the point
-                lazReader.laszip_read_point();
+                lazReader.read_point();
 
                 ///Get precision coordinates
-                lazReader.laszip_get_coordinates(coordArray);
+                lazReader.get_coordinates(coordArray);
                 Point3d pt = new Point3d(coordArray[0], coordArray[1], coordArray[2]);
 
                 ///Get classification value for sorting into branches
                 int classification = lazReader.point.classification;
                 GH_Path path = new GH_Path(classification);
 
-                GH_Colour col = new GH_Colour(Color.FromArgb(lazReader.point.rgb[0], lazReader.point.rgb[1], lazReader.point.rgb[2]));
+                GH_Colour col = new GH_Colour(Color.FromArgb(
+                    lazReader.point.rgb[0] / colorDepthCorrection, 
+                    lazReader.point.rgb[1] / colorDepthCorrection, 
+                    lazReader.point.rgb[2] / colorDepthCorrection));
                
                 if (!filter)
                 {
@@ -138,7 +146,7 @@ namespace Heron
                 
 
             }
-            lazReader.laszip_close_reader();
+            lazReader.close_reader();
 
             DA.SetDataList(0, info);
             DA.SetDataTree(1, ghPC);

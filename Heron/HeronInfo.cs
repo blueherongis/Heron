@@ -30,7 +30,7 @@ namespace Heron
         {
             get
             {
-                return "0.4.2-beta.3";
+                return "0.4.2-beta.4";
             }
         }
 
