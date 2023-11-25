@@ -86,7 +86,7 @@ namespace Heron
 
             string folderPath = string.Empty;
             DA.GetData<string>(2, ref folderPath);
-            if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
+            //if (!folderPath.EndsWith(@"/")) folderPath = folderPath + @"/";
 
             string prefix = string.Empty;
             DA.GetData<string>(3, ref prefix);
@@ -163,7 +163,7 @@ namespace Heron
                 ///TODO: look into scaling boundary to get buffer tiles
 
                 ///file path for final image
-                string imgPath = folderPath + prefix + "_" + i + ".jpg";
+                string imgPath = Path.Combine(folderPath, prefix + "_" + i + ".jpg");
 
                 if (!tilesOut)
                 {
@@ -172,7 +172,9 @@ namespace Heron
                 }
 
                 //create cache folder for images
-                string cacheLoc = folderPath + @"HeronCache\";
+                string cacheLoc = Path.Combine(folderPath, "HeronCache");
+                string mbImageTileRange = Path.Combine(cacheLoc, prefix + "_" + i + ".txt");
+
                 List<string> cacheFilePaths = new List<string>();
                 if (!Directory.Exists(cacheLoc))
                 {
@@ -204,7 +206,7 @@ namespace Heron
                         //add bounding box of tile to list
                         List<Point3d> boxPts = Convert.GetTileAsPolygon(zoom, y, x).ToList();
                         boxPtList.AddRange(boxPts);
-                        string cacheFilePath = cacheLoc + mbSource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg";
+                        string cacheFilePath = Path.Combine(cacheLoc, mbSource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg");
                         cacheFilePaths.Add(cacheFilePath);
 
                         tileTotalCount = tileTotalCount + 1;
@@ -244,6 +246,7 @@ namespace Heron
                 {
                     if (File.Exists(imgPath) && !tilesOut)
                     {
+                        /*
                         using (Bitmap imageT = new Bitmap(imgPath))
                         {
                             ///getting commments currently only working for JPG
@@ -265,6 +268,19 @@ namespace Heron
                                 continue;
                             }
 
+                        }
+                        */
+                        using (StreamReader sr = File.OpenText(mbImageTileRange))
+                        {
+                            string imgComment = sr.ReadToEnd();
+
+                            ///check to see if tilerange in comments matches current tilerange
+                            if (imgComment == (mbSource.Replace(" ", "") + tileRangeString))
+                            {
+                                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using existing image.");
+                                AddPreviewItem(imgPath, boundary[i], rect);
+                                continue;
+                            }
                         }
 
                     }
@@ -316,7 +332,7 @@ namespace Heron
                         {
                             ///create tileCache name 
                             string tileCache = mbSource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg";
-                            string tileCacheLoc = cacheLoc + tileCache;
+                            string tileCacheLoc = Path.Combine(cacheLoc, tileCache);
 
                             /*
                             ///Save for later development of warping
@@ -378,7 +394,13 @@ namespace Heron
                     g.Dispose();
 
                     ///add tile range meta data to image comments
-                    finalImage.AddCommentsToJPG(mbSource.Replace(" ", "") + tileRangeString);
+                    //finalImage.AddCommentsToJPG(mbSource.Replace(" ", "") + tileRangeString);
+                    if (File.Exists(mbImageTileRange)) File.Delete(mbImageTileRange);
+                    using (StreamWriter sw = File.CreateText(mbImageTileRange))
+                    {
+                        sw.Write((mbSource.Replace(" ", "") + tileRangeString));
+                        sw.Dispose();
+                    }
 
                     ///Save for later development of warping
                     ///if (!warped)

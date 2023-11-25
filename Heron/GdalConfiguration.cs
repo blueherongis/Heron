@@ -51,25 +51,79 @@ namespace Heron
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         static extern bool AddDllDirectory(string lpPathName);
-
+        
         /// <summary>
         /// Construction of Gdal/Ogr
         /// </summary>
         static GdalConfiguration()
         {
             string executingDirectory = null, gdalPath = null, nativePath = null;
+
             try
             {
+                
                 if (!IsWindows)
                 {
-                    const string notSet = "_Not_set_";
-                    string tmp = Gdal.GetConfigOption("GDAL_DATA", notSet);
-                    _usable = tmp != notSet;
+                    //const string notSet = "_Not_set_";
+                    //string tmp = Gdal.GetConfigOption("GDAL_DATA", notSet);
+
+
+                    string executingAssemblyFileMac = new Uri(Assembly.GetExecutingAssembly().GetName().CodeBase).LocalPath;
+                    executingDirectory = Path.GetDirectoryName(executingAssemblyFileMac);
+
+                    if (string.IsNullOrEmpty(executingDirectory))
+                        throw new InvalidOperationException("cannot get executing directory");
+
+                    string osxPlatform = "";
+                    var arch = RuntimeInformation.ProcessArchitecture;
+                    var isOSX = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+                    if (arch == Architecture.X64 && isOSX == true) { osxPlatform = "osx-64"; }
+                    if (arch == Architecture.Arm64 && isOSX == true) { osxPlatform = "osx-Arm64"; }
+                    // modify search place and order
+                    //SetDefaultDllDirectories(DllSearchFlags);
+
+                    gdalPath = Path.Combine(executingDirectory, "gdal");
+                    nativePath = Path.Combine(gdalPath, osxPlatform);
+                    if (!Directory.Exists(nativePath))
+                        throw new DirectoryNotFoundException($"GDAL native directory not found at '{nativePath}'");
+                    //if (!File.Exists(Path.Combine(nativePath, "gdal_wrap.dll")))
+                    //    throw new FileNotFoundException(
+                    //        $"GDAL native wrapper file not found at '{Path.Combine(nativePath, "gdal_wrap.dll")}'");
+
+                    // Add directories
+                    //AddDllDirectory(nativePath);
+                    //AddDllDirectory(Path.Combine(nativePath, "plugins"));
+                    
+                    // Set the additional GDAL environment variables.
+                    string gdalDataMac = Path.Combine(gdalPath, "data");
+                    Environment.SetEnvironmentVariable("GDAL_DATA", gdalDataMac);
+                    Gdal.SetConfigOption("GDAL_DATA", gdalDataMac);
+
+                    string driverPathMac = Path.Combine(nativePath);//, "plugins");
+                    Environment.SetEnvironmentVariable("GDAL_DRIVER_PATH", driverPathMac);
+                    Gdal.SetConfigOption("GDAL_DRIVER_PATH", driverPathMac);
+
+                    Environment.SetEnvironmentVariable("GEOTIFF_CSV", gdalDataMac);
+                    Gdal.SetConfigOption("GEOTIFF_CSV", gdalDataMac);
+
+                    string projSharePathMac = Path.Combine(gdalPath, "share");
+                    Environment.SetEnvironmentVariable("PROJ_LIB", projSharePathMac);
+                    Gdal.SetConfigOption("PROJ_LIB", projSharePathMac);
+                    OSGeo.OSR.Osr.SetPROJSearchPaths(new[] { projSharePathMac });
+
+                    string certificateFileMac = Path.Combine(gdalPath, "curl-ca-bundle.crt");
+                    Gdal.SetConfigOption("GDAL_CURL_CA_BUNDLE", certificateFileMac);
+                    
+                    ///Custom configuration options
+                    OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
+                    ///To be backwards compatible with the way Heron uses coordinate order
+                    OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
+
+                    _usable = true;// tmp != notSet;
                     return;
                 }
+                
 
-                //var ghLibFile = typeof(ImportVectorSRS).Assembly.Location;
-                //var executingDirectory = Path.GetDirectoryName(ghLibFile);
                 string executingAssemblyFile = new Uri(Assembly.GetExecutingAssembly().GetName().CodeBase).LocalPath;
                 executingDirectory = Path.GetDirectoryName(executingAssemblyFile);
 
@@ -112,10 +166,10 @@ namespace Heron
 				string certificateFile = Path.Combine(gdalPath, "curl-ca-bundle.crt");
                 Gdal.SetConfigOption("GDAL_CURL_CA_BUNDLE", certificateFile);
 
+                ///Custom configuration options
                 OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
                 ///To be backwards compatible with the way Heron uses coordinate order
                 OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
-
 
                 _usable = true;
             }
@@ -175,7 +229,7 @@ namespace Heron
         /// <summary>
         /// Function to determine which platform we're on
         /// </summary>
-        private static string GetPlatform()
+        public static string GetPlatform()
         {
             return Environment.Is64BitProcess ? "x64" : "x86";
         }
@@ -183,7 +237,7 @@ namespace Heron
         /// <summary>
         /// Gets a value indicating if we are on a windows platform
         /// </summary>
-        private static bool IsWindows
+        public static bool IsWindows
         {
             get
             {

@@ -72,7 +72,7 @@ namespace Heron
 
             string filePath = string.Empty;
             DA.GetData(2, ref filePath);
-            if (!filePath.EndsWith(@"\")) filePath = filePath + @"\";
+            //if (!filePath.EndsWith(@"/")) filePath = filePath + @"/";
 
             string prefix = string.Empty;
             DA.GetData(3, ref prefix);
@@ -114,7 +114,7 @@ namespace Heron
                 ///TODO: look into scaling boundary to get buffer tiles
 
                 ///file path for final image
-                string imgPath = filePath + prefix + "_" + i + ".jpg";
+                string imgPath = Path.Combine(filePath, prefix + "_" + i + ".jpg");
 
                 if (!tilesOut)
                 {
@@ -123,7 +123,8 @@ namespace Heron
                 }
 
                 ///create cache folder for images
-                string cacheLoc = filePath + @"HeronCache\";
+                string cacheLoc = Path.Combine(filePath, "HeronCache");
+                string slippyImageTileRange = Path.Combine(cacheLoc, prefix + "_" + i + ".txt");
                 List<string> cacheFilePaths = new List<string>();
                 if (!Directory.Exists(cacheLoc))
                 {
@@ -155,7 +156,7 @@ namespace Heron
                         ///add bounding box of tile to list
                         List<Point3d> boxPts = Convert.GetTileAsPolygon(zoom, y, x).ToList();
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
-                        string cacheFilePath = cacheLoc + slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg";
+                        string cacheFilePath = Path.Combine(cacheLoc, slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg");
                         cacheFilePaths.Add(cacheFilePath);
 
                         tileTotalCount = tileTotalCount + 1;
@@ -196,12 +197,14 @@ namespace Heron
                 {
                     if (File.Exists(imgPath) && !tilesOut)
                     {
+                        /*
                         using (Bitmap imageT = new Bitmap(imgPath))
                         {
                             ///getting commments currently only working for JPG
                             ///TODO: get this to work for any image type or
                             ///find another way to check if the cached image covers the boundary.
-                            string imgComment = imageT.GetCommentsFromJPG();
+                            //string imgComment = imageT.GetCommentsFromJPG();
+                            string imgComment = Heron.Convert.GetRangeFromFileName(imgPathCache);
 
                             imageT.Dispose();
 
@@ -213,6 +216,20 @@ namespace Heron
                                 continue;
                             }
 
+                        }
+                        */
+
+                        using (StreamReader sr = File.OpenText(slippyImageTileRange))
+                        {
+                            string imgComment = sr.ReadToEnd();
+
+                            ///check to see if tilerange in comments matches current tilerange
+                            if (imgComment == (slippySource.Replace(" ", "") + tileRangeString))
+                            {
+                                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using existing image.");
+                                AddPreviewItem(imgPath, boundary[i], rect);
+                                continue;
+                            }
                         }
 
                     }
@@ -312,9 +329,13 @@ namespace Heron
                     g.Dispose();
 
                     //add tile range meta data to image comments
-                    finalImage.AddCommentsToJPG(slippySource.Replace(" ", "") + tileRangeString);
-
-                    
+                    //finalImage.AddCommentsToJPG(slippySource.Replace(" ", "") + tileRangeString);
+                    if (File.Exists(slippyImageTileRange)) File.Delete(slippyImageTileRange);
+                    using (StreamWriter sw = File.CreateText(slippyImageTileRange))
+                    {
+                        sw.Write((slippySource.Replace(" ", "") + tileRangeString));
+                        sw.Dispose();
+                    }
 
                     //save the image
                     finalImage.Save(imgPath, System.Drawing.Imaging.ImageFormat.Jpeg);
@@ -345,7 +366,6 @@ namespace Heron
                 TileCacheMeta = tileRangeString;
 
             }
-
 
             DA.SetDataTree(0, mapList);
             DA.SetDataTree(1, imgFrame);

@@ -27,8 +27,8 @@ namespace Heron
                 var ghLibFile = typeof(ImportVectorSRS).Assembly.Location;
                 var executingDirectory = Path.GetDirectoryName(ghLibFile);
                 string appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                string userSecretsFilePath = appDataFolder + @"\Microsoft\UserSecrets\6aefc65d-9849-4d4f-b9a7-16d77517db86\secrets.json";
-                string appsettingsEncrypted = executingDirectory + @"\HeronAppSettings.json";
+                string userSecretsFilePath = Path.Combine(appDataFolder,"Microsoft","UserSecrets","6aefc65d-9849-4d4f-b9a7-16d77517db86","secrets.json");
+                string appsettingsEncrypted = Path.Combine(executingDirectory, "HeronAppSettings.json");
 
                 ///Encrypt secrets.json on compiling machine.  Only put public keys in these secrets, not any that are should really be kept secret.
                 ///In theory appsettingsEncrypt.json file can get decrypted with the key below, but if someone tries this hard, they can have the pulbic secrets.

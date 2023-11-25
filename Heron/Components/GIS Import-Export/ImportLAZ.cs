@@ -125,8 +125,8 @@ namespace Heron
                 GH_Path path = new GH_Path(classification);
 
                 GH_Colour col = new GH_Colour(Color.FromArgb(
-                    lazReader.point.rgb[0] / colorDepthCorrection, 
-                    lazReader.point.rgb[1] / colorDepthCorrection, 
+                    lazReader.point.rgb[0] / colorDepthCorrection,
+                    lazReader.point.rgb[1] / colorDepthCorrection,
                     lazReader.point.rgb[2] / colorDepthCorrection));
                
                 if (!filter)

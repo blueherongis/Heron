@@ -57,7 +57,7 @@ namespace Heron
 
             string folderPath = string.Empty;
             DA.GetData<string>("Target Folder", ref folderPath);
-            if (!folderPath.EndsWith(@"\")) { folderPath = folderPath + @"\"; }
+            //if (!folderPath.EndsWith(@"/")) { folderPath = folderPath + @"/"; }
 
             string prefix = string.Empty;
             DA.GetData<string>("Prefix", ref prefix);
@@ -190,15 +190,15 @@ namespace Heron
 
                         if (!String.IsNullOrEmpty(imageQueryJSON))
                         {
-                            imageDownloaded = Heron.Convert.DownloadHttpImage(imageQueryJSON, folderPath + prefix + "_" + i + "." + imageTypeShort);
+                            imageDownloaded = Heron.Convert.DownloadHttpImage(imageQueryJSON, Path.Combine(folderPath, prefix + "_" + i + "." + imageTypeShort));
                             if (!String.IsNullOrEmpty(imageDownloaded))
                             {
-                                imageDownloaded = Heron.Convert.DownloadHttpImage(restqueryImage, folderPath + prefix + "_" + i + "." + imageTypeShort);
+                                imageDownloaded = Heron.Convert.DownloadHttpImage(restqueryImage, Path.Combine(folderPath, prefix + "_" + i + "." + imageTypeShort));
                             }
                         }
                         else
                         {
-                            imageDownloaded = Heron.Convert.DownloadHttpImage(restqueryImage, folderPath + prefix + "_" + i + "." + imageTypeShort);
+                            imageDownloaded = Heron.Convert.DownloadHttpImage(restqueryImage, Path.Combine(folderPath, prefix + "_" + i + "." + imageTypeShort));
                         }
 
                         if (!String.IsNullOrEmpty(imageDownloaded))
@@ -215,7 +215,7 @@ namespace Heron
                     }
 
 
-                    var bitmapPath = folderPath + prefix + "_" + i + "." + imageTypeShort;
+                    var bitmapPath = Path.Combine(folderPath, prefix + "_" + i + "." + imageTypeShort);
                     mapList.Append(new GH_String(bitmapPath), path);
 
                     if (rect.IsValid)
