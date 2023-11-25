@@ -74,7 +74,7 @@ namespace Heron
 
             string folderPath = string.Empty;
             DA.GetData<string>(1, ref folderPath);
-            if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
+            //if (!folderPath.EndsWith(@"/")) folderPath = folderPath + @"/";
 
             string prefix = string.Empty;
             DA.GetData<string>(2, ref prefix);
@@ -91,7 +91,7 @@ namespace Heron
 
             ///Load in key from secrets
             HeronConfig.LoadKeys();
-            //AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
+            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
 
             ///GDAL setup
             Heron.GdalConfiguration.ConfigureOgr();
@@ -178,7 +178,7 @@ namespace Heron
                     demQuery.Append(new GH_String(tQ), path);
                 }
 
-                demList.Append(new GH_String(folderPath + prefix + "_" + i + ".tif"), path);
+                demList.Append(new GH_String(Path.Combine(folderPath, prefix + "_" + i + ".tif")), path);
 
                 if (run && !done)
                 {
@@ -189,7 +189,7 @@ namespace Heron
                     {
                         webClient.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadCompleted);
                         webClient.DownloadProgressChanged += new DownloadProgressChangedEventHandler(ProgressChanged);
-                        webClient.DownloadFileAsync(new Uri(tQ), folderPath + prefix + "_" + i + ".tif");
+                        webClient.DownloadFileAsync(new Uri(tQ), Path.Combine(folderPath, prefix + "_" + i + ".tif"));
                         webClient.Dispose();
                     }
                 }

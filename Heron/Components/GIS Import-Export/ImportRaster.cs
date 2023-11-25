@@ -169,12 +169,12 @@ namespace Heron
             ///https://gis.stackexchange.com/questions/312440/gdal-translate-bilinear-interpolation
             ///set output to georeferenced tiff as a catch-all
 
-            string clippedRasterFile = clippedLocation + Path.GetFileNameWithoutExtension(sourceFileLocation) + "_clipped.tif";
-            string previewPNG = clippedLocation + Path.GetFileNameWithoutExtension(sourceFileLocation) + "_preview.png";
+            string clippedRasterFile = Path.Combine(clippedLocation, Path.GetFileNameWithoutExtension(sourceFileLocation) + "_clipped.tif");
+            string previewPNG = Path.Combine(clippedLocation, Path.GetFileNameWithoutExtension(sourceFileLocation) + "_preview.png");
             if (sourceFileLocation.Contains("http://") || sourceFileLocation.Contains("https://"))
             {
-                previewPNG = clippedLocation + "ImportRaster_preview.png";
-                clippedRasterFile = clippedLocation + "ImportRaster_clipped.tif";
+                previewPNG = Path.Combine(clippedLocation, "ImportRaster_preview.png");
+                clippedRasterFile = Path.Combine(clippedLocation, "ImportRaster_clipped.tif");
             }
 
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Original Resolution: " + datasource.RasterXSize.ToString() + "x" + datasource.RasterYSize.ToString());

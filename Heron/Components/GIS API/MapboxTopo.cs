@@ -93,7 +93,7 @@ namespace Heron
 
             string filePath = string.Empty;
             DA.GetData<string>(2, ref filePath);
-            if (!filePath.EndsWith(@"\")) filePath = filePath + @"\";
+            //if (!filePath.EndsWith(@"/")) filePath = filePath + @"/";
 
             string prefix = string.Empty;
             DA.GetData<string>(3, ref prefix);
@@ -149,13 +149,14 @@ namespace Heron
                 ///TODO: look into scaling boundary to get buffer tiles
 
                 ///file path for final image
-                string imgPath = filePath + prefix + "_" + i + ".png";
+                string imgPath = Path.Combine(filePath, prefix + "_" + i + ".png");
 
                 //location of final image file
                 mapList.Append(new GH_String(imgPath), path);
 
                 //create cache folder for images
-                string cacheLoc = filePath + @"HeronCache\";
+                string cacheLoc = Path.Combine(filePath, "HeronCache");
+                string mbImageTileRange = Path.Combine(cacheLoc, prefix + "_" + i + ".txt");
                 List<string> cachefilePaths = new List<string>();
                 if (!Directory.Exists(cacheLoc))
                 {
@@ -185,7 +186,7 @@ namespace Heron
                     {
                         //add bounding box of tile to list
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
-                        cachefilePaths.Add(cacheLoc + mbSource.Replace(" ", "") + zoom + x + y + ".png");
+                        cachefilePaths.Add(Path.Combine(cacheLoc, mbSource.Replace(" ", "") + zoom + x + y + ".png"));
                         tileTotalCount = tileTotalCount + 1;
                     }
                 }
@@ -210,11 +211,12 @@ namespace Heron
                 //check if the existing final image already covers the boundary. 
                 //if so, no need to download more or reassemble the cached tiles.
                 ///temporarily disable until how to tag images with meta data is figured out
-                /*
+                
                 if (TileCacheMeta == tileRangeString && Convert.CheckCacheImagesExist(cachefilePaths))
                 {
                     if (File.Exists(imgPath))
                     {
+                        /*
                         using (Bitmap imageT = new Bitmap(imgPath))
                         {
                             //System.Drawing.Imaging.PropertyItem prop = imageT.GetPropertyItem(40092);
@@ -233,11 +235,25 @@ namespace Heron
                             }
 
                         }
+                        */
+                        using (StreamReader sr = File.OpenText(mbImageTileRange))
+                        {
+                            string imgComment = sr.ReadToEnd();
+
+                            ///check to see if tilerange in comments matches current tilerange
+                            if (imgComment == (mbSource.Replace(" ", "") + tileRangeString))
+                            {
+                                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using existing image.");
+                                Mesh eMesh = TopoMeshFromImage(imgPath, boundaryBox, zoom);
+                                tMesh.Append(new GH_Mesh(eMesh), path);
+                                continue;
+                            }
+                        }
 
                     }
 
                 }
-                */
+                
 
 
                 ///Query Mapbox URL
@@ -269,7 +285,7 @@ namespace Heron
                             {
                                 //create tileCache name 
                                 string tileCache = mbSource.Replace(" ", "") + zoom + x + y + ".png";
-                                string tileCahceLoc = cacheLoc + tileCache;
+                                string tileCahceLoc = Path.Combine(cacheLoc, tileCache);
 
                                 //check cache folder to see if tile image exists locally
                                 if (File.Exists(tileCahceLoc))
@@ -307,7 +323,13 @@ namespace Heron
                         g.Dispose();
 
                         //add tile range meta data to image comments
-                        finalImage.AddCommentsToPNG(mbSource.Replace(" ", "") + tileRangeString);
+                        //finalImage.AddCommentsToPNG(mbSource.Replace(" ", "") + tileRangeString);
+                        if (File.Exists(mbImageTileRange)) File.Delete(mbImageTileRange);
+                        using (StreamWriter sw = File.CreateText(mbImageTileRange))
+                        {
+                            sw.Write((mbSource.Replace(" ", "") + tileRangeString));
+                            sw.Dispose();
+                        }
 
                         //save out assembled image 
                         finalImage.Save(imgPath, System.Drawing.Imaging.ImageFormat.Png);

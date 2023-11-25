@@ -75,7 +75,7 @@ namespace Heron
 
             string folderPath = string.Empty;
             DA.GetData<string>(1, ref folderPath);
-            if (!folderPath.EndsWith(@"\")) folderPath = folderPath + @"\";
+            //if (!folderPath.EndsWith(@"/")) folderPath = folderPath + @"/";
 
             string prefix = string.Empty;
             DA.GetData<string>(2, ref prefix);
@@ -195,11 +195,11 @@ namespace Heron
             if (run)
             {
                 System.Net.WebClient webClient = new System.Net.WebClient();
-                webClient.DownloadFile(oQ, folderPath + prefix + ".osm");
+                webClient.DownloadFile(oQ, Path.Combine(folderPath, prefix + ".osm"));
                 webClient.Dispose();
             }
 
-            osmList.Append(new GH_String(folderPath + prefix + ".osm"));
+            osmList.Append(new GH_String(Path.Combine(folderPath, prefix + ".osm")));
 
 
 
