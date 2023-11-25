@@ -55,11 +55,11 @@ namespace Heron
             var mat = new DisplayMaterial(System.Drawing.Color.White);
 
             ///Force bitmap to redraw
-            //string docBitmapName = string.Empty;
-            //var docBitmap = Rhino.RhinoDoc.ActiveDoc.Bitmaps.Find(bitmap, true, out docBitmapName);
-            //mat.SetBitmapTexture(docBitmapName, true);
+            string docBitmapName = string.Empty;
+            var docBitmap = Rhino.RhinoDoc.ActiveDoc.Bitmaps.Find(bitmap, true, out docBitmapName);
+            mat.SetBitmapTexture(docBitmapName, true);
             
-            mat.SetBitmapTexture(bitmap, true);
+            //mat.SetBitmapTexture(bitmap, true);
 
             _previewItems.Add(new HeronRasterPreviewItem()
             {
