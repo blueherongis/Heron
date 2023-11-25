@@ -91,7 +91,7 @@ namespace Heron
 
             ///Load in key from secrets
             HeronConfig.LoadKeys();
-            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
+            //AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, HeronConfig.OpenTopographyAPIKey);
 
             ///GDAL setup
             Heron.GdalConfiguration.ConfigureOgr();
