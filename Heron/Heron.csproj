@@ -46,11 +46,11 @@
     <Reference Include="Eto, Version=2.5.0.0, Culture=neutral, PublicKeyToken=552281e97c755530, processorArchitecture=MSIL">
       <HintPath>..\packages\RhinoCommon.6.32.20340.21001\lib\net45\Eto.dll</HintPath>
     </Reference>
-    <Reference Include="gdalconst_csharp, Version=3.7.1.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
-      <HintPath>..\packages\GDAL.3.7.1\lib\netstandard2.0\gdalconst_csharp.dll</HintPath>
+    <Reference Include="gdalconst_csharp, Version=3.7.2.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
+      <HintPath>..\packages\GDAL.3.7.2\lib\netstandard2.0\gdalconst_csharp.dll</HintPath>
     </Reference>
-    <Reference Include="gdal_csharp, Version=3.7.1.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
-      <HintPath>..\packages\GDAL.3.7.1\lib\netstandard2.0\gdal_csharp.dll</HintPath>
+    <Reference Include="gdal_csharp, Version=3.7.2.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
+      <HintPath>..\packages\GDAL.3.7.2\lib\netstandard2.0\gdal_csharp.dll</HintPath>
     </Reference>
     <Reference Include="GH_IO, Version=6.32.20340.21000, Culture=neutral, PublicKeyToken=6a29997d2e6b4f97, processorArchitecture=MSIL">
       <HintPath>..\packages\Grasshopper.6.32.20340.21001\lib\net45\GH_IO.dll</HintPath>
@@ -61,14 +61,14 @@
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="ogr_csharp, Version=3.7.1.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
-      <HintPath>..\packages\GDAL.3.7.1\lib\netstandard2.0\ogr_csharp.dll</HintPath>
+    <Reference Include="ogr_csharp, Version=3.7.2.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
+      <HintPath>..\packages\GDAL.3.7.2\lib\netstandard2.0\ogr_csharp.dll</HintPath>
     </Reference>
     <Reference Include="OsmSharp, Version=6.2.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\OsmSharp.6.2.0\lib\net45\OsmSharp.dll</HintPath>
     </Reference>
-    <Reference Include="osr_csharp, Version=3.7.1.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
-      <HintPath>..\packages\GDAL.3.7.1\lib\netstandard2.0\osr_csharp.dll</HintPath>
+    <Reference Include="osr_csharp, Version=3.7.2.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
+      <HintPath>..\packages\GDAL.3.7.2\lib\netstandard2.0\osr_csharp.dll</HintPath>
     </Reference>
     <Reference Include="protobuf-net, Version=2.3.7.0, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
       <HintPath>..\packages\protobuf-net.2.3.7\lib\net40\protobuf-net.dll</HintPath>
@@ -301,15 +301,15 @@
     <Error Condition="!Exists('..\packages\Grasshopper.6.32.20340.21001\build\net45\Grasshopper.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Grasshopper.6.32.20340.21001\build\net45\Grasshopper.targets'))" />
     <Error Condition="!Exists('..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets'))" />
     <Error Condition="!Exists('..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets'))" />
-    <Error Condition="!Exists('..\packages\GDAL.Native.3.7.1\build\netstandard2.0\GDAL.Native.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Native.3.7.1\build\netstandard2.0\GDAL.Native.targets'))" />
-    <Error Condition="!Exists('..\packages\GDAL.Plugins.3.7.1\build\netstandard2.0\GDAL.Plugins.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Plugins.3.7.1\build\netstandard2.0\GDAL.Plugins.targets'))" />
+    <Error Condition="!Exists('..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets'))" />
+    <Error Condition="!Exists('..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets'))" />
   </Target>
   <Import Project="..\packages\RhinoCommon.6.32.20340.21001\build\net45\RhinoCommon.targets" Condition="Exists('..\packages\RhinoCommon.6.32.20340.21001\build\net45\RhinoCommon.targets')" />
   <Import Project="..\packages\Grasshopper.6.32.20340.21001\build\net45\Grasshopper.targets" Condition="Exists('..\packages\Grasshopper.6.32.20340.21001\build\net45\Grasshopper.targets')" />
   <Import Project="..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets" Condition="Exists('..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets')" />
   <Import Project="..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets" Condition="Exists('..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets')" />
-  <Import Project="..\packages\GDAL.Native.3.7.1\build\netstandard2.0\GDAL.Native.targets" Condition="Exists('..\packages\GDAL.Native.3.7.1\build\netstandard2.0\GDAL.Native.targets')" />
-  <Import Project="..\packages\GDAL.Plugins.3.7.1\build\netstandard2.0\GDAL.Plugins.targets" Condition="Exists('..\packages\GDAL.Plugins.3.7.1\build\netstandard2.0\GDAL.Plugins.targets')" />
+  <Import Project="..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets" Condition="Exists('..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets')" />
+  <Import Project="..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets" Condition="Exists('..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
