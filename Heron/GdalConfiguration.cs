@@ -61,12 +61,16 @@ namespace Heron
 
             try
             {
-                
+
                 if (!IsWindows)
                 {
                     //const string notSet = "_Not_set_";
                     //string tmp = Gdal.GetConfigOption("GDAL_DATA", notSet);
 
+                    ///Custom configuration options
+                    OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
+                    ///To be backwards compatible with the way Heron uses coordinate order
+                    OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
 
                     string executingAssemblyFileMac = new Uri(Assembly.GetExecutingAssembly().GetName().CodeBase).LocalPath;
                     executingDirectory = Path.GetDirectoryName(executingAssemblyFileMac);
@@ -113,11 +117,6 @@ namespace Heron
 
                     string certificateFileMac = Path.Combine(gdalPath, "curl-ca-bundle.crt");
                     Gdal.SetConfigOption("GDAL_CURL_CA_BUNDLE", certificateFileMac);
-                    
-                    ///Custom configuration options
-                    OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
-                    ///To be backwards compatible with the way Heron uses coordinate order
-                    OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
 
                     _usable = true;// tmp != notSet;
                     return;

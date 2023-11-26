@@ -275,7 +275,7 @@ namespace Heron
                         {
                             //create tileCache name 
                             string tileCache = slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg";
-                            string tileCacheLoc = cacheLoc + tileCache;
+                            string tileCacheLoc = Path.Combine(cacheLoc, tileCache);
 
                             //check cache folder to see if tile image exists locally
                             if (File.Exists(tileCacheLoc))
