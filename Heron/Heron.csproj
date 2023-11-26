@@ -161,6 +161,7 @@
     <None Include="Components\Utilities\DecimateTopoFromPoint.cs" />
     <Compile Include="Components\Utilities\MultiMoveToTopo.cs" />
     <Compile Include="Components\Utilities\MultiSDiff.cs" />
+    <Compile Include="Components\Utilities\GdalDetails.cs" />
     <Compile Include="Components\Utilities\TopiaryFlatten.cs" />
     <Compile Include="GdalConfiguration.cs" />
     <Compile Include="HeronConfiguration.cs" />
