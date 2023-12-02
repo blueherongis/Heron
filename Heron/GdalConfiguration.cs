@@ -83,7 +83,7 @@ namespace Heron
                     //SetDefaultDllDirectories(DllSearchFlags);
 
                     gdalPath = Path.Combine(executingDirectory, "gdal");
-                    nativePath = Path.Combine(gdalPath, osxPlatform);
+                    nativePath = Path.Combine(gdalPath);//, osxPlatform);
                     if (!Directory.Exists(nativePath))
                         throw new DirectoryNotFoundException($"GDAL native directory not found at '{nativePath}'");
                     //if (!File.Exists(Path.Combine(nativePath, "gdal_wrap.dll")))
