@@ -929,6 +929,18 @@ namespace Heron
             return u;
         }
 
+        ///Override WebClient to allow timeout
+        ///https://www.arclab.com/en/kb/csharp/download-file-from-internet-to-string-or-file.html
+        public class WebClientWithTimeout : WebClient
+        {
+            protected override WebRequest GetWebRequest(Uri address)
+            {
+                WebRequest wr = base.GetWebRequest(address);
+                wr.Timeout = 5000; // timeout in milliseconds (ms)
+                return wr;
+            }
+        }
+
         ///Get list of mapping service Endpoints
         public static string GetEnpoints()
         {
@@ -936,7 +948,7 @@ namespace Heron
             ///Get embeded endpoints if there are issues loading from the web
             string jsonString = System.Text.Encoding.Default.GetString(Properties.Resources.HeronServiceEndpoints);
 
-            using (System.Net.WebClient wc = new System.Net.WebClient())
+            using (WebClient wc = new WebClientWithTimeout())
             {
                 try
                 {
@@ -948,12 +960,13 @@ namespace Heron
                 }
                 catch (System.Net.WebException e)
                 {
-                    throw e;
+                    //throw e;
                 }
             }
 
             return jsonString;
         }
+
 
         ///Check if cached images exist in cache folder
         public static bool CheckCacheImagesExist(List<string> filePaths)
