@@ -42,15 +42,15 @@ namespace Heron
 
         public override bool IsPreviewCapable => true;
 
-        internal void AddPreviewItem(string bitmap, Rectangle3d bounds)
+        internal void AddPreviewItem(string bitmap, Rectangle3d rect)
         {
-            AddPreviewItem(bitmap, bounds.ToNurbsCurve(), bounds);
+            AddPreviewItem(bitmap, rect.ToNurbsCurve(), rect);
         }
 
-        internal void AddPreviewItem(string bitmap, Curve c, Rectangle3d bounds)
+        internal void AddPreviewItem(string bitmap, Curve c, Rectangle3d rect)
         {
             var mesh = Mesh.CreateFromPlanarBoundary(c, MeshingParameters.FastRenderMesh, 0.1);
-            TextureMapping tm = TextureMapping.CreatePlaneMapping(bounds.Plane, bounds.X, bounds.Y, new Interval(-1, 1));
+            TextureMapping tm = TextureMapping.CreatePlaneMapping(rect.Plane, rect.X, rect.Y, new Interval(-1, 1));
             mesh.SetTextureCoordinates(tm, Transform.Identity, true);
             var mat = new DisplayMaterial(System.Drawing.Color.White);
 

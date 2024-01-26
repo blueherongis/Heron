@@ -21,7 +21,9 @@ using OSGeo.OGR;
 using OSGeo.OSR;
 
 using Newtonsoft.Json.Linq;
-
+using Rhino.Render;
+using Rhino.DocObjects;
+using Rhino;
 
 namespace Heron
 {
@@ -121,6 +123,11 @@ namespace Heron
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
             GH_Structure<GH_Rectangle> imgFrame = new GH_Structure<GH_Rectangle>();
             GH_Structure<GH_String> tCount = new GH_Structure<GH_String>();
+
+            ///Reset lists for baking
+            rects = new List<Rectangle3d>();
+            bounds = new List<Curve>();
+            bitmapPaths = new List<string>();
 
             /*
             ///Save for later development of warping
@@ -279,6 +286,12 @@ namespace Heron
                             {
                                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using existing image.");
                                 AddPreviewItem(imgPath, boundary[i], rect);
+
+                                ///For baking
+                                bitmapPaths.Add(imgPath);
+                                bounds.Add(boundary[i]);
+                                rects.Add(rect);
+
                                 continue;
                             }
                         }
@@ -292,6 +305,11 @@ namespace Heron
                             if (File.Exists(cacheFilePaths[t]))
                             {
                                 AddPreviewItem(cacheFilePaths[t], tileRectangles[t].ToNurbsCurve(), tileRectangles[t]);
+
+                                ///For baking
+                                bitmapPaths.Add(cacheFilePaths[t]);
+                                bounds.Add(tileRectangles[t].ToNurbsCurve());
+                                rects.Add(tileRectangles[t]);
                             }
                         }
                         continue;
@@ -483,6 +501,11 @@ namespace Heron
                 if (!tilesOut)
                 {
                     AddPreviewItem(imgPath, boundary[i], rect);
+
+                    ///For baking
+                    bitmapPaths.Add(imgPath);
+                    bounds.Add(boundary[i]);
+                    rects.Add(rect);
                 }
                 else
                 {
@@ -491,6 +514,11 @@ namespace Heron
                         if (File.Exists(cacheFilePaths[t]))
                         {
                             AddPreviewItem(cacheFilePaths[t], tileRectangles[t].ToNurbsCurve(), tileRectangles[t]);
+
+                            ///For baking
+                            bitmapPaths.Add(cacheFilePaths[t]);
+                            bounds.Add(tileRectangles[t].ToNurbsCurve());
+                            rects.Add(tileRectangles[t]);
                         }
                     }
                 }
@@ -562,6 +590,13 @@ namespace Heron
             item.ToolTipText = "If 'Tiled output' is selected, Image File and Image Frame will output each tile " +
                 "that is used to build the assembled image instead of the assembled image itself.  " +
                 "The tiled output will avoid distortions in the assembled image at lower zoom levels.";
+
+            ToolStripMenuItem bakePreview = new ToolStripMenuItem("Bake Preview");
+            bakePreview.ToolTipText = "Bake this component's preview image(s) to the current layer in Rhino.  A new material is created with each bake.";
+            bakePreview.Click += BakePreview;
+            menu.Items.Add(bakePreview);
+
+            base.AppendAdditionalComponentMenuItems(menu);
         }
 
         private void ServiceItemOnClick(object sender, EventArgs e)
@@ -592,6 +627,51 @@ namespace Heron
             ExpireSolution(true);
         }
 
+        ///Add the ability to bake the preview
+        private List<Rectangle3d> rects = new List<Rectangle3d>();
+        private List<Curve> bounds = new List<Curve>();
+        private List<string> bitmapPaths = new List<string>();
+        private void BakePreview(object sender, EventArgs e)
+        {
+            ToolStripMenuItem item = sender as ToolStripMenuItem;
+            if (item == null)
+                return;
+
+            var rhinoDoc = RhinoDoc.ActiveDoc;
+            var undoRecord = rhinoDoc.BeginUndoRecord("Bake Heron preview mesh and material from Grasshopper");
+
+            for (int r = 0; r < rects.Count; r++)
+            {
+                ///Add a unique material to the document based on the preview bitmap
+                string matName = "Heron_" + Path.GetFileNameWithoutExtension(bitmapPaths[r]) + "_Preview";
+                int increment = rhinoDoc.Materials.Where(s => s.Name.Contains(matName)).Count();
+                matName = matName + "-" + increment;
+                string previewPath = Path.Combine(Path.GetDirectoryName(bitmapPaths[r]),
+                    Path.GetFileNameWithoutExtension(bitmapPaths[r]) + "_Preview-" + increment +
+                    Path.GetExtension(bitmapPaths[r]));
+                File.Copy(bitmapPaths[r], previewPath, true);
+
+                int matIndex = rhinoDoc.Materials.Add();
+                Material previewMat = rhinoDoc.Materials[matIndex];
+                previewMat.Name = matName;
+                previewMat.SetBitmapTexture(previewPath);
+                bool worked = rhinoDoc.Materials.Modify(previewMat, matIndex, true);
+
+                ///Add the preview mesh to the rhino doc
+                var rect = rects[r];
+
+                var mesh = Mesh.CreateFromPlanarBoundary(rect.ToNurbsCurve(), MeshingParameters.FastRenderMesh, 0.1);
+                TextureMapping tm = TextureMapping.CreatePlaneMapping(rect.Plane, rect.X, rect.Y, new Interval(-1, 1));
+                mesh.SetTextureCoordinates(tm, Transform.Identity, true);
+
+                var att = new ObjectAttributes();
+                att.MaterialIndex = matIndex;
+                att.MaterialSource = ObjectMaterialSource.MaterialFromObject;
+
+                Guid guid = rhinoDoc.Objects.AddMesh(mesh, att);
+            }
+            rhinoDoc.EndUndoRecord(undoRecord);
+        }
 
 
         ///Sticky parameters

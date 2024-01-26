@@ -1,12 +1,15 @@
 ﻿using Grasshopper.Kernel;
 using OSGeo.GDAL;
 using OSGeo.OSR;
+using Rhino;
+using Rhino.DocObjects;
 using Rhino.Geometry;
+using Rhino.Render;
 using System;
 using System.Collections.Generic;
 using System.IO;
-
-
+using System.Linq;
+using System.Windows.Forms;
 
 namespace Heron
 {
@@ -43,6 +46,10 @@ namespace Heron
 
             string clippedLocation = string.Empty;
             DA.GetData<string>(2, ref clippedLocation);
+            
+            ///Reset lists for baking
+            rects = new List<Rectangle3d>();
+            bitmapPaths = new List<string>();
 
             Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
@@ -215,6 +222,8 @@ namespace Heron
                     previewDataset.Dispose();
 
                     AddPreviewItem(previewPNG, BBoxToRect(boundary.GetBoundingBox(true)));
+                    rects.Add(BBoxToRect(boundary.GetBoundingBox(true)));
+                    bitmapPaths.Add(previewPNG);
                 }
 
             }
@@ -228,6 +237,8 @@ namespace Heron
                 previewDataset.Dispose();
 
                 AddPreviewItem(previewPNG, datasourceBBox);
+                rects.Add(datasourceBBox);
+                bitmapPaths.Add(previewPNG);
             }
 
             ///clean up
@@ -241,6 +252,61 @@ namespace Heron
         }
 
 
+
+        public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
+        {
+            ToolStripMenuItem bakePreview = new ToolStripMenuItem("Bake Preview");
+            bakePreview.ToolTipText = "Bake this component's preview image(s) to the current layer in Rhino.  A new material is created with each bake.";
+            bakePreview.Click += BakePreview;
+            menu.Items.Add(bakePreview);
+
+            base.AppendAdditionalComponentMenuItems(menu);
+        }
+
+        ///Add the ability to bake the preview
+        private List<Rectangle3d> rects = new List<Rectangle3d>();
+        private List<string> bitmapPaths = new List<string>();
+        private void BakePreview(object sender, EventArgs e)
+        {
+            ToolStripMenuItem item = sender as ToolStripMenuItem;
+            if (item == null)
+                return;
+
+            var rhinoDoc = RhinoDoc.ActiveDoc;
+            var undoRecord = rhinoDoc.BeginUndoRecord("Bake Heron preview mesh and material from Grasshopper");
+
+            for (int r = 0; r < rects.Count; r++)
+            {
+                ///Add a unique material to the document based on the preview bitmap
+                string matName = "Heron_" + Path.GetFileNameWithoutExtension(bitmapPaths[r]) + "_Preview";
+                int increment = rhinoDoc.Materials.Where(s => s.Name.Contains(matName)).Count();
+                matName = matName + "-" + increment;
+                string previewPath = Path.Combine(Path.GetDirectoryName(bitmapPaths[r]),
+                    Path.GetFileNameWithoutExtension(bitmapPaths[r]) + "_Preview-" + increment +
+                    Path.GetExtension(bitmapPaths[r]));
+                File.Copy(bitmapPaths[r], previewPath, true);
+
+                int matIndex = rhinoDoc.Materials.Add();
+                Material previewMat = rhinoDoc.Materials[matIndex];
+                previewMat.Name = matName;
+                previewMat.SetBitmapTexture(previewPath);
+                bool worked = rhinoDoc.Materials.Modify(previewMat, matIndex, true);
+
+                ///Add the preview mesh to the rhino doc
+                var rect = rects[r];
+
+                var mesh = Mesh.CreateFromPlanarBoundary(rect.ToNurbsCurve(), MeshingParameters.FastRenderMesh, 0.1);
+                TextureMapping tm = TextureMapping.CreatePlaneMapping(rect.Plane, rect.X, rect.Y, new Interval(-1, 1));
+                mesh.SetTextureCoordinates(tm, Transform.Identity, true);
+
+                var att = new ObjectAttributes();
+                att.MaterialIndex = matIndex;
+                att.MaterialSource = ObjectMaterialSource.MaterialFromObject;
+
+                Guid guid = rhinoDoc.Objects.AddMesh(mesh, att);
+            }
+            rhinoDoc.EndUndoRecord(undoRecord);
+        }
 
         protected override System.Drawing.Bitmap Icon
         {

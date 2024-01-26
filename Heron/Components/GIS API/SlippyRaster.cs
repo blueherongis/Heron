@@ -13,6 +13,9 @@ using Rhino.Geometry;
 using GH_IO.Serialization;
 
 using Newtonsoft.Json.Linq;
+using Rhino.DocObjects;
+using Rhino.Render;
+using Rhino;
 
 namespace Heron
 {
@@ -93,7 +96,10 @@ namespace Heron
             GH_Structure<GH_Rectangle> imgFrame = new GH_Structure<GH_Rectangle>();
             GH_Structure<GH_String> tCount = new GH_Structure<GH_String>();
 
-            
+            ///Reset lists for baking
+            rects = new List<Rectangle3d>();
+            bounds = new List<Curve>();
+            bitmapPaths = new List<string>();
 
 
             for (int i = 0; i < boundary.Count; i++)
@@ -113,16 +119,16 @@ namespace Heron
 
                 ///TODO: look into scaling boundary to get buffer tiles
 
-                ///file path for final image
+                ///File path for final image
                 string imgPath = Path.Combine(filePath, prefix + "_" + i + ".jpg");
 
                 if (!tilesOut)
                 {
-                    //location of final image file
+                    ///Location of final image file
                     mapList.Append(new GH_String(imgPath), path);
                 }
 
-                ///create cache folder for images
+                ///Create cache folder for images
                 string cacheLoc = Path.Combine(filePath, "HeronCache");
                 string slippyImageTileRange = Path.Combine(cacheLoc, prefix + "_" + i + ".txt");
                 List<string> cacheFilePaths = new List<string>();
@@ -131,10 +137,10 @@ namespace Heron
                     Directory.CreateDirectory(cacheLoc);
                 }
 
-                ///tile bounding box array
+                ///Tile bounding box array
                 List<Point3d> boxPtList = new List<Point3d>();
 
-                ///get the tile coordinates for all tiles within boundary
+                ///Get the tile coordinates for all tiles within boundary
                 var ranges = Convert.GetTileRange(boundaryBox, zoom);
                 List<List<int>> tileList = new List<List<int>>();
                 var x_range = ranges.XRange;
@@ -148,12 +154,12 @@ namespace Heron
 
                 List<Rectangle3d> tileRectangles = new List<Rectangle3d>();
 
-                ///cycle through tiles to get bounding box
+                ///Cycle through tiles to get bounding box
                 for (int y = (int)y_range.Min; y <= y_range.Max; y++)
                 {
                     for (int x = (int)x_range.Min; x <= x_range.Max; x++)
                     {
-                        ///add bounding box of tile to list
+                        ///Add bounding box of tile to list
                         List<Point3d> boxPts = Convert.GetTileAsPolygon(zoom, y, x).ToList();
                         boxPtList.AddRange(Convert.GetTileAsPolygon(zoom, y, x).ToList());
                         string cacheFilePath = Path.Combine(cacheLoc, slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg");
@@ -173,7 +179,7 @@ namespace Heron
 
                 tCount.Insert(new GH_String(tileTotalCount + " tiles (" + tileDownloadedCount + " downloaded / " + (tileTotalCount - tileDownloadedCount) + " cached)"), path, 0);
 
-                ///bounding box of tile boundaries
+                ///Bounding box of tile boundaries
                 BoundingBox bbox = new BoundingBox(boxPtList);
 
                 var rect = BBoxToRect(bbox);
@@ -184,15 +190,15 @@ namespace Heron
 
                 //AddPreviewItem(imgPath, boundary[i], rect);
 
-                ///tile range as string for (de)serialization of TileCacheMeta
+                ///Tile range as string for (de)serialization of TileCacheMeta
                 string tileRangeString = zoom.ToString()
                     + x_range[0].ToString()
                     + y_range[0].ToString()
                     + x_range[1].ToString()
                     + y_range[1].ToString();
 
-                ///check if the existing final image already covers the boundary. 
-                ///if so, no need to download more or reassemble the cached tiles.
+                ///Check if the existing final image already covers the boundary. 
+                ///If so, no need to download more or reassemble the cached tiles.
                 if ((TileCacheMeta == tileRangeString) && Convert.CheckCacheImagesExist(cacheFilePaths))
                 {
                     if (File.Exists(imgPath) && !tilesOut)
@@ -228,6 +234,12 @@ namespace Heron
                             {
                                 AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Using existing image.");
                                 AddPreviewItem(imgPath, boundary[i], rect);
+
+                                ///For baking
+                                bitmapPaths.Add(imgPath);
+                                bounds.Add(boundary[i]);
+                                rects.Add(rect);
+
                                 continue;
                             }
                         }
@@ -241,6 +253,11 @@ namespace Heron
                             if (File.Exists(cacheFilePaths[t]))
                             {
                                 AddPreviewItem(cacheFilePaths[t], tileRectangles[t].ToNurbsCurve(), tileRectangles[t]);
+                                
+                                ///For baking
+                                bitmapPaths.Add(cacheFilePaths[t]);
+                                bounds.Add(tileRectangles[t].ToNurbsCurve());
+                                rects.Add(tileRectangles[t]);
                             }
                         }
                         continue;
@@ -273,15 +290,15 @@ namespace Heron
                     {
                         for (int x = (int)x_range.Min; x <= (int)x_range.Max; x++)
                         {
-                            //create tileCache name 
+                            ///Create tileCache name 
                             string tileCache = slippySource.Replace(" ", "") + zoom + "-" + x + "-" + y + ".jpg";
                             string tileCacheLoc = Path.Combine(cacheLoc, tileCache);
 
-                            //check cache folder to see if tile image exists locally
+                            ///Check cache folder to see if tile image exists locally
                             if (File.Exists(tileCacheLoc))
                             {
                                 Bitmap tmpImage = new Bitmap(Image.FromFile(tileCacheLoc));
-                                ///add tmp image to final
+                                ///Add tmp image to final
                                 g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
                                 tmpImage.Dispose();
                             }
@@ -294,7 +311,7 @@ namespace Heron
                                 Bitmap tmpImage = new Bitmap(256, 256);
                                 System.Net.WebClient client = new System.Net.WebClient();
 
-                                ///insert header if required
+                                ///Insert header if required
                                 client.Headers.Add("user-agent", userAgent);
                                 if (run == true)
                                 {
@@ -311,24 +328,24 @@ namespace Heron
                                 }
                                 client.Dispose();
 
-                                //add tmp image to final
+                                ///Add tmp image to final
                                 g.DrawImage(tmpImage, imgPosW * 256, imgPosH * 256);
                                 tmpImage.Dispose();
                                 tileDownloadedCount = tileDownloadedCount + 1;
                             }
 
-                            //increment x insert position, goes left to right
+                            ///Increment x insert position, goes left to right
                             imgPosW++;
                         }
-                        //increment y insert position, goes top to bottom
+                        ///Increment y insert position, goes top to bottom
                         imgPosH++;
                         imgPosW = 0;
 
                     }
-                    //garbage collection
+                    ///Garbage collection
                     g.Dispose();
 
-                    //add tile range meta data to image comments
+                    ///Add tile range meta data to image comments
                     //finalImage.AddCommentsToJPG(slippySource.Replace(" ", "") + tileRangeString);
                     if (File.Exists(slippyImageTileRange)) File.Delete(slippyImageTileRange);
                     using (StreamWriter sw = File.CreateText(slippyImageTileRange))
@@ -337,16 +354,21 @@ namespace Heron
                         sw.Dispose();
                     }
 
-                    //save the image
+                    ///Save the image
                     finalImage.Save(imgPath, System.Drawing.Imaging.ImageFormat.Jpeg);
                 }
 
-                //garbage collection
+                ///Garbage collection
                 finalImage.Dispose();
 
                 if (!tilesOut)
                 {
                     AddPreviewItem(imgPath, boundary[i], rect);
+                    
+                    ///For baking
+                    bitmapPaths.Add(imgPath);
+                    bounds.Add(boundary[i]);
+                    rects.Add(rect);
                 }
                 else
                 {
@@ -355,6 +377,11 @@ namespace Heron
                         if (File.Exists(cacheFilePaths[t]))
                         {
                             AddPreviewItem(cacheFilePaths[t], tileRectangles[t].ToNurbsCurve(), tileRectangles[t]);
+                            
+                            ///For baking
+                            bitmapPaths.Add(cacheFilePaths[t]);
+                            bounds.Add(tileRectangles[t].ToNurbsCurve());
+                            rects.Add(tileRectangles[t]);
                         }
                     }
                 }
@@ -423,6 +450,13 @@ namespace Heron
             item.ToolTipText = "If 'Tiled output' is selected, Image File and Image Frame will output each tile " +
                 "that is used to build the assembled image instead of the assembled image itself.  " +
                 "The tiled output will avoid distortions in the assembled image at lower zoom levels.";
+
+            ToolStripMenuItem bakePreview = new ToolStripMenuItem("Bake Preview");
+            bakePreview.ToolTipText = "Bake this component's preview image(s) to the current layer in Rhino.  A new material is created with each bake.";
+            bakePreview.Click += BakePreview;
+            menu.Items.Add(bakePreview);
+
+            base.AppendAdditionalComponentMenuItems(menu);
         }
 
         private void ServiceItemOnClick(object sender, EventArgs e)
@@ -453,6 +487,51 @@ namespace Heron
             ExpireSolution(true);
         }
 
+        ///Add the ability to bake the preview
+        private List<Rectangle3d> rects = new List<Rectangle3d>();
+        private List<Curve> bounds = new List<Curve>();
+        private List<string> bitmapPaths = new List<string>();
+        private void BakePreview(object sender, EventArgs e)
+        {
+            ToolStripMenuItem item = sender as ToolStripMenuItem;
+            if (item == null)
+                return;
+
+            var rhinoDoc = RhinoDoc.ActiveDoc;
+            var undoRecord = rhinoDoc.BeginUndoRecord("Bake Heron preview mesh and material from Grasshopper");
+
+            for (int r = 0; r < rects.Count; r++)
+            {
+                ///Add a unique material to the document based on the preview bitmap
+                string matName = "Heron_" + Path.GetFileNameWithoutExtension(bitmapPaths[r]) + "_Preview";
+                int increment = rhinoDoc.Materials.Where(s => s.Name.Contains(matName)).Count();
+                matName = matName + "-" + increment;
+                string previewPath = Path.Combine(Path.GetDirectoryName(bitmapPaths[r]),
+                    Path.GetFileNameWithoutExtension(bitmapPaths[r]) + "_Preview-" + increment +
+                    Path.GetExtension(bitmapPaths[r]));
+                File.Copy(bitmapPaths[r], previewPath, true);
+
+                int matIndex = rhinoDoc.Materials.Add();
+                Material previewMat = rhinoDoc.Materials[matIndex];
+                previewMat.Name = matName;
+                previewMat.SetBitmapTexture(previewPath);
+                bool worked = rhinoDoc.Materials.Modify(previewMat, matIndex, true);
+
+                ///Add the preview mesh to the rhino doc
+                var rect = rects[r];
+
+                var mesh = Mesh.CreateFromPlanarBoundary(rect.ToNurbsCurve(), MeshingParameters.FastRenderMesh, 0.1);
+                TextureMapping tm = TextureMapping.CreatePlaneMapping(rect.Plane, rect.X, rect.Y, new Interval(-1, 1));
+                mesh.SetTextureCoordinates(tm, Transform.Identity, true);
+
+                var att = new ObjectAttributes();
+                att.MaterialIndex = matIndex;
+                att.MaterialSource = ObjectMaterialSource.MaterialFromObject;
+
+                Guid guid = rhinoDoc.Objects.AddMesh(mesh, att);
+            }
+            rhinoDoc.EndUndoRecord(undoRecord);
+        }
 
 
         ///Sticky parameters
