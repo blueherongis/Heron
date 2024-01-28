@@ -80,8 +80,13 @@ namespace Heron
             DA.GetData<string>("Vector Data Folder", ref folder);
             folder = Path.GetFullPath(folder);
             if (!folder.EndsWith(Path.DirectorySeparatorChar.ToString())) { folder += Path.DirectorySeparatorChar; }
+            if (!Directory.Exists(folder))
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, folder + " does not exist. Please create this folder location before exporting.");
+                return;
+            }
 
-            string shpPath = folder + filename + drvExtension;
+            string shpPath = Path.Combine(folder, filename + drvExtension);
             ///for more than one geometry type, a list of files for shapefile output needs to be established
             List<string> shpPathList = new List<string>();
             List<string> shpTypeList = new List<string>();

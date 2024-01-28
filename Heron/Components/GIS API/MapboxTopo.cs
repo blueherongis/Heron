@@ -1,34 +1,14 @@
-﻿using System;
-using System.IO;
-using System.Xml;
-using System.Xml.Linq;
-using System.Linq;
-using System.Data;
-using System.Drawing;
-using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-
-using Grasshopper;
+﻿using GH_IO.Serialization;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
-using Rhino;
-using Rhino.Geometry;
-using Rhino.DocObjects;
-using Rhino.Collections;
-using GH_IO;
-using GH_IO.Serialization;
-
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Serialization;
+using Rhino.Geometry;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Linq;
 
 namespace Heron
 {
@@ -55,7 +35,7 @@ namespace Heron
 
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for topography", GH_ParamAccess.list);
             pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution.", GH_ParamAccess.item);
-            pManager.AddTextParameter("File Location", "filePath", "Folder to place topography image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("Folder Path", "folderPath", "Folder to place topography image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for topography image file name", GH_ParamAccess.item);
             pManager.AddTextParameter("Mapbox Access Token", "mbToken", "Mapbox Access Token string for access to Mapbox resources. Or set an Environment Variable 'HERONMAPOXTOKEN' with your token as the string.", GH_ParamAccess.item, "");
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
@@ -91,9 +71,13 @@ namespace Heron
             int zoom = -1;
             DA.GetData<int>(1, ref zoom);
 
-            string filePath = string.Empty;
-            DA.GetData<string>(2, ref filePath);
-            //if (!filePath.EndsWith(@"/")) filePath = filePath + @"/";
+            string folderPath = string.Empty;
+            DA.GetData<string>(2, ref folderPath);
+            if (!Directory.Exists(folderPath))
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Folder " + folderPath + " does not exist.  Using your system's temp folder " + Path.GetTempPath() + " instead.");
+                folderPath = Path.GetTempPath();
+            }
 
             string prefix = string.Empty;
             DA.GetData<string>(3, ref prefix);
@@ -103,8 +87,6 @@ namespace Heron
             }
 
             string URL = mbURL;
-            //DA.GetData<string>(4, ref URL);
-
 
             string mbToken = string.Empty;
             DA.GetData<string>(4, ref mbToken);
@@ -124,7 +106,7 @@ namespace Heron
             }
 
             bool run = false;
-            DA.GetData<bool>("Run", ref run);
+            DA.GetData<bool>(5, ref run);
 
             GH_Structure<GH_String> mapList = new GH_Structure<GH_String>();
             GH_Structure<GH_Curve> imgFrame = new GH_Structure<GH_Curve>();
@@ -149,13 +131,13 @@ namespace Heron
                 ///TODO: look into scaling boundary to get buffer tiles
 
                 ///file path for final image
-                string imgPath = Path.Combine(filePath, prefix + "_" + i + ".png");
+                string imgPath = Path.Combine(folderPath, prefix + "_" + i + ".png");
 
                 //location of final image file
                 mapList.Append(new GH_String(imgPath), path);
 
                 //create cache folder for images
-                string cacheLoc = Path.Combine(filePath, "HeronCache");
+                string cacheLoc = Path.Combine(folderPath, "HeronCache");
                 string mbImageTileRange = Path.Combine(cacheLoc, prefix + "_" + i + ".txt");
                 List<string> cachefilePaths = new List<string>();
                 if (!Directory.Exists(cacheLoc))

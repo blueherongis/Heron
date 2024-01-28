@@ -45,7 +45,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
-            pManager.AddTextParameter("Target folder", "folderPath", "Folder to save image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("Folder Path", "folderPath", "Folder to save image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
@@ -74,7 +74,11 @@ namespace Heron
 
             string folderPath = string.Empty;
             DA.GetData<string>(1, ref folderPath);
-            //if (!folderPath.EndsWith(@"/")) folderPath = folderPath + @"/";
+            if (!Directory.Exists(folderPath))
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Folder " + folderPath + " does not exist.  Using your system's temp folder " + Path.GetTempPath() + " instead.");
+                folderPath = Path.GetTempPath();
+            }
 
             string prefix = string.Empty;
             DA.GetData<string>(2, ref prefix);

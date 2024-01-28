@@ -46,7 +46,12 @@ namespace Heron
 
             string clippedLocation = string.Empty;
             DA.GetData<string>(2, ref clippedLocation);
-            
+            if (!Directory.Exists(clippedLocation))
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Folder " + clippedLocation + " does not exist.  Using your system's temp folder " + Path.GetTempPath() + " instead.");
+                clippedLocation = Path.GetTempPath();
+            }
+
             ///Reset lists for baking
             rects = new List<Rectangle3d>();
             bitmapPaths = new List<string>();

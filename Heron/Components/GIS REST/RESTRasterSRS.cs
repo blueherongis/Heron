@@ -33,7 +33,7 @@ namespace Heron
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
             pManager.AddIntegerParameter("Resolution", "resolution", "Maximum resolution for images", GH_ParamAccess.item, 1024);
-            pManager.AddTextParameter("Target Folder", "folderPath", "Folder to save image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("Folder Path", "folderPath", "Folder to save image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item, "restRaster");
             pManager.AddTextParameter("REST URL", "URL", "ArcGIS REST Service website to query. Use the component \nmenu item \"Create REST Raster Source List\" for some examples.", GH_ParamAccess.item);
             pManager.AddTextParameter("Image Type", "imageType", "Image file type to download from the service.  " +
@@ -59,8 +59,12 @@ namespace Heron
             DA.GetData<int>("Resolution", ref Res);
 
             string folderPath = string.Empty;
-            DA.GetData<string>("Target Folder", ref folderPath);
-            //if (!folderPath.EndsWith(@"/")) { folderPath = folderPath + @"/"; }
+            DA.GetData<string>(2, ref folderPath);
+            if(!Directory.Exists(folderPath))
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Folder " + folderPath + " does not exist.  Using your system's temp folder " + Path.GetTempPath() + " instead.");
+                folderPath = Path.GetTempPath();
+            }
 
             string prefix = string.Empty;
             DA.GetData<string>("Prefix", ref prefix);

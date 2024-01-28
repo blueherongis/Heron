@@ -39,7 +39,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for data", GH_ParamAccess.item);
-            pManager.AddTextParameter("Target folder", "folderPath", "Folder to save OSM vector files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("Folder Path", "folderPath", "Folder to save OSM vector files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for OSM vector file name", GH_ParamAccess.item, OSMSource);
             pManager.AddTextParameter("Search Term", "searchTerm", "A basic search term to filter the response from the web service. For more advanced queries, use the overpassQL input.", GH_ParamAccess.item);
             pManager.AddTextParameter("Overpass Query Language API", "overpassQL", "Query string for the Overpass API.  " +
@@ -75,7 +75,11 @@ namespace Heron
 
             string folderPath = string.Empty;
             DA.GetData<string>(1, ref folderPath);
-            //if (!folderPath.EndsWith(@"/")) folderPath = folderPath + @"/";
+            if (!Directory.Exists(folderPath))
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Folder " + folderPath + " does not exist.  Using your system's temp folder " + Path.GetTempPath() + " instead.");
+                folderPath = Path.GetTempPath();
+            }
 
             string prefix = string.Empty;
             DA.GetData<string>(2, ref prefix);

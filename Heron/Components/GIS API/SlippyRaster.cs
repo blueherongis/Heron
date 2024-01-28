@@ -37,7 +37,7 @@ namespace Heron
 
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
             pManager.AddIntegerParameter("Zoom Level", "zoom", "Slippy map zoom level. Higher zoom level is higher resolution, but takes longer to download. Max zoom is typically 19.", GH_ParamAccess.item);
-            pManager.AddTextParameter("File Location", "filePath", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
+            pManager.AddTextParameter("Folder Path", "folderPath", "Folder to place image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item);
             pManager.AddTextParameter("Slippy Access Header", "userAgent", "A user-agent header is sometimes required for access to Slippy resources, especially OSM. This can be any string.", GH_ParamAccess.item, "");
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
@@ -73,9 +73,13 @@ namespace Heron
             int zoom = -1;
             DA.GetData(1, ref zoom);
 
-            string filePath = string.Empty;
-            DA.GetData(2, ref filePath);
-            //if (!filePath.EndsWith(@"/")) filePath = filePath + @"/";
+            string folderPath = string.Empty;
+            DA.GetData(2, ref folderPath);
+            if (!Directory.Exists(folderPath))
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Folder " + folderPath + " does not exist.  Using your system's temp folder " + Path.GetTempPath() + " instead.");
+                folderPath = Path.GetTempPath();
+            }
 
             string prefix = string.Empty;
             DA.GetData(3, ref prefix);
@@ -120,7 +124,7 @@ namespace Heron
                 ///TODO: look into scaling boundary to get buffer tiles
 
                 ///File path for final image
-                string imgPath = Path.Combine(filePath, prefix + "_" + i + ".jpg");
+                string imgPath = Path.Combine(folderPath, prefix + "_" + i + ".jpg");
 
                 if (!tilesOut)
                 {
@@ -129,7 +133,7 @@ namespace Heron
                 }
 
                 ///Create cache folder for images
-                string cacheLoc = Path.Combine(filePath, "HeronCache");
+                string cacheLoc = Path.Combine(folderPath, "HeronCache");
                 string slippyImageTileRange = Path.Combine(cacheLoc, prefix + "_" + i + ".txt");
                 List<string> cacheFilePaths = new List<string>();
                 if (!Directory.Exists(cacheLoc))
