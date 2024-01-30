@@ -399,20 +399,23 @@ namespace Heron
                             }
                             ///Create base surface
                             Brep[] breps = Brep.CreatePlanarBreps(pLines, DocumentTolerance());
-                            geometryGoo.RemovePath(relationPath);
+                            if (geometryGoo.PathExists(relationPath)) geometryGoo.RemovePath(relationPath);
 
-                            foreach (Brep b in breps)
+                            if (breps != null)
                             {
-                                geometryGoo.Append(new GH_Brep(b), relationPath);
-
-                                ///Building massing
-                                if (r.Tags.ContainsKey("building") || r.Tags.ContainsKey("building:part"))
+                                foreach (Brep b in breps)
                                 {
-                                    Vector3d hVec = new Vector3d(0, 0, GetBldgHeight(osmGeo) - minHeight);
-                                    //hVec.Transform(xformFromMetric);
+                                    geometryGoo.Append(new GH_Brep(b), relationPath);
 
-                                    ///Create extrusion from base surface
-                                    buildingGoo.Append(new GH_Brep(Brep.CreateFromOffsetFace(b.Faces[0], hVec.Z, DocumentTolerance(), false, true)), relationPath);
+                                    ///Building massing
+                                    if (r.Tags.ContainsKey("building") || r.Tags.ContainsKey("building:part"))
+                                    {
+                                        Vector3d hVec = new Vector3d(0, 0, GetBldgHeight(osmGeo) - minHeight);
+                                        //hVec.Transform(xformFromMetric);
+
+                                        ///Create extrusion from base surface
+                                        buildingGoo.Append(new GH_Brep(Brep.CreateFromOffsetFace(b.Faces[0], hVec.Z, DocumentTolerance(), false, true)), relationPath);
+                                    }
                                 }
                             }
                         }

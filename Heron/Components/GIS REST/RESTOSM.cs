@@ -1,22 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Windows.Forms;
-
+﻿using Grasshopper.GUI;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
-using GH_IO;
-using GH_IO.Serialization;
-using Rhino;
-using Rhino.Geometry;
-
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Serialization;
+using Rhino.Geometry;
+using System;
+using System.ComponentModel;
+using System.Drawing;
+using System.IO;
+using System.Net;
+using System.Windows.Forms;
 
 namespace Heron
 {
@@ -101,10 +94,6 @@ namespace Heron
             bool run = false;
             DA.GetData<bool>("Run", ref run);
 
-            /// hardcoded timout integer
-            /// TODO: add this as a menu item that can be customized
-            int timeout = 60;
-
             string URL = osmURL;
 
             GH_Structure<GH_String> osmList = new GH_Structure<GH_String>();
@@ -150,9 +139,7 @@ namespace Heron
                 ///Set transforms between source and HeronSRS
                 OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(heronSRS, osmSRS);
 
-
-
-                //Get OSM frame for given boundary
+                ///Get OSM frame for given boundary
                 Point3d max = new Point3d();
                 Point3d maxM = boundary.GetBoundingBox(true).Max;
                 maxM.Transform(heronToUserSRSTransform);
@@ -196,20 +183,68 @@ namespace Heron
             }
 
 
-            if (run)
+            if (run && !done)
             {
-                System.Net.WebClient webClient = new System.Net.WebClient();
-                webClient.DownloadFile(oQ, Path.Combine(folderPath, prefix + ".osm"));
-                webClient.Dispose();
+                Message = "Connecting with server...";
+                ///Allow async download of OSM files
+                ///https://docs.microsoft.com/en-us/dotnet/api/system.net.webclient.downloadfilecompleted?view=net-6.0
+                using (var webClient = new WebClient())
+                {
+                    webClient.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadCompleted);
+                    webClient.DownloadProgressChanged += new DownloadProgressChangedEventHandler(ProgressChanged);
+                    webClient.DownloadFileAsync(new Uri(oQ), Path.Combine(folderPath, prefix + ".osm"));
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, webClient.Headers.ToString());
+                    if (webClient.IsBusy)
+                    {
+                        //Message = "Busy";
+                    }
+                }
             }
 
             osmList.Append(new GH_String(Path.Combine(folderPath, prefix + ".osm")));
 
+            ///Populate outputs
+            if (done)
+            {
+                DA.SetDataTree(0, osmList);
+            }
+            else { DA.SetDataTree(0, new GH_Structure<GH_String>()); }
+            done = false;
+        }
 
 
-            //populate outputs
-            DA.SetDataTree(0, osmList);
+        private bool done = false;
+        private string lastSize = String.Empty;
+        private void ProgressChanged(object sender, DownloadProgressChangedEventArgs e)
+        {
+            string s = ConvertSize.ToSize(e.BytesReceived, ConvertSize.SizeUnits.MB);
+            if (lastSize != s)
+            {
+                Message = "Downloading file (" + s + " MB)";
+                //Grasshopper.Instances.RedrawCanvas();
+                lastSize = s;
+            }
+        }
 
+        public void DownloadCompleted(object sender, AsyncCompletedEventArgs e)
+        {
+            if (e.Cancelled)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "File download cancelled.");
+            }
+
+            if (e.Error != null)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.Error.ToString());
+            }
+
+            Message = "Downloaded " + lastSize + " MB OSM file";
+            done = true;
+            lastSize = String.Empty;
+            System.Threading.Thread.Sleep(100);
+            Grasshopper.Instances.RedrawCanvas();
+            ExpireSolution(true);
+            Message = OSMSource;
         }
 
         ////////////////////////////
@@ -247,8 +282,61 @@ namespace Heron
 
             menu.Items.Add(root);
 
+            ToolStripMenuItem tOut = new ToolStripMenuItem("Set Timeout (in seconds)");
+            GH_DocumentObject.Menu_AppendTextItem(tOut.DropDown, timeout.ToString(), 
+                new GH_MenuTextBox.KeyDownEventHandler(this.Menu_TimeoutValueKeyDown), 
+                new GH_MenuTextBox.TextChangedEventHandler(this.Menu_TimeoutValueTextChanged), true, 200, true);
+
+            menu.Items.Add(tOut);
+
             base.AppendAdditionalComponentMenuItems(menu);
 
+        }
+
+        ///Menu interaction for a text field from Grasshopper.Kernel.Parameters.Param_Interval in Grasshopper.dll
+        private void Menu_TimeoutValueTextChanged(GH_MenuTextBox sender, string text)
+        {
+            if (text.Length == 0)
+            {
+                sender.TextBoxItem.ForeColor = SystemColors.WindowText;
+                return;
+            }
+            
+            if (Int32.TryParse(text, out int t)) 
+            {
+                sender.TextBoxItem.ForeColor = SystemColors.WindowText;
+                return;
+            }
+            sender.TextBoxItem.ForeColor = Color.Red;
+        }
+
+        private void Menu_TimeoutValueKeyDown(GH_MenuTextBox sender, KeyEventArgs e)
+        {
+            Keys keyCode = e.KeyCode;
+            if (keyCode == Keys.Return)
+            {
+                e.Handled = true;
+                string text = sender.Text;
+                if (text.Length > 0)
+                {
+                    if (Int32.TryParse(text, out int t))
+                    {
+                        timeout = t;
+                    }
+                }
+                base.OnObjectChanged(GH_ObjectEventType.PersistentData);
+                if (Control.ModifierKeys == Keys.Shift || Control.ModifierKeys == Keys.Control)
+                {
+                    sender.CloseEntireMenuStructure();
+                }
+                this.ExpireSolution(true);
+                return;
+            }
+            if (keyCode != Keys.Escape)
+            {
+                return;
+            }
+            sender.CloseEntireMenuStructure();
         }
 
         private void ServiceItemOnClick(object sender, EventArgs e)
@@ -280,6 +368,7 @@ namespace Heron
         private string osmSourceList = Convert.GetEnpoints();
         private string osmSource = JObject.Parse(Convert.GetEnpoints())["OSM Vector"][0]["service"].ToString();
         private string osmURL = JObject.Parse(Convert.GetEnpoints())["OSM Vector"][0]["url"].ToString();
+        private int timeout = 60; ///timeout in seconds
 
         public string SlippySourceList
         {
@@ -309,15 +398,26 @@ namespace Heron
             }
         }
 
+        public int Timeout
+        {
+            get { return timeout; }
+            set
+            {
+                timeout = value;
+            }
+        }
+
         public override bool Write(GH_IO.Serialization.GH_IWriter writer)
         {
             writer.SetString("OSMService", OSMSource);
+            writer.SetInt32("Timeout", Timeout);
             return base.Write(writer);
         }
 
         public override bool Read(GH_IO.Serialization.GH_IReader reader)
         {
             OSMSource = reader.GetString("OSMService");
+            Timeout = reader.GetInt32("Timeout");
             return base.Read(reader);
         }
 
@@ -342,7 +442,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("2360BE7D-668C-41F2-9006-0575E189C677"); }
+            get { return new Guid("22BC9A87-C63C-4BCA-AE62-906BB98522C1"); }
         }
     }
 }

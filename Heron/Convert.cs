@@ -929,6 +929,7 @@ namespace Heron
             return u;
         }
 
+
         ///Override WebClient to allow timeout
         ///https://www.arclab.com/en/kb/csharp/download-file-from-internet-to-string-or-file.html
         public class WebClientWithTimeout : WebClient
@@ -1132,6 +1133,22 @@ namespace Heron
             System.Drawing.Imaging.PropertyItem prop = bitmap.GetPropertyItem(40094);
             string comment = Encoding.Unicode.GetString(prop.Value);
             return comment;
+        }
+    }
+
+    //////////////////////////////////////////////////////
+    public static class ConvertSize
+    {
+        ///Convert bytes to other sizes.  Used in progress OSM download when total bytes is unknown and e is unable to determine download percent
+        ///https://stackoverflow.com/questions/14488796/does-net-provide-an-easy-way-convert-bytes-to-kb-mb-gb-etc
+        public enum SizeUnits
+        {
+            Byte, KB, MB, GB, TB, PB, EB, ZB, YB
+        }
+
+        public static string ToSize(this Int64 value, SizeUnits unit)
+        {
+            return (value / (double)Math.Pow(1024, (Int64)unit)).ToString("0.0");
         }
     }
 

@@ -143,6 +143,7 @@
     <Compile Include="Components\Deprecated\ImportVectorSRS_DEPRECATED20230506.cs" />
     <Compile Include="Components\GIS Import-Export\ImportVectorSRS.cs" />
     <Compile Include="Components\GIS REST\RESTRasterSRS.cs" />
+    <Compile Include="Components\GIS REST\RESTOSM.cs" />
     <Compile Include="Components\GIS REST\RESTVectorSRS.cs" />
     <Compile Include="Components\Deprecated\RESTVector_DEPRECATED20220730.cs" />
     <Compile Include="Components\GIS Tools\DMStoDD.cs" />
@@ -200,7 +201,7 @@
     <Compile Include="Components\Utilities\MultiMeshPatch.cs" />
     <Compile Include="Components\Deprecated\MultiSDiff_DEPRECATED20230910.cs" />
     <Compile Include="Components\GIS REST\RESTLayer.cs" />
-    <Compile Include="Components\GIS REST\RESTTOSM.cs" />
+    <Compile Include="Components\Deprecated\RESTTOSM_DEPRECATED20240128.cs" />
     <Compile Include="Components\GIS API\SlippyRaster.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
