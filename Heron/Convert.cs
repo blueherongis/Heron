@@ -333,6 +333,7 @@ namespace Heron
                 pList[0].TryGetPolyline(out pL);
                 pList.RemoveAt(0);
                 mPatch = Rhino.Geometry.Mesh.CreatePatch(pL, tol, null, pList, null, null, true, 1);
+                //mPatch = CreatePatchWrapper(pL, tol, pList);
 
                 if (mPatch != null)
                 {
@@ -347,6 +348,15 @@ namespace Heron
             }
 
             return mPatch;
+        }
+
+        static object lockObject = new object();
+        private static Mesh CreatePatchWrapper(Polyline pL, double tol, List<Curve> pList)
+        {
+            lock (lockObject)
+            {
+                return Rhino.Geometry.Mesh.CreatePatch(pL, tol, null, pList, null, null, true, 1);
+            }
         }
 
         public static Extrusion OgrPolygonToExtrusion(OSGeo.OGR.Geometry polygon, Transform transform, double height, double min_height, bool underground)
