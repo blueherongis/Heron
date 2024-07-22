@@ -287,7 +287,7 @@ namespace Heron
 
             ///Multi thread conversion of ogr geometry to gh geometry
             Parallel.ForEach(geomDict, new ParallelOptions
-            { MaxDegreeOfParallelism = totalMaxConcurrancy - 1 },
+            { MaxDegreeOfParallelism = totalMaxConcurrancy  },
             geomItem =>
             {
                     gooDict[geomItem.Key] = Heron.Convert.OgrGeomToGHGoo(geomItem.Value, transform);
