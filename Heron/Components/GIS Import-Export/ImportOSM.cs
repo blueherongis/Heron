@@ -519,16 +519,27 @@ namespace Heron
             bldgPart.PartOsmGeo.Tags.TryGetValue("height", out string heightString);
             double height = GetHeightDimensioned(heightString);
 
+            bldgPart.PartOsmGeo.Tags.TryGetValue("building:levels", out string bldgLevelsString);
+            double bldgLevels = GetHeightLevels(bldgLevelsString);
+
             bldgPart.PartOsmGeo.Tags.TryGetValue("min_height", out string minHeightString);
             double min_height = GetHeightDimensioned(minHeightString);
             
             bldgPart.PartOsmGeo.Tags.TryGetValue("roof:height", out string roofHeightString);
             double roofHeight = GetHeightDimensioned(roofHeightString);
 
+            bldgPart.PartOsmGeo.Tags.TryGetValue("roof:levels", out string roofLevelsString);
+            double roofLevels = GetHeightLevels(roofLevelsString);
+
+
             double facadeHeight = height - roofHeight;
             ///Make sure there's a minium facade height for SF Transamerica Pyramid case
             if (facadeHeight <= 0) { facadeHeight = 2 * DocumentTolerance(); }
-            
+
+            ///Check if height values in terms of levels 
+            if (roofLevels + bldgLevels > height) { height = roofLevels + bldgLevels; }
+            if (facadeHeight<bldgLevels) { facadeHeight = bldgLevels; }
+
             bldgPart.PartOsmGeo.Tags.TryGetValue("roof:orientation", out string roofOrientationString);
 
             bldgPart.PartOsmGeo.Tags.TryGetValue("roof:direction", out string roofDirectionString);
@@ -542,12 +553,13 @@ namespace Heron
             switch (roofShape)
             {
                 case "pyramidal":
+                    if (roofHeight > height) height = roofHeight;
                     centroid.Z = height;
                     pL.TryGetPolyline(out Polyline pLPolyline);
                     Line[] pLLines = pLPolyline.GetSegments();
                     List<Brep> pyramidBrepList = Brep.CreatePlanarBreps(pL, DocumentTolerance()).ToList();
 
-                    if (!string.IsNullOrEmpty(roofHeightString))
+                    if (!string.IsNullOrEmpty(roofHeightString) || !string.IsNullOrEmpty(roofLevelsString))
                     {
                         Plane facadeHeightPlane = Plane.WorldXY;
                         facadeHeightPlane.Translate(new Vector3d(0, 0, facadeHeight));
