@@ -15,6 +15,8 @@ namespace Heron
     internal struct HeronBoxPreviewItem
     {
         public BoundingBox bbox;
+        public PointCloud pointCloud;
+        public double radius;
     }
 
     public abstract class HeronBoxPreviewComponent : HeronComponent
@@ -46,9 +48,19 @@ namespace Heron
         {
             foreach (var item in _previewItems)
             {
-                args.Display.DrawBox(item.bbox, Color.Red);
+                if (item.bbox.IsValid) args.Display.DrawBox(item.bbox, Color.Red);
+                if (item.pointCloud != null) args.Display.DrawPointCloud(item.pointCloud, (float) item.radius);
             }
             base.DrawViewportMeshes(args);
+        }
+
+        internal void AddPreviewItem(PointCloud pointCloud, double radius)
+        {
+            _previewItems.Add(new HeronBoxPreviewItem()
+            {              
+                pointCloud = pointCloud,
+                radius = radius
+            });
         }
 
     }

@@ -49,6 +49,7 @@ namespace Heron
             pManager.AddPointParameter("Points", "Points", "Points from source file separated into classifications.", GH_ParamAccess.tree);
             pManager.AddColourParameter("Colors", "Colors", "Colors associated with points.", GH_ParamAccess.tree);
             pManager.AddTextParameter("Point Cloud SRS", "SRS", "Spatial reference system (SRS) of the point cloud if provided in the header data.", GH_ParamAccess.item);
+            pManager.HideParameter(1);
         }
 
 
@@ -189,6 +190,7 @@ namespace Heron
 
                             ghPC.Append(new GH_Point(pt), new GH_Path(classification));
                             ghColors.Append(col, new GH_Path(classification));
+                            pointCloud.Add(pt, col.Value);
                             pointCounter++;
                         }
                     }
@@ -218,10 +220,13 @@ namespace Heron
 
                     ghPC.Append(new GH_Point(pt), new GH_Path(classification));
                     ghColors.Append(col, new GH_Path(classification));
+                    pointCloud.Add(pt, col.Value);
                 }
             }
 
             lazReader.close_reader();
+
+            AddPreviewItem(pointCloud, 4);
 
             DA.SetDataList(0, info);
             DA.SetDataTree(1, ghPC);
