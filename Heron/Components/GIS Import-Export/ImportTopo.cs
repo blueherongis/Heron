@@ -167,6 +167,9 @@ namespace Heron
             GH_Structure<GH_Integer> cCount = new GH_Structure<GH_Integer>();
             GH_Structure<GH_Mesh> tMesh = new GH_Structure<GH_Mesh>();
 
+            ///Ensure there is a boundary for the for loop when clip is false and no boundaries are input
+            if (!clip && boundary.Count == 0) { boundary.Add(dsbox.ToNurbsCurve()); }
+
             for (int i = 0; i < boundary.Count; i++)
             {
                 GH_Path path = new GH_Path(i);
