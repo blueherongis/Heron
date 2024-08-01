@@ -719,8 +719,8 @@ namespace Heron
 
         public static OSGeo.OGR.Geometry MeshToMultiPolygon(Mesh mesh, Transform transform)
         {
-            //OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPolygon25D);
-            OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiSurfaceZ);
+            OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPolygon25D);
+            //OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiSurfaceZ); ///GeoJson and KML don't support wkbMultiSurfaceZ
 
 
             foreach (var face in mesh.GetNgonAndFacesEnumerable())
@@ -733,13 +733,14 @@ namespace Heron
 
                 ogrMultiPolygon.AddGeometry(Heron.Convert.CurveToOgrPolygon(pL.ToNurbsCurve(), transform));
             }
+
             return ogrMultiPolygon;
         }
 
         public static OSGeo.OGR.Geometry MeshesToMultiPolygon(List<Mesh> meshes, Transform transform)
         {
-            //OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPolygon25D);
-            OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiSurfaceZ);
+            OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiPolygon25D);
+            //OSGeo.OGR.Geometry ogrMultiPolygon = new OSGeo.OGR.Geometry(wkbGeometryType.wkbMultiSurfaceZ); ///GeoJson and KML don't support wkbMultiSurfaceZ
 
             Mesh m = new Mesh();
             foreach (var mesh in meshes)

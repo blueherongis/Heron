@@ -45,12 +45,22 @@ namespace Heron
             pManager.AddTextParameter("Vector Data Filename", "filename", "File name to give the vector data ouput.  Do not include file extension.", GH_ParamAccess.item);
             pManager.AddTextParameter("Vector Data Folder", "folder", "Folder location to save the vector data ouput", GH_ParamAccess.item);
             pManager.AddTextParameter("Fields", "fields", "Fields of data associated with the vector data features.  " +
+                "A field type can be appended to each field name by adding a semicolon and field type where: " + Environment.NewLine +
+                "0 = String " + Environment.NewLine +
+                "1 = Integer (32-bit) " + Environment.NewLine +
+                "2 = Double (real double-precision floating point number) " + Environment.NewLine +
+                "3 = Date (YYYY-MM-DD hh:mm:ss) " + Environment.NewLine +
+                ///Shapfiles are limited to just date fields, see https://desktop.arcgis.com/en/arcmap/latest/map/time/supported-field-formats.htm
+                //"4 = Time (hour, minute, second) " + Environment.NewLine +
+                //"5 = DateTime (date and time) " + Environment.NewLine +
+                "For example 'Street; 0' would be a field named Street whose values are strings. And 'Address Number; 1' would be a field named Address Number whose values are integers.  " +
+                "If no type is specified the field type will default to a string.  " + Environment.NewLine + Environment.NewLine +
                 "For KML exports, consider adding an 'altitudeMode' field with possible values of 'relativeToGround' or 'absolute' and " +
                 "an 'OGR_STYLE' field to control color and transparency via hexidicemal values (see ColorToHex component).", GH_ParamAccess.list);
             pManager.AddTextParameter("Values", "values", "Field values for each feature", GH_ParamAccess.tree);
             pManager.AddGeometryParameter("Feature Geometry", "featureGeomery", "Geometry contained in the feature.  Geometry can be point(s), polyline(s), mesh(es) or a combination of these.", GH_ParamAccess.tree);
             pManager.AddBooleanParameter("Export", "export", "Go ahead and export feature geometry with associated fields and values to the specified location.  Existing files will be overwritten.", GH_ParamAccess.item, false);
-            pManager[3].Optional = true;
+            pManager[3].Optional = true; ///Feature ID set internally, so no extra values required
         }
 
         /// <summary>
@@ -109,7 +119,7 @@ namespace Heron
 
             string driverType = drvType;
             //OSGeo.OGR.Driver drv = Ogr.GetDriverByName("LIBKML");// driverType);
-            OSGeo.OGR.Driver drv = Ogr.GetDriverByName("GeoJSON");
+            OSGeo.OGR.Driver drv = Ogr.GetDriverByName("GPKG");
 
 
 
@@ -125,8 +135,8 @@ namespace Heron
                 }
 
                 ///Create virtual datasource to be converted later
-                ///Using geojson as a flexiblle base file type which can be converted later with ogr2ogr
-                DataSource ds = drv.CreateDataSource("/vsimem/out.geojson", null);
+                ///Using geopackage (geojson can't handle wkbMultiSurfaceZ) as a flexiblle base file type which can be converted later with ogr2ogr
+                DataSource ds = drv.CreateDataSource("/vsimem/out.gpkg", null);
 
                 ///Get HeronSRS
                 OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
@@ -165,7 +175,48 @@ namespace Heron
                 ///Add fields to layer
                 for (int f = 0; f < fields.Count; f++)
                 {
-                    OSGeo.OGR.FieldDefn fname = new OSGeo.OGR.FieldDefn(fields[f], OSGeo.OGR.FieldType.OFTString);
+                    var fType = OSGeo.OGR.FieldType.OFTString;
+                    string fieldName = String.Empty;
+                    string fieldAndType = fields[f];
+                    int lastCommaIndex = fieldAndType.LastIndexOf(';');
+                    if (lastCommaIndex != -1)
+                    {
+                        string fieldTypeNum = fieldAndType.Substring(lastCommaIndex + 1);
+                        fieldTypeNum = fieldTypeNum.Trim();
+                        switch (fieldTypeNum)
+                        {
+                            case "0":
+                                fType = FieldType.OFTString;
+                                break;
+                            case "1":
+                                fType = FieldType.OFTInteger;
+                                break;
+                            case "2":
+                                fType = FieldType.OFTReal; 
+                                break;
+                            case "3":
+                                fType = FieldType.OFTDateTime;
+                                break;
+                            ///Shapefile can only use date 
+                            //case "4":
+                            //    fType = FieldType.OFTTime;
+                            //    break;
+                            //case "5":
+                            //    fType = FieldType.OFTDateTime;
+                            //    break;
+                            default:
+                                fType = FieldType.OFTString;
+                                break;
+                        }
+
+                        fieldName = fieldAndType.Substring(0, lastCommaIndex);
+                        fields[f] = fieldName;
+                    }
+                    else
+                    {
+                        fieldName = fieldAndType;
+                    }
+                    OSGeo.OGR.FieldDefn fname = new OSGeo.OGR.FieldDefn(fieldName, fType);
                     layer.CreateField(fname, f);
                 }
 
@@ -248,18 +299,38 @@ namespace Heron
 
                         case "Curve":
                             geomList.First().CastTo<Curve>(out crv);
-                            feature.SetGeometry(Heron.Convert.CurveToOgrLinestring(crv, transform));
-                            if (!shpTypeList.Contains("LINESTRING")) { shpTypeList.Add("LINESTRING"); }
+                            if (exportCurvesAsPolygon && crv.IsClosed)
+                            {
+                                feature.SetGeometry(Heron.Convert.CurveToOgrPolygon(crv, transform));
+                                if (!shpTypeList.Contains("POLYGON")) { shpTypeList.Add("POLYGON"); }
+                            }
+                            else
+                            {
+                                feature.SetGeometry(Heron.Convert.CurveToOgrLinestring(crv, transform));
+                                if (!shpTypeList.Contains("LINESTRING")) { shpTypeList.Add("LINESTRING"); }
+                            }
+
                             break;
 
                         case "MultiCurve":
+                            bool allClosed = true;
                             foreach (var curve in geomList)
                             {
                                 curve.CastTo<Curve>(out crv);
+                                if (crv.IsClosed == false) allClosed = false;
                                 crvs.Add(crv);
                             }
-                            feature.SetGeometry(Heron.Convert.CurvesToOgrMultiLinestring(crvs, transform));
-                            if (!shpTypeList.Contains("MULTILINESTRING")) { shpTypeList.Add("MULTILINESTRING"); }
+                            if (exportCurvesAsPolygon && allClosed)
+                            {
+                                feature.SetGeometry(Heron.Convert.CurvesToOgrPolygon(crvs, transform));
+                                if (!shpTypeList.Contains("MULTIPOLYGON")) { shpTypeList.Add("MULTIPOLYGON"); }
+                            }
+                            else
+                            {
+                                feature.SetGeometry(Heron.Convert.CurvesToOgrMultiLinestring(crvs, transform));
+                                if (!shpTypeList.Contains("MULTILINESTRING")) { shpTypeList.Add("MULTILINESTRING"); }
+                            }
+
                             break;
 
                         case "Mesh":
@@ -323,6 +394,7 @@ namespace Heron
                     ///Give the feature a unique ID
                     feature.SetFID(a);
 
+
                     ///Add values to fields
                     GH_Path path = gGoo.get_Path(a);
 
@@ -333,6 +405,7 @@ namespace Heron
                         {
                             val = values.get_DataItem(path, vInt).ToString();
                         }
+                        
                         feature.SetField(fields[vInt], val);
                     }
 
@@ -364,7 +437,7 @@ namespace Heron
                     //"-dsco", "SHAPE_REWIND_ON_WRITE=YES"
                     };
 
-                Dataset src = Gdal.OpenEx("/vsimem/out.geojson", 0, null, null, null);
+                Dataset src = Gdal.OpenEx("/vsimem/out.gpkg", 0, null, null, null);
 
                 if (drvType != "ESRI Shapefile")
                 {
@@ -384,6 +457,10 @@ namespace Heron
                         if (shpTypeList.First() == "POLYGON" || shpTypeList.First() == "MULTIPOLYGON")
                         {
                             ogr2ogrOptions.AddRange(new List<string> { "-lco", "SHPT=MULTIPATCH" });
+                        }
+                        if (shpTypeList.First() == "MULTILINESTRING")
+                        {
+                            ogr2ogrOptions.AddRange(new List<string> { "-lco", "SHPT=ARCZ" });
                         }
                         Dataset destDataset = Gdal.wrapper_GDALVectorTranslateDestName(shpPath, src, new GDALVectorTranslateOptions(ogr2ogrOptions.ToArray()), null, null);
                         destDataset.Dispose();
@@ -506,7 +583,7 @@ namespace Heron
                 }
 
                 ///Clean up
-                Gdal.Unlink("/vsimem/out.geojson");
+                Gdal.Unlink("/vsimem/out.gpkg");
 
             }
 
@@ -522,6 +599,17 @@ namespace Heron
         private bool IsServiceSelected(string serviceString)
         {
             return serviceString.Equals(drvType);
+        }
+
+        private bool exportCurvesAsPolygon = true;
+
+        public bool ExportCurveAsPolygon
+        {
+            get { return exportCurvesAsPolygon; }
+            set
+            {
+                exportCurvesAsPolygon = value;
+            }
         }
 
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
@@ -555,6 +643,11 @@ namespace Heron
 
             base.AppendAdditionalComponentMenuItems(menu);
 
+            ToolStripMenuItem item = Menu_AppendItem(menu, "Export closed polylines as polygons", Menu_ExportCurveAsPolygonClicked, true, ExportCurveAsPolygon);
+            item.ToolTipText = "Select this option to export closed polylines as polygons.  If more than one polyline exists in the branch, " +
+                "the first one is considered the outer linestring of the polygon and the rest are considered holes." +
+                "If unchecked, closed polyline(s) will be exported as (MULTI)LINESTRING.";
+
         }
 
         private void ServiceItemOnClick(object sender, EventArgs e)
@@ -574,6 +667,13 @@ namespace Heron
             drvExtension = drvDict[drvType];
             Message = drvType;
 
+            ExpireSolution(true);
+        }
+
+        private void Menu_ExportCurveAsPolygonClicked(object sender, EventArgs e)
+        {
+            RecordUndoEvent("ExportCurveAsPolygon");
+            ExportCurveAsPolygon = !ExportCurveAsPolygon;
             ExpireSolution(true);
         }
 
@@ -623,6 +723,7 @@ namespace Heron
         {
             writer.SetString("DriverType", DriverType);
             writer.SetString("DriverExtension", DriverExtension);
+            writer.SetBoolean("ExportCurveAsPolygon", ExportCurveAsPolygon);
             return base.Write(writer);
         }
 
@@ -630,6 +731,7 @@ namespace Heron
         {
             DriverType = reader.GetString("DriverType");
             DriverExtension = reader.GetString("DriverExtension");
+            ExportCurveAsPolygon = reader.GetBoolean("ExportCurveAsPolygon");
             return base.Read(reader);
         }
 
@@ -652,7 +754,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("7bddff1a-8a4b-4fb8-bd97-0800bcdb6aed"); }
+            get { return new Guid("{2A19F1F7-7630-4DD8-A58C-A45C8F22377C}"); }
         }
     }
 }
