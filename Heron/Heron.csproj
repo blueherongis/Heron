@@ -139,6 +139,7 @@
     <Compile Include="Components\GIS API\MapboxIsochrone.cs" />
     <None Include="Components\GIS API\MapboxIsochroneSpeckle.cs" />
     <Compile Include="Components\GIS API\Yelp.cs" />
+    <Compile Include="Components\GIS Import-Export\ExportVector.cs" />
     <Compile Include="Components\GIS Import-Export\ImportTopoLite.cs" />
     <Compile Include="Components\GIS Import-Export\ImportVectorLite.cs" />
     <Compile Include="Components\Deprecated\ImportVectorSRS_DEPRECATED20230506.cs" />
@@ -168,7 +169,7 @@
     <Compile Include="Components\Utilities\HexToColor.cs" />
     <Compile Include="Components\Utilities\ColorToHex.cs" />
     <Compile Include="Convert.cs" />
-    <Compile Include="Components\GIS Import-Export\ExportVector.cs" />
+    <Compile Include="Components\Deprecated\ExportVector_DEPRECATED20240729.cs" />
     <Compile Include="SpeckleAsync\WorkerInstance.cs" />
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
