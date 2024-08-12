@@ -119,7 +119,7 @@ namespace Heron
 
             string driverType = drvType;
             //OSGeo.OGR.Driver drv = Ogr.GetDriverByName("LIBKML");// driverType);
-            OSGeo.OGR.Driver drv = Ogr.GetDriverByName("GPKG");
+            OSGeo.OGR.Driver drv = Ogr.GetDriverByName("GeoJSON");
 
 
 
@@ -135,8 +135,8 @@ namespace Heron
                 }
 
                 ///Create virtual datasource to be converted later
-                ///Using geopackage (geojson can't handle wkbMultiSurfaceZ) as a flexiblle base file type which can be converted later with ogr2ogr
-                DataSource ds = drv.CreateDataSource("/vsimem/out.gpkg", null);
+                ///Look into using geopackage (geojson can't handle wkbMultiSurfaceZ) as a flexiblle base file type which can be converted later with ogr2ogr
+                DataSource ds = drv.CreateDataSource("/vsimem/out.geojson", null);
 
                 ///Get HeronSRS
                 OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
@@ -437,7 +437,7 @@ namespace Heron
                     //"-dsco", "SHAPE_REWIND_ON_WRITE=YES"
                     };
 
-                Dataset src = Gdal.OpenEx("/vsimem/out.gpkg", 0, null, null, null);
+                Dataset src = Gdal.OpenEx("/vsimem/out.geojson", 0, null, null, null);
 
                 if (drvType != "ESRI Shapefile")
                 {
@@ -583,7 +583,7 @@ namespace Heron
                 }
 
                 ///Clean up
-                Gdal.Unlink("/vsimem/out.gpkg");
+                Gdal.Unlink("/vsimem/out.geojson");
 
             }
 
