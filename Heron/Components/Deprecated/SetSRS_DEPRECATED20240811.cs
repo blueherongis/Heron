@@ -9,17 +9,23 @@ using System.Drawing.Drawing2D;
 
 namespace Heron
 {
-    public class SetSRS : GH_Component
+    public class SetSRS_DEPRECATED20240811_OBSOLETE : GH_Component
     {
         /// <summary>
         /// Initializes a new instance of the SetSRS class.
         /// </summary>
-        public SetSRS()
+        public SetSRS_DEPRECATED20240811_OBSOLETE()
           : base("Set Spatial Reference System", "SRS",
               "Set the spatial reference system to be used by Heron SRS-enabled components.   Heron defaults to 'WGS84'.  " +
               "Click the 'Update' button or recompute the Grasshopper definition to ensure Heron SRS-enabled components are updated.", "Heron",
               "GIS Tools")
         {
+        }
+
+        ///Retiring this component to switch update from button to input parameter
+        public override Grasshopper.Kernel.GH_Exposure Exposure
+        {
+            get { return GH_Exposure.hidden; }
         }
 
         /// <summary>
@@ -30,8 +36,6 @@ namespace Heron
             pManager.AddTextParameter("SRS", "SRS", "A string describing the SRS for use with Heron SRS-enabled components.  " +
                 "This can be a well-known SRS such as 'WGS84' " +
                 "or an EPSG code such as 'EPSG:4326 or be in WKT format.", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Update", "Update", "Set to true to recompute Heron SRS-enabled components.  " +
-                "Use with a button type boolean toggle only.", GH_ParamAccess.item, false);
             pManager[0].Optional = true;
             Message = HeronSRS.Instance.SRS;
         }
@@ -59,9 +63,6 @@ namespace Heron
             string heronSRSstring = HeronSRS.Instance.SRS;
             DA.GetData(0, ref heronSRSstring);
 
-            bool update = false;
-            DA.GetData(1, ref update);
-
             if (!String.IsNullOrEmpty(heronSRSstring))
             {
                 OSGeo.OSR.SpatialReference heronSRS = new OSGeo.OSR.SpatialReference("");
@@ -87,53 +88,27 @@ namespace Heron
                 {
                     if (string.Equals(HeronSRS.Instance.SRS, heronSRSstring))
                     {
-                        ///This location of update allows for only the button type of boolean toggle
-                        ///https://discourse.mcneel.com/t/recompute-button/82094/8
-                        if (update)
-                        {
-                            this.OnPingDocument().ScheduleSolution(500, UpdateHeronComponents);
-                        }
                         DA.SetData(0, wkt);                    
                         return;
                     }
-                    
                     HeronSRS.Instance.SRS = heronSRSstring;
-                    DA.SetData(0, wkt);                    
+                    DA.SetData(0, wkt);
                 }
             }
             else
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Please enter a valid string.");
             }
-
-
         }
 
-        private void UpdateHeronComponents(GH_Document doc)
-        {
-            ///Only recompute HeronSRS components
-            var heronComponents = new List<string>() {
-                        "RESTRaster", "RESTVector","RESTTopo", "OSMRest",
-                        "Import Vector", "Import Raster", "ImportOSM", "ImportTopo", "ExportVector",
-                        "DDtoXY", "XYtoDD",
-                        "SlippyRaster", "Slippy Raster Custom", "SlippyTiles",
-                        "MapboxRaster", "MapboxVector", "MapboxTopo"};
-            foreach (var obj in this.OnPingDocument().FindObjects(heronComponents, 100))
-            {
-                obj.ExpireSolution(false);
-            }
-        }
-
-
-        /*
         /// <summary>
         /// Enable custom attributes to enable creation of the Update button
         /// </summary>
         public override void CreateAttributes()
         {
-            m_attributes = new SetSRSAttributes(this);
+            m_attributes = new SetSRSAttributes_DEPRECATED20240811_OBSOLETE(this);
         }
-        */
+
 
         /// <summary>
         /// Provides an Icon for the component.
@@ -151,11 +126,10 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("C4FD2B2C-5D64-4428-B6CB-2EEDE0BC45A8"); }
+            get { return new Guid("F6F84573-99C2-4B65-A684-4D55175151B1"); }
         }        
     }
 
-    /*
     ///Attempt to create a button to Recompute the definition to force other Heron components to pick up HeronSRS changes
     ///Based on the following posts
     ///https://www.grasshopper3d.com/forum/topics/create-radio-button-on-grasshopper-component
@@ -163,9 +137,9 @@ namespace Heron
     ///https://www.grasshopper3d.com/forum/topics/custom-attributes-draw-extra-items-on-canvas
     ///https://discourse.mcneel.com/t/recompute-button/82094/8
     ///and on code from Grasshopper.Kernel.Special.GH_ButtonObjectAttributes in Grasshopper.dll using ILSpy
-    public class SetSRSAttributes : GH_ComponentAttributes
+    public class SetSRSAttributes_DEPRECATED20240811_OBSOLETE : GH_ComponentAttributes
     {
-        public SetSRSAttributes(SetSRS owner) : base(owner) { }
+        public SetSRSAttributes_DEPRECATED20240811_OBSOLETE(SetSRS_DEPRECATED20240811_OBSOLETE owner) : base(owner) { }
 
         protected override void Layout()
         {
@@ -260,7 +234,7 @@ namespace Heron
                 ///Only recompute HeronSRS components
                 var heronComponents = new List<string>() {
                         "RESTRaster", "RESTVector","RESTTopo", "OSMRest",
-                        "Import Vector", "Import Raster", "ImportOSM", "ImportTopo", "ExportVector",
+                        "ImportVector", "ImportRaster", "ImportOSM", "ImportTopo", "ExportVector",
                         "DDtoXY", "XYtoDD",
                         "SlippyRaster", "SlippyRasterCustom", "SlippyTiles",
                         "MapboxRaster", "MapboxVector", "MapboxTopo"};
@@ -280,5 +254,4 @@ namespace Heron
             return result;
         }
     }
-    */
 }

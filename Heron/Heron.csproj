@@ -158,6 +158,7 @@
     <Compile Include="Components\GIS Tools\GdalInfo.cs" />
     <Compile Include="Components\GIS Tools\SetEAP.cs" />
     <Compile Include="Components\GIS Tools\SetSRS.cs" />
+    <Compile Include="Components\Deprecated\SetSRS_DEPRECATED20240811.cs" />
     <None Include="Components\Utilities\DecimateTopoFromPoint.cs" />
     <Compile Include="Components\Utilities\MultiMoveToTopo.cs" />
     <Compile Include="Components\Utilities\MultiSDiff.cs" />
