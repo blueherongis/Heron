@@ -24,12 +24,12 @@ using System.Drawing;
 
 namespace Heron
 {
-    public class RESTTopo : HeronComponent
+    public class RESTTopo_DEPRECATED20250119_OBSOLETE : HeronComponent
     {
         /// <summary>
         /// Initializes a new instance of the MyComponent1 class.
         /// </summary>
-        public RESTTopo()
+        public RESTTopo_DEPRECATED20250119_OBSOLETE()
           : base("Get REST Topography", "RESTTopo",
               "Get STRM, ALOS, GMRT and USGS topographic data from web services.  " +
                 "These services include global coverage from the " +
@@ -41,6 +41,12 @@ namespace Heron
         {
         }
 
+        ///Retiring this component to allow custom input URLs and provide a dropdown list of URLs
+        public override Grasshopper.Kernel.GH_Exposure Exposure
+        {
+            get { return GH_Exposure.hidden; }
+        }
+
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
@@ -49,14 +55,9 @@ namespace Heron
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for imagery", GH_ParamAccess.list);
             pManager.AddTextParameter("Folder Path", "folderPath", "Folder to save image files", GH_ParamAccess.item, Path.GetTempPath());
             pManager.AddTextParameter("Prefix", "prefix", "Prefix for image file name", GH_ParamAccess.item);
-            pManager.AddTextParameter("Custom URL", "customURL", "Optional input for a custom REST Topo URL.  Make sure to format the URL with bounding box corner placeholders {0} {1} {2} and {3} " +
-                "where 0=western-most longitude, 1=southern-most latitude, 2=eastern-most longitude, 3=northern-most latitude.  " +
-                "Create a sample REST Topo dropdown list from the menu for examples with other parameters included.  " +
-                "This input will override the URL selected in the menu.", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "get", "Go ahead and download imagery from the service", GH_ParamAccess.item, false);
 
             pManager[2].Optional = true;
-            pManager[3].Optional = true;
 
             Message = TopoSource;
         }
@@ -94,21 +95,8 @@ namespace Heron
                 prefix = topoSource;
             }
 
-            string customURL = string.Empty;
-            DA.GetData<string>(3, ref customURL);
-            if (!string.IsNullOrEmpty(customURL))
-            {
-                topoURL = customURL;
-                custom = true;
-                Message = "Custom URL";
-            }
-            else
-            {
-                topoURL = JObject.Parse(topoSourceList)["REST Topo"].SelectToken("[?(@.service == '" + topoSource + "')].url").ToString();
-            }
-
             bool run = false;
-            DA.GetData<bool>(4, ref run);
+            DA.GetData<bool>("Run", ref run);
 
             GH_Structure<GH_String> demList = new GH_Structure<GH_String>();
             GH_Structure<GH_String> demQuery = new GH_Structure<GH_String>();
@@ -129,9 +117,11 @@ namespace Heron
             heronSRS.SetFromUserInput(HeronSRS.Instance.SRS);
             AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Heron's Spatial Spatial Reference System (SRS): " + HeronSRS.Instance.SRS);
             int heronSRSInt = Int16.Parse(heronSRS.GetAuthorityCode(null));
+            //Message = TopoSource + "\r\nEPSG:" + heronSRSInt;
 
             ///Apply EAP to HeronSRS
             Transform userSRSToModelTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
+            //Transform heronToUserSRSTransform = Heron.Convert.GetHeronSRSToUserSRSTransform(heronSRS);
 
 
             for (int i = 0; i < boundary.Count; i++)
@@ -153,8 +143,13 @@ namespace Heron
                 Curve offsetB = orientedBoundary.Offset(Plane.WorldXY, offsetD, 1, CurveOffsetCornerStyle.Sharp)[0];
 
                 ///Get dem frame for given boundary
+                //Point3d min = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Min);
+                //Point3d max = Heron.Convert.XYZToWGS(offsetB.GetBoundingBox(true).Max);
+
                 Point3d min = offsetB.GetBoundingBox(true).Min;
                 Point3d max = offsetB.GetBoundingBox(true).Max;
+                //min.Transform(userSRSToModelTransform);
+                //max.Transform(userSRSToModelTransform);
                 OSGeo.OGR.Geometry minOGR = Heron.Convert.Point3dToOgrPoint(min, userSRSToModelTransform);
                 minOGR.AssignSpatialReference(heronSRS);
                 minOGR.TransformTo(wgsSRS);
@@ -224,7 +219,6 @@ namespace Heron
         }
 
         public bool done = false;
-        public bool custom = false; 
         private void ProgressChanged(object sender, DownloadProgressChangedEventArgs e)
         {
             if (e.ProgressPercentage.ToString().EndsWith("0"))
@@ -262,21 +256,14 @@ namespace Heron
             return serviceString.Equals(topoSource);
         }
 
-        private JObject topoJson = JObject.Parse(Heron.Convert.GetEnpoints());
-
-        public override void AppendAdditionalMenuItems(ToolStripDropDown menu)
-        {
-            ToolStripMenuItem root = GH_DocumentObject.Menu_AppendItem(menu, "Create a REST Topo Source List", CreateTopoList);
-            root.ToolTipText = "Click this to create a pre-populated list of some REST Topo sources.";
-            base.AppendAdditionalMenuItems(menu);
-        }
-
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
             if (topoSourceList == "")
             {
                 topoSourceList = Convert.GetEnpoints();
             }
+
+            JObject topoJson = JObject.Parse(topoSourceList);
 
             foreach (var service in topoJson["REST Topo"])
             {
@@ -309,67 +296,9 @@ namespace Heron
 
             topoSource = code;
             topoURL = JObject.Parse(topoSourceList)["REST Topo"].SelectToken("[?(@.service == '" + topoSource + "')].url").ToString();
-
-            if (!custom)
-            {
-                Message = topoSource;
-            }
+            Message = topoSource;
 
             ExpireSolution(true);
-        }
-
-        /// <summary>
-        /// Creates a value list pre-populated with possible accent colors and adds it to the Grasshopper Document, located near the component pivot.
-        /// </summary>
-        /// <param name="sender">The sender.</param>
-        /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
-        private void CreateTopoList(object sender, System.EventArgs e)
-        {
-            string source = sender.ToString();
-            source = source.Replace("Create ", "");
-            source = source.Replace(" Source List", "");
-
-            GH_DocumentIO docIO = new GH_DocumentIO();
-            docIO.Document = new GH_Document();
-
-            ///Initialize object
-            GH_ValueList vl = new GH_ValueList();
-
-            ///Clear default contents
-            vl.ListItems.Clear();
-
-            foreach (var service in topoJson["REST Topo"])
-            {
-                //if (service["source"].ToString() == source)
-                //{
-                    GH_ValueListItem vi = new GH_ValueListItem(service["service"].ToString(), String.Format("\"{0}\"", service["url"].ToString()));
-                    vl.ListItems.Add(vi);
-                //}
-            }
-
-            ///Set component nickname
-            vl.NickName = source;
-
-            ///Get active GH doc
-            GH_Document doc = OnPingDocument();
-            if (docIO.Document == null) return;
-
-            ///Place the object
-            docIO.Document.AddObject(vl, false, 1);
-
-            ///Get the pivot of the "URL" param
-            PointF currPivot = Params.Input[3].Attributes.Pivot;
-
-            ///Set the pivot of the new object
-            vl.Attributes.Pivot = new PointF(currPivot.X - 500, currPivot.Y - 11);
-
-            docIO.Document.SelectAll();
-            docIO.Document.ExpireSolution();
-            docIO.Document.MutateAllIds();
-            IEnumerable<IGH_DocumentObject> objs = docIO.Document.Objects;
-            doc.DeselectAll();
-            doc.UndoUtil.RecordAddObjectEvent("Create REST Raster Source List", objs);
-            doc.MergeDocument(docIO.Document);
         }
 
 
@@ -435,7 +364,7 @@ namespace Heron
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("CB3CEA1F-9D17-4CA1-9294-35FF98908858"); }
+            get { return new Guid("C91EC97A-7275-4498-A16C-C2B87BB697A4"); }
         }
     }
 }

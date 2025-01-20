@@ -129,8 +129,8 @@
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="Unofficial.laszip.netstandard, Version=5.2.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Unofficial.laszip.netstandard.5.2.27\lib\netstandard2.0\Unofficial.laszip.netstandard.dll</HintPath>
+    <Reference Include="Unofficial.laszip.netstandard, Version=5.5.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unofficial.laszip.netstandard.5.5.2\lib\netstandard2.0\Unofficial.laszip.netstandard.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -147,6 +147,7 @@
     <Compile Include="Components\GIS Import-Export\ImportVectorSRS.cs" />
     <Compile Include="Components\GIS REST\RESTRasterSRS.cs" />
     <Compile Include="Components\GIS REST\RESTOSM.cs" />
+    <Compile Include="Components\GIS REST\RESTTopo.cs" />
     <Compile Include="Components\GIS REST\RESTVectorSRS.cs" />
     <Compile Include="Components\Deprecated\RESTVector_DEPRECATED20220730.cs" />
     <Compile Include="Components\GIS Tools\DMStoDD.cs" />
@@ -218,7 +219,7 @@
     </Compile>
     <Compile Include="Components\Deprecated\RESTLayer_DEPRECATED.cs" />
     <Compile Include="Components\GIS REST\RESTRevGeo.cs" />
-    <Compile Include="Components\GIS REST\RESTTopo.cs" />
+    <Compile Include="Components\Deprecated\RESTTopo_DEPRECATED20250119.cs" />
     <Compile Include="Components\Deprecated\RESTVector_DEPRECATED.cs">
       <SubType>Code</SubType>
     </Compile>
