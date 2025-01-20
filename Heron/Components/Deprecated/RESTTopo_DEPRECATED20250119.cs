@@ -309,7 +309,7 @@ namespace Heron
 
         private string topoSourceList = Convert.GetEnpoints();
         private string topoSource = JObject.Parse(Convert.GetEnpoints())["REST Topo"][0]["service"].ToString();
-        private string topoURL = JObject.Parse(Convert.GetEnpoints())["REST Topo"][0]["url"].ToString();
+        private string topoURL;
         
         public string TopoSourceList
         {
