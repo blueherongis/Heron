@@ -142,6 +142,7 @@
     <Compile Include="Components\GIS API\SlippyRasterCustom.cs" />
     <Compile Include="Components\GIS API\Yelp.cs" />
     <Compile Include="Components\GIS Import-Export\ExportVector.cs" />
+    <Compile Include="Components\GIS Import-Export\ImportOSMLite.cs" />
     <Compile Include="Components\GIS Import-Export\ImportTopoLite.cs" />
     <Compile Include="Components\GIS Import-Export\ImportVectorLite.cs" />
     <Compile Include="Components\Deprecated\ImportVectorSRS_DEPRECATED20230506.cs" />
