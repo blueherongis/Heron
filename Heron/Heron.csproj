@@ -134,6 +134,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Components\Deprecated\ImportLAZ_DEPRECATED20250120.cs" />
     <Compile Include="Components\Deprecated\MapboxRaster_DEPRECATED20211114.cs" />
     <Compile Include="Components\Deprecated\SlippyRaster_DEPRECATED2021114.cs" />
     <Compile Include="Components\GIS API\MapboxIsochrone.cs" />
