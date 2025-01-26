@@ -198,7 +198,7 @@ namespace Heron
     public class HeronVersion
     {
         public const string AssemblyVer = "0.4.3";
-        public const string AssemblyFileVer = "0.4.3";
+        public const string AssemblyFileVer = "0.4.3-beta.4";
     }
 
     public class HeronLocation
