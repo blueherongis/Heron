@@ -32,6 +32,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Linq;
 using Gdal = OSGeo.GDAL.Gdal;
 using Ogr = OSGeo.OGR.Ogr;
 
@@ -61,6 +62,7 @@ namespace Heron
 
             try
             {
+                executingDirectory = HeronLocation.GetHeronFolder();
 
                 if (!IsWindows)
                 {
@@ -71,9 +73,6 @@ namespace Heron
                     OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
                     ///To be backwards compatible with the way Heron uses coordinate order
                     OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
-
-                    string executingAssemblyFileMac = new Uri(Assembly.GetExecutingAssembly().GetName().CodeBase).LocalPath;
-                    executingDirectory = Path.GetDirectoryName(executingAssemblyFileMac);
 
                     if (string.IsNullOrEmpty(executingDirectory))
                         throw new InvalidOperationException("cannot get executing directory");
@@ -121,10 +120,6 @@ namespace Heron
                     _usable = true;// tmp != notSet;
                     return;
                 }
-                
-
-                string executingAssemblyFile = new Uri(Assembly.GetExecutingAssembly().GetName().CodeBase).LocalPath;
-                executingDirectory = Path.GetDirectoryName(executingAssemblyFile);
 
                 if (string.IsNullOrEmpty(executingDirectory))
                     throw new InvalidOperationException("cannot get executing directory");

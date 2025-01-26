@@ -2,6 +2,8 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Linq;
+using System.Diagnostics;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -189,5 +191,33 @@ namespace Heron
 
     }
 
+    /// <summary>
+    /// Set version and file version globally.  Used in AssemblyInfo and can be used to verify the folder location of Yak installs.
+    /// https://stackoverflow.com/questions/1550249/programmatically-change-the-assemblyversion-and-assemblyfileversion-attributes
+    /// </summary>
+    public class HeronVersion
+    {
+        public const string AssemblyVer = "0.4.3";
+        public const string AssemblyFileVer = "0.4.3";
+    }
+
+    public class HeronLocation
+    {
+        public static string GetHeronFolder()
+        {
+            string heronFolder = "";
+            var asseblyFolders = Grasshopper.Folders.AssemblyFolders.Where(x => x.ToString().Contains("Heron"));    
+            foreach (var folder in asseblyFolders)
+            {
+                var ghas = Directory.GetFiles(folder.Folder, "*.gha", SearchOption.AllDirectories);
+                foreach (var gha in ghas)
+                {
+                    if (FileVersionInfo.GetVersionInfo(gha).FileVersion == HeronVersion.AssemblyFileVer)
+                        heronFolder = folder.Folder;
+                }
+            }
+            return heronFolder;
+        }
+    }
 
 }

@@ -60,13 +60,14 @@ namespace Heron
             string gdalVersion = Gdal.VersionInfo("");
             info.Add("Gdal Version: " + gdalVersion);
 
-            string heronVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            info.Add("Heron Version: " + heronVersion);
-            string executingAssemblyFileMac = new Uri(Assembly.GetExecutingAssembly().GetName().CodeBase).LocalPath;
-            info.Add("Heron Location: " + executingAssemblyFileMac);
+            //string heronVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            info.Add("Heron Version: " + HeronVersion.AssemblyFileVer);
+            //string executingAssemblyFileMac = new Uri(Assembly.GetExecutingAssembly().GetName().CodeBase).LocalPath;
 
-            string executingDirectory = Path.GetDirectoryName(executingAssemblyFileMac);
 
+            //string executingDirectory = Path.GetDirectoryName(executingAssemblyFileMac);
+            string executingDirectory = HeronLocation.GetHeronFolder();
+            info.Add("Heron Location: " + executingDirectory);
 
             string osxPlatform = "";
             var arch = RuntimeInformation.ProcessArchitecture;
