@@ -22,6 +22,7 @@ namespace Heron
     public abstract class HeronBoxPreviewComponent : HeronComponent
     {
         private List<HeronBoxPreviewItem> _previewItems;
+        private BoundingBox _box;
 
         public HeronBoxPreviewComponent(string name, string nickName, string description, string subCategory) : base(name, nickName, description, subCategory)
         {
@@ -44,23 +45,24 @@ namespace Heron
             });
         }
 
-        public override void DrawViewportMeshes(IGH_PreviewArgs args)
-        {
-            foreach (var item in _previewItems)
-            {
-                if (item.bbox.IsValid) args.Display.DrawBox(item.bbox, Color.Red);
-                if (item.pointCloud != null) args.Display.DrawPointCloud(item.pointCloud, (float) item.radius);
-            }
-            base.DrawViewportMeshes(args);
-        }
-
         internal void AddPreviewItem(PointCloud pointCloud, double radius)
         {
             _previewItems.Add(new HeronBoxPreviewItem()
-            {              
+            {
                 pointCloud = pointCloud,
-                radius = radius
+                radius = radius,
             });
+        }
+
+        public override void DrawViewportWires(IGH_PreviewArgs args)
+        {
+            foreach (var item in _previewItems)
+            {
+                if (item.bbox.IsValid) args.Display.DrawBox(item.bbox, Color.Red);  //args.Display.DrawLines(item.bbox.GetEdges(), Color.Red); 
+                if (item.pointCloud != null) args.Display.DrawPointCloud(item.pointCloud, (float) item.radius);
+            }
+
+            base.DrawViewportWires(args);
         }
 
     }
