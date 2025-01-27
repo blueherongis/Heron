@@ -33,12 +33,14 @@ namespace Heron
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
+            pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve for vector data", GH_ParamAccess.item);
             pManager.AddTextParameter("OSM Data Location", "filePath", "File path for the OSM vector data input", GH_ParamAccess.item);
             pManager.AddTextParameter("Filter Fields", "filterFields", "List of filter terms for OSM fields such as highway, route, building, etc.", GH_ParamAccess.list);
             pManager.AddTextParameter("Filter Field,Value", "filterFieldValue", "List of filter terms for OSM fields and values. Format Field,Value like 'addr:street,Main.'", GH_ParamAccess.list);
 
-            pManager[1].Optional = true;
+            pManager[0].Optional = true;
             pManager[2].Optional = true;
+            pManager[3].Optional = true;
         }
 
         /// <summary>
@@ -60,29 +62,31 @@ namespace Heron
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             ///Gather GHA inputs
+            Curve boundary = null;
+            DA.GetData<Curve>(0, ref boundary);
+
             string osmFilePath = string.Empty;
-            DA.GetData<string>(0, ref osmFilePath);
+            DA.GetData<string>(1, ref osmFilePath);
 
             List<string> filterWords = new List<string>();
-            DA.GetDataList<string>(1, filterWords);
+            DA.GetDataList<string>(2, filterWords);
 
             List<string> filterKeyValue = new List<string>();
-            DA.GetDataList<string>(2, filterKeyValue);
+            DA.GetDataList<string>(3, filterKeyValue);
 
-            Transform xformToMetric = new Transform(1);
-            Transform xformFromMetric = new Transform(1);
 
             ///GDAL setup
             Heron.GdalConfiguration.ConfigureOgr();
             Heron.GdalConfiguration.ConfigureGdal();
 
 
-            ///Set transforms between OSM's WGS84 and Web Mercator which units are in meters
+            ///Set transforms between OSM's WGS84 and Web Mercator to get x y units in meters
             OSGeo.OSR.SpatialReference osmSRS = new OSGeo.OSR.SpatialReference("");
             osmSRS.SetFromUserInput("WGS84");
             OSGeo.OSR.SpatialReference webMercator = new OSGeo.OSR.SpatialReference("");
             webMercator.SetFromUserInput("EPSG:3857");
             OSGeo.OSR.CoordinateTransformation coordTransform = new OSGeo.OSR.CoordinateTransformation(osmSRS, webMercator);
+            OSGeo.OSR.CoordinateTransformation revTransform = new OSGeo.OSR.CoordinateTransformation(webMercator, osmSRS);
 
 
             ///Declare trees
@@ -95,6 +99,14 @@ namespace Heron
 
             Point3d max = new Point3d();
             Point3d min = new Point3d();
+            if (boundary != null)
+            {
+                Point3d maxM = boundary.GetBoundingBox(true).Corner(true, false, true);
+                max = Heron.Convert.OSRTransformPoint3dToPoint3d(maxM, revTransform);
+
+                Point3d minM = boundary.GetBoundingBox(true).Corner(false, true, true);
+                min = Heron.Convert.OSRTransformPoint3dToPoint3d(minM, revTransform);
+            }
 
             /// get extents (why is this not part of OsmSharp?)
             System.Xml.Linq.XDocument xdoc = System.Xml.Linq.XDocument.Load(osmFilePath);
@@ -120,11 +132,15 @@ namespace Heron
                 /// create a source.
                 OsmSharp.Streams.XmlOsmStreamSource source = new OsmSharp.Streams.XmlOsmStreamSource(fileStreamSource);
 
+                /// filter by bounding box
+                OsmSharp.Streams.OsmStreamSource sourceClipped = source;
+                if (clipped) { sourceClipped = source.FilterBox((float)max.X, (float)max.Y, (float)min.X, (float)min.Y, true); }
+
                 /// create a dictionary of elements
-                OsmSharp.Db.Impl.MemorySnapshotDb sourceMem = new OsmSharp.Db.Impl.MemorySnapshotDb(source);
+                OsmSharp.Db.Impl.MemorySnapshotDb sourceMem = new OsmSharp.Db.Impl.MemorySnapshotDb(sourceClipped);
 
                 /// filter the source
-                var filtered = from osmGeos in source
+                var filtered = from osmGeos in sourceClipped
                                where osmGeos.Tags != null
                                select osmGeos;
 
@@ -246,9 +262,7 @@ namespace Heron
                                     ways = ways - 1;
                                 }
                                 else { buildingGoo.Append(bldgGoo, waysPath); }
-
                             }
-
                         }
 
                         //increment ways
@@ -318,9 +332,7 @@ namespace Heron
                                 {
                                     ///not sure if this is needed
                                 }
-
                             }
-
                         }
                         //end members loop
 
@@ -817,6 +829,53 @@ namespace Heron
             }
 
             return keyHeight;
+        }
+
+        /// <summary>
+        /// Menu Items
+        /// </summary>
+
+        private bool clipped = true;
+        public bool Clipped
+        {
+            get { return clipped; }
+            set
+            {
+                clipped = value;
+                if ((clipped))
+                {
+                    Message = "Clipped";
+                }
+                else
+                {
+                    Message = "Not Clipped";
+                }
+            }
+        }
+
+        public override bool Write(GH_IO.Serialization.GH_IWriter writer)
+        {
+            writer.SetBoolean("Clipped", Clipped);
+            return base.Write(writer);
+        }
+        public override bool Read(GH_IO.Serialization.GH_IReader reader)
+        {
+            Clipped = reader.GetBoolean("Clipped");
+            return base.Read(reader);
+        }
+
+        protected override void AppendAdditionalComponentMenuItems(System.Windows.Forms.ToolStripDropDown menu)
+        {
+            // Append the item to the menu, making sure it's always enabled and checked if Absolute is True.
+            ToolStripMenuItem item = Menu_AppendItem(menu, "Clipped", Menu_ClippedClicked, true, Clipped);
+            // Specifically assign a tooltip text to the menu item.
+            item.ToolTipText = "When checked, the OSM data is clipped to the boundary input.";
+        }
+        private void Menu_ClippedClicked(object sender, EventArgs e)
+        {
+            RecordUndoEvent("Absolute");
+            Clipped = !Clipped;
+            ExpireSolution(true);
         }
 
 
