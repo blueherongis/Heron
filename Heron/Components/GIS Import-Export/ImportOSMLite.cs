@@ -170,7 +170,7 @@ namespace Heron
                 /// loop over all objects and count them.
                 int nodes = 0, ways = 0, relations = 0;
                 Dictionary<PolylineCurve, GH_Path> bldgOutlines = new Dictionary<PolylineCurve, GH_Path>();
-                List<BuildingPart> buildingParts = new List<BuildingPart>();
+                List<ImportOSM.BuildingPart> buildingParts = new List<ImportOSM.BuildingPart>();
 
 
                 foreach (OsmSharp.OsmGeo osmGeo in filtered)
@@ -183,7 +183,7 @@ namespace Heron
                         GH_Path nodesPath = new GH_Path(0, nodes);
 
                         //populate Fields and Values for each node
-                        fieldNames.AppendRange(GetKeys(osmGeo), nodesPath);
+                        fieldNames.AppendRange(ImportOSM.GetKeys(osmGeo), nodesPath);
                         fieldValues.AppendRange(GetValues(osmGeo), nodesPath);
 
                         //get geometry for node
@@ -202,7 +202,7 @@ namespace Heron
                         GH_Path waysPath = new GH_Path(1, ways);
 
                         //populate Fields and Values for each way
-                        fieldNames.AppendRange(GetKeys(osmGeo), waysPath);
+                        fieldNames.AppendRange(ImportOSM.GetKeys(osmGeo), waysPath);
                         fieldValues.AppendRange(GetValues(osmGeo), waysPath);
 
                         //get polyline geometry for way
@@ -254,7 +254,7 @@ namespace Heron
                                 ///Save building parts for sorting later and remove part from geometry goo tree
                                 if (w.Tags.ContainsKey("building:part"))
                                 {
-                                    BuildingPart bldgPart = new BuildingPart(pL, bldgGoo, fieldNames[waysPath], fieldValues[waysPath], osmGeo);
+                                    ImportOSM.BuildingPart bldgPart = new ImportOSM.BuildingPart(pL, bldgGoo, fieldNames[waysPath], fieldValues[waysPath], osmGeo);
                                     buildingParts.Add(bldgPart);
                                     fieldNames.RemovePath(waysPath);
                                     fieldValues.RemovePath(waysPath);
@@ -277,7 +277,7 @@ namespace Heron
                         GH_Path relationPath = new GH_Path(2, relations);
 
                         //populate Fields and Values for each relation
-                        fieldNames.AppendRange(GetKeys(osmGeo), relationPath);
+                        fieldNames.AppendRange(ImportOSM.GetKeys(osmGeo), relationPath);
                         fieldValues.AppendRange(GetValues(osmGeo), relationPath);
 
                         List<Curve> pLines = new List<Curve>();
@@ -391,7 +391,7 @@ namespace Heron
                 ///Add building parts to sub-branches under main building
                 for (int partIndex = 0; partIndex < buildingParts.Count; partIndex++)
                 {
-                    BuildingPart bldgPart = buildingParts[partIndex];
+                    ImportOSM.BuildingPart bldgPart = buildingParts[partIndex];
                     Point3d partPoint = bldgPart.PartFootprint.PointAtStart;
                     partPoint.Z = 0;
                     bool replaceBuidingMass = false;
@@ -401,7 +401,7 @@ namespace Heron
                     bool isRoof = bldgPart.PartOsmGeo.Tags.TryGetValue("roof:shape", out string isRoofString);
                     if (isRoof)
                     {
-                        bldgPart.PartGoo = BldgPartToRoof(bldgPart);
+                        bldgPart.PartGoo = ImportOSM.BldgPartToRoof(bldgPart);
                     }
 
                     foreach (KeyValuePair<PolylineCurve, GH_Path> pair in bldgOutlines)
@@ -453,273 +453,10 @@ namespace Heron
 
         } ///end SolveInstance
 
-        public class BuildingPart
-        {
-            public PolylineCurve PartFootprint { get; set; }
-            public IGH_GeometricGoo PartGoo { get; set; }
-            public List<GH_String> PartFieldNames { get; set; }
-            public List<GH_String> PartFieldValues { get; set; }
-            public OsmGeo PartOsmGeo { get; set; }
 
-            public BuildingPart(PolylineCurve pL, IGH_GeometricGoo partGoo, List<GH_String> partFieldNames, List<GH_String> partFieldValues, OsmGeo osmGeo)
-            {
-                this.PartFootprint = pL;
-                this.PartGoo = partGoo;
-                this.PartFieldNames = partFieldNames;
-                this.PartFieldValues = partFieldValues;
-                this.PartOsmGeo = osmGeo;
-            }
-        }
-
-        public static IGH_GeometricGoo BldgPartToRoof(BuildingPart bldgPart)
-        {
-            IGH_GeometricGoo roof = bldgPart.PartGoo;
-            PolylineCurve pL = bldgPart.PartFootprint; ///Already at min height
-            
-            bldgPart.PartOsmGeo.Tags.TryGetValue("roof:shape", out string roofShape);
-            
-            bldgPart.PartOsmGeo.Tags.TryGetValue("height", out string heightString);
-            double height = GetHeightDimensioned(heightString);
-
-            bldgPart.PartOsmGeo.Tags.TryGetValue("building:levels", out string bldgLevelsString);
-            double bldgLevels = GetHeightLevels(bldgLevelsString);
-
-            bldgPart.PartOsmGeo.Tags.TryGetValue("min_height", out string minHeightString);
-            double min_height = GetHeightDimensioned(minHeightString);
-            
-            bldgPart.PartOsmGeo.Tags.TryGetValue("roof:height", out string roofHeightString);
-            double roofHeight = GetHeightDimensioned(roofHeightString);
-
-            bldgPart.PartOsmGeo.Tags.TryGetValue("roof:levels", out string roofLevelsString);
-            double roofLevels = GetHeightLevels(roofLevelsString);
-
-
-            double facadeHeight = height - roofHeight;
-            ///Make sure there's a minium facade height for SF Transamerica Pyramid case
-            if (facadeHeight <= 0) { facadeHeight = 2 * HeadlessDocumentTolerance; }
-
-            ///Check if height values in terms of levels 
-            if (roofLevels + bldgLevels > height) { height = roofLevels + bldgLevels; }
-            if (facadeHeight<bldgLevels) { facadeHeight = bldgLevels; }
-
-            bldgPart.PartOsmGeo.Tags.TryGetValue("roof:orientation", out string roofOrientationString);
-
-            bldgPart.PartOsmGeo.Tags.TryGetValue("roof:direction", out string roofDirectionString);
-            double roofDirection = System.Convert.ToDouble(roofDirectionString);
-            Vector3d roofDirectionVector = Plane.WorldXY.YAxis;
-            roofDirectionVector.Rotate(RhinoMath.ToRadians(-roofDirection), Plane.WorldXY.ZAxis);
-
-            Line[] edges = pL.ToPolyline().GetSegments();
-            Point3d centroid = AreaMassProperties.Compute(pL).Centroid;
-
-            switch (roofShape)
-            {
-                case "pyramidal":
-                    if (roofHeight > height) height = roofHeight;
-                    centroid.Z = height;
-                    pL.TryGetPolyline(out Polyline pLPolyline);
-                    Line[] pLLines = pLPolyline.GetSegments();
-                    List<Brep> pyramidBrepList = Brep.CreatePlanarBreps(pL, HeadlessDocumentTolerance).ToList();
-
-                    if (!string.IsNullOrEmpty(roofHeightString) || !string.IsNullOrEmpty(roofLevelsString))
-                    {
-                        Plane facadeHeightPlane = Plane.WorldXY;
-                        facadeHeightPlane.Translate(new Vector3d(0, 0, facadeHeight));
-                        pLPolyline.Transform(Transform.PlanarProjection(facadeHeightPlane));
-
-                        ///Creating individual faces seems to work better/cleaner than lofting curves
-                        for (int i = 0; i < pLLines.Count(); i++)
-                        {
-                            Line bottomEdge = pLLines[i];
-                            Line topEdge = bottomEdge;
-                            topEdge.Transform(Transform.PlanarProjection(facadeHeightPlane));
-                            pyramidBrepList.Add(Brep.CreateFromCornerPoints(bottomEdge.PointAt(0), bottomEdge.PointAt(1), topEdge.PointAt(1), topEdge.PointAt(0), HeadlessDocumentTolerance));
-                        }
-                    }
-
-                    foreach (Line edge in pLPolyline.GetSegments())
-                    {
-                        pyramidBrepList.Add(Brep.CreateFromCornerPoints(edge.PointAt(0), centroid, edge.PointAt(1), HeadlessDocumentTolerance));
-                    }
-
-                    Brep[] pyramidBrep = Brep.CreateSolid(pyramidBrepList, HeadlessDocumentTolerance);
-                    if (pyramidBrep[0].IsSolid) { roof = GH_Convert.ToGeometricGoo(pyramidBrep[0]); }
-                    break;
-
-                case "dome":
-                    double domeHeight = centroid.DistanceTo(pL.PointAtStart);
-                    double baseHeight = height - min_height - roofHeight + (roofHeight - domeHeight);
-                    
-                    var topArc = new Point3d (centroid.X,centroid.Y,height);
-                    var bottomArc = new Point3d(pL.PointAtStart.X, pL.PointAtStart.Y, pL.PointAtStart.Z + baseHeight);
-
-                    Arc arc = new Arc(bottomArc, Vector3d.ZAxis, topArc);          
-
-                    if (baseHeight > 0) 
-                    {
-                        Line podiumLine = new Line(pL.PointAtStart, bottomArc);
-                        Curve revCurve = Curve.JoinCurves(new List<Curve>() { podiumLine.ToNurbsCurve(), arc.ToNurbsCurve() })[0];
-                        var sweep = RevSurface.Create(revCurve, new Line(centroid, topArc));
-                        roof = GH_Convert.ToGeometricGoo(sweep.ToBrep().CapPlanarHoles(HeadlessDocumentTolerance));
-                    }
-                    else 
-                    {
-                        var sweep = RevSurface.Create(arc.ToNurbsCurve(), new Line(centroid, topArc));
-                        roof = GH_Convert.ToGeometricGoo(sweep.ToBrep().CapPlanarHoles(HeadlessDocumentTolerance));
-                    }
-
-                    break;
-                    
-                case "skillion":
-                    Line frontEdge = new Line();
-                    Line backEdge = new Line();
-                    double frontAngleMin = RhinoMath.ToRadians(90);
-                    double backAngleMin = RhinoMath.ToRadians(90);
-
-                    foreach (Line edge in edges)
-                    {
-                        Point3d closestPt = edge.ClosestPoint(centroid, true);
-                        Vector3d perpVector = closestPt - centroid;
-                        double angleDifference = Vector3d.VectorAngle(roofDirectionVector, perpVector);
-                        if (angleDifference < frontAngleMin)
-                        {
-                            frontEdge = edge;
-                            frontAngleMin = angleDifference;
-                        }
-                        if (angleDifference > backAngleMin)
-                        {
-                            backEdge = edge;
-                            backAngleMin = angleDifference;
-                        }
-                    }
-
-                    Point3d backEdgeFrom = backEdge.From;
-                    backEdgeFrom.Z = height;
-                    Point3d backEdgeTo = backEdge.To;
-                    backEdgeTo.Z = height;
-                    Point3d frontEdgeFrom = frontEdge.From;
-                    frontEdgeFrom.Z = facadeHeight;
-                    Point3d frontEdgeTo = frontEdge.To;
-                    frontEdgeTo.Z = facadeHeight;
-
-                    List<Point3d> basePtList = new List<Point3d> { backEdge.From, backEdge.To, frontEdge.From, frontEdge.To, backEdge.From };
-                    Polyline basePolyline = new Polyline(basePtList);
-                    List<Point3d> topPtList = new List<Point3d> { backEdgeFrom, backEdgeTo, frontEdgeFrom, frontEdgeTo, backEdgeFrom };
-                    Polyline topPolyline = new Polyline(topPtList);
-
-                    ///Creating individual faces seems to work better/cleaner than lofting curves
-                    List<Brep> skillionBreps = new List<Brep>();
-                    Line[] baseLines = basePolyline.GetSegments();
-                    Line[] topLines = topPolyline.GetSegments();
-                    for (int i = 0; i < baseLines.Count(); i++)
-                    {
-                        Line bottomEdge = baseLines[i];
-                        Line topEdge = topLines[i];
-                        skillionBreps.Add(Brep.CreateFromCornerPoints(bottomEdge.PointAt(0), bottomEdge.PointAt(1), topEdge.PointAt(1), topEdge.PointAt(0), HeadlessDocumentTolerance));
-                    }
-                    Brep baseSkillion = Brep.CreateFromCornerPoints(backEdge.From, backEdge.To, frontEdge.From, frontEdge.To, HeadlessDocumentTolerance);
-                    Brep topSkillion = Brep.CreateFromCornerPoints(backEdgeFrom, backEdgeTo, frontEdgeFrom, frontEdgeTo, HeadlessDocumentTolerance);
-
-                    skillionBreps.Add(baseSkillion);
-                    skillionBreps.Add(topSkillion);
-                    Brep[] skillion = Brep.CreateSolid(skillionBreps, HeadlessDocumentTolerance);
-                    if (skillion.Count() > 0) { roof = GH_Convert.ToGeometricGoo(skillion[0]); }
-                    
-                    break;
-
-                case "gabled":
-                    ///TODO: Look into getting oriented bbox using front edge as orientation plane,
-                    ///extrude gable roof profile from face of bbox, trim roof geo from footprint,
-                    ///loft between footprint and trimmed roof edges and join everything.
-                    
-                    ///Need to simply polylines with colinear segments. Angle tolerance based on Notre-Dame de Paris case
-                    Polyline pLSimplified = pL.ToPolyline();
-                    pLSimplified.MergeColinearSegments(HeadlessDocumentAngleTolerance*5, true);
-
-                    Line[] edgesSimplified = pLSimplified.GetSegments();
-                    if (edgesSimplified.Count() != 4) { break; }
-                    Line ridge = new Line();
-                    Line eaveOne = new Line();
-                    Line eaveTwo = new Line();
-                    Polyline topGablePolyline = new Polyline();
-                    List<Brep> gableBreps = new List<Brep>();
-
-                    if ((edgesSimplified[0].Length > edgesSimplified[1].Length && roofOrientationString != "across") || ((edgesSimplified[0].Length < edgesSimplified[1].Length && roofOrientationString == "across")))
-                    {
-                        ridge = new Line(edgesSimplified[3].PointAt(0.5), edgesSimplified[1].PointAt(0.5));
-                        ridge.FromZ = height;
-                        ridge.ToZ = height;
-                        eaveOne = edgesSimplified[0];
-                        eaveOne.FromZ = facadeHeight;
-                        eaveOne.ToZ = facadeHeight;
-                        eaveTwo = edgesSimplified[2];
-                        eaveTwo.Flip();
-                        eaveTwo.FromZ = facadeHeight;
-                        eaveTwo.ToZ = facadeHeight;
-                        topGablePolyline = new Polyline { eaveOne.From, eaveOne.To, ridge.To, eaveTwo.To, eaveTwo.From, ridge.From, eaveOne.From };
-
-                        Brep[] gableRoof = Brep.CreateFromLoft(new List<Curve> { eaveOne.ToNurbsCurve(), ridge.ToNurbsCurve(), eaveTwo.ToNurbsCurve() }, Point3d.Unset, Point3d.Unset, LoftType.Straight, false);
-                        gableRoof[0].Faces.SplitKinkyFaces();
-                        gableBreps.Add(gableRoof[0]);
-                    }
-
-                    if ((edgesSimplified[0].Length > edgesSimplified[1].Length && roofOrientationString == "across") || (edgesSimplified[0].Length < edgesSimplified[1].Length && roofOrientationString != "across"))
-                    {
-                        ridge = new Line(edgesSimplified[0].PointAt(0.5), edgesSimplified[2].PointAt(0.5));
-                        ridge.FromZ = height;
-                        ridge.ToZ = height;
-                        eaveOne = edgesSimplified[1]; 
-                        eaveOne.FromZ = facadeHeight;
-                        eaveOne.ToZ = facadeHeight;
-                        eaveTwo = edgesSimplified[3];
-                        eaveTwo.Flip();
-                        eaveTwo.FromZ = facadeHeight;
-                        eaveTwo.ToZ = facadeHeight;
-                        topGablePolyline = new Polyline { eaveTwo.From, ridge.From, eaveOne.From, eaveOne.To, ridge.To, eaveTwo.To, eaveTwo.From };
-
-                        Brep[] gableRoof = Brep.CreateFromLoft(new List<Curve> { eaveOne.ToNurbsCurve(), ridge.ToNurbsCurve(), eaveTwo.ToNurbsCurve() }, Point3d.Unset, Point3d.Unset, LoftType.Straight, false);
-                        gableRoof[0].Faces.SplitKinkyFaces();
-                        gableBreps.Add(gableRoof[0]);
-                    }
-
-                    Brep[] gablewalls = Brep.CreateFromLoft(new List<Curve> { pLSimplified.ToPolylineCurve(), topGablePolyline.ToPolylineCurve() }, Point3d.Unset, Point3d.Unset, LoftType.Straight, false);
-                    gablewalls[0].Faces.SplitKinkyFaces();
-                    gablewalls[0].MergeCoplanarFaces(HeadlessDocumentTolerance);
-                    gableBreps.Add(gablewalls[0]);
-
-                    Brep baseGable = Brep.CreateFromCornerPoints(edgesSimplified[0].From, edgesSimplified[0].To, edgesSimplified[2].From, edgesSimplified[2].To, HeadlessDocumentTolerance);
-                    gableBreps.Add(baseGable);
-                    Brep[] gable = Brep.JoinBreps(gableBreps, HeadlessDocumentTolerance);
-
-                    if (gable[0].IsValid) { roof = GH_Convert.ToGeometricGoo(gable[0]); }
-                    break;
-                
-                default:
-                    break;
-            }
-
-            return roof;
-        }
 
         public static double HeadlessDocumentTolerance = 0.001;
         public static double HeadlessDocumentAngleTolerance = 1.0;
-        private static List<GH_String> GetKeys(OsmGeo osmGeo)
-        {
-            List<GH_String> keys = new List<GH_String>();
-            keys.Add(new GH_String("osm id"));
-            if (osmGeo.Tags != null)
-            {
-                foreach (var t in osmGeo.Tags)
-                {
-                    keys.Add(new GH_String(t.Key));
-                }
-            }
-            else
-            {
-                keys.Add(null);
-            }
-            return keys;
-        }
 
         private static List<GH_String> GetValues(OsmGeo osmGeo)
         {

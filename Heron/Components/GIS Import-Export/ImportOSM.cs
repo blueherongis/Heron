@@ -32,10 +32,8 @@ namespace Heron
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            //pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve for vector data", GH_ParamAccess.item);
             pManager.AddTextParameter("OSM Data Location", "filePath", "File path for the OSM vector data input", GH_ParamAccess.item);
-            //pManager.AddTextParameter("User Spatial Reference System", "userSRS", "Custom SRS", GH_ParamAccess.item, "WGS84");
             pManager.AddTextParameter("Filter Fields", "filterFields", "List of filter terms for OSM fields such as highway, route, building, etc.", GH_ParamAccess.list);
             pManager.AddTextParameter("Filter Field,Value", "filterFieldValue", "List of filter terms for OSM fields and values. Format Field,Value like 'addr:street,Main.'", GH_ParamAccess.list);
 
@@ -68,9 +66,6 @@ namespace Heron
 
             string osmFilePath = string.Empty;
             DA.GetData<string>("OSM Data Location", ref osmFilePath);
-
-            //string userSRStext = "WGS84";
-            //DA.GetData<string>(2, ref userSRStext);
 
             List<string> filterWords = new List<string>();
             DA.GetDataList<string>(2, filterWords);
@@ -208,7 +203,6 @@ namespace Heron
                         fieldValues.AppendRange(GetValues(osmGeo), nodesPath);
 
                         //get geometry for node
-                        //Point3d nPoint = Heron.Convert.WGSToXYZ(new Point3d((double)n.Longitude, (double)n.Latitude, 0));
                         Point3d nPoint = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d((double)n.Longitude, (double)n.Latitude, 0), coordTransform);
                         nPoint.Transform(userSRSToModelTransform);
                         geometryGoo.Append(new GH_Point(nPoint), nodesPath);
@@ -233,7 +227,6 @@ namespace Heron
                         foreach (long j in w.Nodes)
                         {
                             OsmSharp.Node n = (OsmSharp.Node)sourceMem.Get(OsmGeoType.Node, j);
-                            //wayNodes.Add(Heron.Convert.WGSToXYZ(new Point3d((double)n.Longitude, (double)n.Latitude, 0)));
                             Point3d nPt = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d((double)n.Longitude, (double)n.Latitude, 0), coordTransform);
                             nPt.Transform(userSRSToModelTransform);
                             wayNodes.Add(nPt);
@@ -327,7 +320,6 @@ namespace Heron
                                 {
                                     long memNodeId = rMem.Id;
                                     OsmSharp.Node memN = (OsmSharp.Node)sourceMem.Get(rMem.Type, rMem.Id);
-                                    //Point3d memPoint = Heron.Convert.WGSToXYZ(new Point3d((double)memN.Longitude, (double)memN.Latitude, 0));
                                     Point3d memPoint = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d((double)memN.Longitude, (double)memN.Latitude, 0), coordTransform);
                                     memPoint.Transform(userSRSToModelTransform);
                                     geometryGoo.Append(new GH_Point(memPoint), memberPath);
@@ -345,7 +337,6 @@ namespace Heron
                                     foreach (long memNodeId in memWay.Nodes)
                                     {
                                         OsmSharp.Node memNode = (OsmSharp.Node)sourceMem.Get(OsmGeoType.Node, memNodeId);
-                                        //memNodes.Add(Heron.Convert.WGSToXYZ(new Point3d((double)memNode.Longitude, (double)memNode.Latitude, 0)));
                                         Point3d memPt = Heron.Convert.OSRTransformPoint3dToPoint3d(new Point3d((double)memNode.Longitude, (double)memNode.Latitude, 0), coordTransform);
                                         memPt.Transform(userSRSToModelTransform);
                                         memNodes.Add(memPt);
@@ -740,7 +731,7 @@ namespace Heron
             return roof;
         }
 
-        private static List<GH_String> GetKeys(OsmGeo osmGeo)
+        public static List<GH_String> GetKeys(OsmGeo osmGeo)
         {
             List<GH_String> keys = new List<GH_String>();
             keys.Add(new GH_String("osm id"));
@@ -758,7 +749,7 @@ namespace Heron
             return keys;
         }
 
-        private static List<GH_String> GetValues(OsmGeo osmGeo)
+        public static List<GH_String> GetValues(OsmGeo osmGeo)
         {
             List<GH_String> values = new List<GH_String>();
 
@@ -781,7 +772,7 @@ namespace Heron
         private static double scaleToMetric = Rhino.RhinoMath.UnitScale(RhinoDoc.ActiveDoc.ModelUnitSystem, Rhino.UnitSystem.Meters);
         private static double scaleFromMetric = Rhino.RhinoMath.UnitScale(Rhino.UnitSystem.Meters, RhinoDoc.ActiveDoc.ModelUnitSystem);
 
-        private static double GetHeightDimensioned (string heightText)
+        public static double GetHeightDimensioned (string heightText)
         {
             double keyHeight = 0.0;
             if (!string.IsNullOrEmpty(heightText))
@@ -807,7 +798,7 @@ namespace Heron
             return keyHeightScaled;
         }
 
-        private static double GetHeightLevels (string levelsText)
+        public static double GetHeightLevels (string levelsText)
         {
             double keyHeight = 0.0;
             if (levelsText != null)
@@ -822,7 +813,7 @@ namespace Heron
             return keyHeight*scaleFromMetric;
         }
 
-        private static double GetBldgHeight(OsmSharp.OsmGeo osmGeo)
+        public static double GetBldgHeight(OsmSharp.OsmGeo osmGeo)
         {
             ///Height determination
             ///https://wiki.openstreetmap.org/wiki/Simple_3D_Buildings
@@ -849,7 +840,7 @@ namespace Heron
             return height;
         }
 
-        private static double GetMinBldgHeight(OsmSharp.OsmGeo osmGeo)
+        public static double GetMinBldgHeight(OsmSharp.OsmGeo osmGeo)
         {
             //height determination
             double keyHeight = 0.0;
