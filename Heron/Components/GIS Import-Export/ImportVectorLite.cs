@@ -7,6 +7,7 @@ using Rhino.Geometry;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -24,7 +25,10 @@ namespace Heron
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
+            pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for clipping the vector data.  " +
+                "Curves on the same branch will be considered as one polygon for clipping.", GH_ParamAccess.tree);
             pManager.AddTextParameter("File Path", "filepath", "File path(s) for the vector data source(s).", GH_ParamAccess.tree);
+            pManager[0].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -39,7 +43,12 @@ namespace Heron
         {
 
             ///Gather GHA inputs
-            //string shpFilePath = string.Empty;
+            GH_Structure<GH_Curve> boundaryTree = new GH_Structure<GH_Curve>();
+            DA.GetDataTree<GH_Curve>("Boundary", out boundaryTree);
+
+            bool clipIt = false;
+            if (boundaryTree.Count() > 0) { clipIt = true; }
+
             GH_Structure<GH_String> shpFilePathTree = new GH_Structure<GH_String>();
             DA.GetDataTree<GH_String>("File Path", out shpFilePathTree);
 
@@ -60,14 +69,73 @@ namespace Heron
 
             Transform transform = new Transform(1);
 
-            for (int filepathBranchIndex = 0; filepathBranchIndex < shpFilePathTree.Branches.Count; filepathBranchIndex++)
+            ///Loop through boundary inputs
+            int boundaryCount = 1; ///Allow entry into boundary loop without a boundary
+            if (boundaryTree.Branches.Count > 0) { boundaryCount = boundaryTree.Branches.Count; }
+
+            for (int boundaryBranch = 0; boundaryBranch < boundaryCount; boundaryBranch++)
             {
-                for (int index = 0; index < shpFilePathTree.get_Branch(filepathBranchIndex).Count; index++)
+                ///Cast a list GH_Curves to Curves
+                List<Curve> boundaryList = new List<Curve>();
+
+                ///Setup for clipping polygon
+                Mesh boundaryMesh = new Mesh();
+                bool boundaryNotNull = true, boundaryValid = true, boundaryClosed = true;
+
+                if (boundaryTree.Count() > 0)
                 {
+                    foreach (var boundary in boundaryTree.get_Branch(boundaryBranch))
+                    {
+                        Curve crv = null;
+                        GH_Convert.ToCurve(boundary, ref crv, GH_Conversion.Primary);
+                        boundaryList.Add(crv);
+                    }
 
-                    var path = shpFilePathTree.get_Path(filepathBranchIndex).AppendElement(index);
+                    ///Create polygon for clipping geometry
+                    if (boundaryList.Count > 0 && clipIt)
+                    {
+                        ///Check if boundaries are closed and valid 
+                        foreach (var b in boundaryList)
+                        {
+                            if (b == null)
+                            {
+                                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more clipping boundaries is null. Make sure all boundaries are closed and valid.");
+                                boundaryNotNull = false;
+                            }
+                            else if (!b.IsValid)
+                            {
+                                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Clipping boundary is not valid.");
+                                boundaryValid = false;
+                            }
+                            else if (!b.IsClosed)
+                            {
+                                AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Clipping boundaries must be closed curves.");
+                                boundaryClosed = false;
+                            }
+                        }
+                        if (boundaryNotNull && boundaryValid && boundaryClosed)
+                        {
+                            Brep[] boundarySurface = Brep.CreatePlanarBreps(boundaryList, 0.001);
+                            foreach (var srf in boundarySurface)
+                            {
+                                boundaryMesh.Append(Mesh.CreateFromBrep(srf, MeshingParameters.Default));
+                            }
+                        }
+                        else
+                        {
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "Unable to create clipping boundary from input curves.");
+                        }
+                    }
+                }
 
-                    string dataSourceString = shpFilePathTree.get_Branch(filepathBranchIndex)[index].ToString();
+                ///Loop through each datasource filepath.  Flatten source tree to a list
+                for (int index = 0; index < shpFilePathTree.DataCount; index++)//int index = 0; index < shpFilePathTree.get_Branch(filepathBranchIndex).Count; index++)
+                {
+                    ///Setup paths to allow no boundary input and clip without boundary
+                    var path = new GH_Path(0).AppendElement(index);
+                    if (boundaryTree.Count() > 0) { path = boundaryTree.get_Path(boundaryBranch).AppendElement(index); }
+
+                    string dataSourceString = shpFilePathTree.get_DataItem(index).ToString();
 
                     DataSource dataSource = CreateDataSourceSRS(dataSourceString);
                     List<OSGeo.OGR.Layer> layerSet = GetLayersSRS(dataSource);
@@ -99,7 +167,6 @@ namespace Heron
                         OSGeo.OGR.Envelope envelopeOgr = new OSGeo.OGR.Envelope();
                         ogrLayer.GetExtent(envelopeOgr, 1);
 
-
                         ///Get bounding box based on OGR envelope.  When using a different SRS from the source, the envelope will be skewed, so 
                         OSGeo.OGR.Geometry envelopeRing = new OSGeo.OGR.Geometry(wkbGeometryType.wkbLinearRing);
                         envelopeRing.AddPoint(envelopeOgr.MinX, envelopeOgr.MinY, 0.0);
@@ -114,7 +181,15 @@ namespace Heron
                         var envelopeBox = envelopePolyline.GetBoundingBox(false);
                         Rectangle3d recUser = new Rectangle3d(Plane.WorldXY, envelopeBox.Corner(true, true, true), envelopeBox.Corner(false, false, false));
 
-                        featureExtents.Append(new GH_Curve(recUser.ToNurbsCurve()), layerPath);// new GH_Path(iLayer)) ;
+                        featureExtents.Append(new GH_Curve(recUser.ToNurbsCurve()), layerPath);
+                        ///Add skewed envelope in sourceSRS if preferred
+                        //featureExtents.Append(new GH_Curve(envelopePolyline), layerPath);
+
+                        if (boundaryList.Count == 0 && clipIt == false)
+                        {
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Clipping boundary has not been set. File extents will be used instead.");
+                            boundaryList.Add(recUser.ToNurbsCurve());
+                        }
 
                         ///Get the field names
                         OSGeo.OGR.FeatureDefn def = ogrLayer.GetLayerDefn();
@@ -122,176 +197,237 @@ namespace Heron
                         for (int iAttr = 0; iAttr < def.GetFieldCount(); iAttr++)
                         {
                             OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iAttr);
-                            fieldNames.Append(new GH_String(fdef.GetNameRef()), layerPath); // new GH_Path(iLayer));
+                            fieldNames.Append(new GH_String(fdef.GetNameRef()), layerPath);
                         }
 
-                        ///Loop through geometry
-                        OSGeo.OGR.Feature feat;
-                        def = ogrLayer.GetLayerDefn();
-
-                        int m = 0;
-                        while ((feat = ogrLayer.GetNextFeature()) != null)
+                        ///Check if boundary is inside extents
+                        if (boundaryList.Count > 0 && boundaryList != null)
                         {
-                            if (feat.GetGeometryRef() != null)
+                            foreach (var b in boundaryList)
                             {
-                                OSGeo.OGR.Geometry geomUser = feat.GetGeometryRef().Clone();
-                                OSGeo.OGR.Geometry sub_geomUser;
-                                var featurePath = layerPath.AppendElement(m);
-
-                                if (geomUser.GetSpatialReference() == null) { geomUser.AssignSpatialReference(sourceSRS); }
-
-                                //if (feat.GetGeometryRef() != null)
-                                //{
-                                if (!pointsOnly)
+                                if (boundaryNotNull && boundaryValid && boundaryClosed)
                                 {
-                                    ///Convert GDAL geometries to IGH_GeometricGoo
-                                    //featureGoo.AppendRange(Heron.Convert.OgrGeomToGHGoo(geomUser, userSRSToHeronSRSTransform), new GH_Path(iLayer, m));
-                                    //geomDict[new GH_Path(iLayer, m)] = geomUser.Clone();
-                                    geomDict[featurePath] = geomUser.Clone();
-
-                                    /// Get Feature Values
-                                    if (fieldValues.PathExists(new GH_Path(iLayer, m)))
+                                    if (Curve.PlanarClosedCurveRelationship(recUser.ToNurbsCurve(), b, Plane.WorldXY, 0.001) == RegionContainment.Disjoint)
                                     {
-                                        fieldValues.get_Branch(new GH_Path(iLayer, m)).Clear();
-                                    }
-                                    for (int iField = 0; iField < feat.GetFieldCount(); iField++)
-                                    {
-                                        OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
-                                        if (feat.IsFieldSet(iField))
-                                        {
-                                            fieldValues.Append(new GH_String(feat.GetFieldAsString(iField)), featurePath); // new GH_Path(iLayer, m));
-                                        }
-                                        else
-                                        {
-                                            fieldValues.Append(new GH_String("null"), featurePath); // new GH_Path(iLayer, m));
-                                        }
-                                    }
-                                    ///End get Feature Values
-                                }
-
-                                else ///Output only points
-                                {
-                                    ///Start get points if open polylines and points
-                                    for (int gpc = 0; gpc < geomUser.GetPointCount(); gpc++)
-                                    {
-
-                                        ///Loop through geometry points
-                                        double[] ogrPtUser = new double[3];
-                                        geomUser.GetPoint(gpc, ogrPtUser);
-                                        Point3d pt3DUser = new Point3d(ogrPtUser[0], ogrPtUser[1], ogrPtUser[2]);
-                                        featureGoo.Append(new GH_Point(pt3DUser), featurePath);// new GH_Path(iLayer, m));
-                                        ///End loop through geometry points
-
-
-                                        /// Get Feature Values
-                                        if (fieldValues.PathExists(featurePath)) //new GH_Path(iLayer, m)))
-                                        {
-                                            fieldValues.get_Branch(featurePath).Clear(); // new GH_Path(iLayer, m)).Clear();
-                                        }
-                                        for (int iField = 0; iField < feat.GetFieldCount(); iField++)
-                                        {
-                                            OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
-                                            if (feat.IsFieldSet(iField))
-                                            {
-                                                fieldValues.Append(new GH_String(feat.GetFieldAsString(iField)), featurePath);// new GH_Path(iLayer, m));
-                                            }
-                                            else
-                                            {
-                                                fieldValues.Append(new GH_String("null"), featurePath);// new GH_Path(iLayer, m));
-                                            }
-                                        }
-                                        ///End Get Feature Values
-                                    }
-                                    ///End getting points if open polylines or points
-
-
-                                    ///Start getting points if closed polylines and multipolygons
-                                    for (int gi = 0; gi < geomUser.GetGeometryCount(); gi++)
-                                    {
-
-                                        sub_geomUser = geomUser.GetGeometryRef(gi);
-                                        OSGeo.OGR.Geometry subsub_geomUser;
-
-                                        var pointPath = featurePath.AppendElement(gi);
-
-                                        if (sub_geomUser.GetGeometryCount() > 0)
-                                        {
-                                            for (int n = 0; n < sub_geomUser.GetGeometryCount(); n++)
-                                            {
-                                                subsub_geomUser = sub_geomUser.GetGeometryRef(n);
-
-                                                ///Loop through geometry points
-                                                for (int ptnum = 0; ptnum < subsub_geomUser.GetPointCount(); ptnum++)
-                                                {
-                                                    double[] ogrPtUser = new double[3];
-                                                    subsub_geomUser.GetPoint(ptnum, ogrPtUser);
-                                                    Point3d pt3DUser = new Point3d(ogrPtUser[0], ogrPtUser[1], ogrPtUser[2]);
-                                                    featureGoo.Append(new GH_Point(pt3DUser), pointPath.AppendElement(n)); // new GH_Path(iLayer, m, gi, n));
-                                                }
-                                                ///End loop through geometry points
-
-                                                subsub_geomUser.Dispose();
-                                            }
-                                        }
-
-                                        else
-                                        {
-                                            ///Loop through geometry points
-                                            for (int ptnum = 0; ptnum < sub_geomUser.GetPointCount(); ptnum++)
-                                            {
-                                                double[] ogrPtUser = new double[3];
-                                                sub_geomUser.GetPoint(ptnum, ogrPtUser);
-                                                Point3d pt3DUser = new Point3d(ogrPtUser[0], ogrPtUser[1], ogrPtUser[2]);
-                                                featureGoo.Append(new GH_Point(pt3DUser), pointPath); // new GH_Path(iLayer, m, gi));
-                                            }
-                                            ///End loop through geometry points
-                                        }
-
-                                        sub_geomUser.Dispose();
-
-                                        /// Get Feature Values
-                                        if (fieldValues.PathExists(featurePath)) // new GH_Path(iLayer, m)))
-                                        {
-                                            fieldValues.get_Branch(featurePath).Clear();// new GH_Path(iLayer, m)).Clear();
-                                        }
-                                        for (int iField = 0; iField < feat.GetFieldCount(); iField++)
-                                        {
-                                            OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
-                                            if (feat.IsFieldSet(iField))
-                                            {
-                                                fieldValues.Append(new GH_String(feat.GetFieldAsString(iField)), featurePath);// new GH_Path(iLayer, m));
-                                            }
-                                            else
-                                            {
-                                                fieldValues.Append(new GH_String("null"), featurePath);// new GH_Path(iLayer, m));
-                                            }
-                                        }
-                                        ///End Get Feature Values
+                                        AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more clipping boundaries may be outside the bounds of the vector datasource.");
                                     }
                                 }
-                                //}
+                            }
+                        }
+
+                        ///Check if boundary is contained in extent
+                        if (!recUser.IsValid || ((recUser.Height == 0) && (recUser.Width == 0) && clipIt == true))
+                        {
+                            ///Get field data if even if no geometry is present in the layer
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more vector datasource bounds are not valid.");
+                            OSGeo.OGR.Feature feat;
+                            int m = 0;
+
+                            while ((feat = ogrLayer.GetNextFeature()) != null)
+                            {
+                                ///Loop through field values
+                                for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                                {
+                                    OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
+                                    fieldValues.Append(new GH_String(feat.GetFieldAsString(iField)), layerPath.AppendElement(m));
+                                    fdef.Dispose();
+                                }
                                 m++;
-                                geomUser.Dispose();
                                 feat.Dispose();
                             }
-                        }///end while loop through features
+                        }
+
+                        else
+                        {
+                            ///Create clipping polygon from mesh
+                            OSGeo.OGR.Geometry clippingPolygon = Heron.Convert.MeshToMultiPolygon(boundaryMesh, transform);
+                            clippingPolygon.AssignSpatialReference(sourceSRS);
+
+                            ///Clip Shapefile
+                            ///http://pcjericks.github.io/py-gdalogr-cookbook/vector_layers.html
+                            OSGeo.OGR.Layer clipped_layer = ogrLayer;
+
+                            if (clipIt)
+                            {
+                                clipped_layer.SetSpatialFilter(clippingPolygon);
+                            }
+
+                            ///Loop through geometry
+                            OSGeo.OGR.Feature feat;
+                            def = ogrLayer.GetLayerDefn();
+
+                            int m = 0;
+                            while ((feat = ogrLayer.GetNextFeature()) != null)
+                            {
+                                if (feat.GetGeometryRef() != null)
+                                {
+                                    OSGeo.OGR.Geometry geomUser = feat.GetGeometryRef().Clone();
+                                    OSGeo.OGR.Geometry sub_geomUser;
+                                    var featurePath = layerPath.AppendElement(m);
+
+                                    if (geomUser.GetSpatialReference() == null) { geomUser.AssignSpatialReference(sourceSRS); }
+
+                                    if (!pointsOnly)
+                                    {
+                                        ///Convert GDAL geometries to IGH_GeometricGoo
+                                        //featureGoo.AppendRange(Heron.Convert.OgrGeomToGHGoo(geomUser, userSRSToHeronSRSTransform), new GH_Path(iLayer, m));
+                                        //geomDict[new GH_Path(iLayer, m)] = geomUser.Clone();
+                                        geomDict[featurePath] = geomUser.Clone();
+
+                                        /// Get Feature Values
+                                        if (fieldValues.PathExists(new GH_Path(iLayer, m)))
+                                        {
+                                            fieldValues.get_Branch(new GH_Path(iLayer, m)).Clear();
+                                        }
+                                        for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                                        {
+                                            OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
+                                            if (feat.IsFieldSet(iField))
+                                            {
+                                                fieldValues.Append(new GH_String(feat.GetFieldAsString(iField)), featurePath); // new GH_Path(iLayer, m));
+                                            }
+                                            else
+                                            {
+                                                fieldValues.Append(new GH_String("null"), featurePath); // new GH_Path(iLayer, m));
+                                            }
+                                        }
+                                        ///End get Feature Values
+                                    }
+                                    ///End if not pointsOnly
+
+                                    else ///Output only points
+                                    {
+                                        ///Start get points if open polylines and points
+                                        for (int gpc = 0; gpc < geomUser.GetPointCount(); gpc++)
+                                        {
+
+                                            ///Loop through geometry points
+                                            double[] ogrPtUser = new double[3];
+                                            geomUser.GetPoint(gpc, ogrPtUser);
+                                            Point3d pt3DUser = new Point3d(ogrPtUser[0], ogrPtUser[1], ogrPtUser[2]);
+                                            featureGoo.Append(new GH_Point(pt3DUser), featurePath);// new GH_Path(iLayer, m));
+                                            ///End loop through geometry points
+
+
+                                            /// Get Feature Values
+                                            if (fieldValues.PathExists(featurePath)) //new GH_Path(iLayer, m)))
+                                            {
+                                                fieldValues.get_Branch(featurePath).Clear(); // new GH_Path(iLayer, m)).Clear();
+                                            }
+                                            for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                                            {
+                                                OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
+                                                if (feat.IsFieldSet(iField))
+                                                {
+                                                    fieldValues.Append(new GH_String(feat.GetFieldAsString(iField)), featurePath);// new GH_Path(iLayer, m));
+                                                }
+                                                else
+                                                {
+                                                    fieldValues.Append(new GH_String("null"), featurePath);// new GH_Path(iLayer, m));
+                                                }
+                                            }
+                                            ///End Get Feature Values
+                                        }
+                                        ///End getting points if open polylines or points
+
+
+                                        ///Start getting points if closed polylines and multipolygons
+                                        for (int gi = 0; gi < geomUser.GetGeometryCount(); gi++)
+                                        {
+
+                                            sub_geomUser = geomUser.GetGeometryRef(gi);
+                                            OSGeo.OGR.Geometry subsub_geomUser;
+
+                                            if (sub_geomUser.GetGeometryCount() > 0)
+                                            {
+                                                for (int n = 0; n < sub_geomUser.GetGeometryCount(); n++)
+                                                {
+                                                    subsub_geomUser = sub_geomUser.GetGeometryRef(n);
+
+                                                    ///Loop through geometry points
+                                                    for (int ptnum = 0; ptnum < subsub_geomUser.GetPointCount(); ptnum++)
+                                                    {
+                                                        double[] ogrPtUser = new double[3];
+                                                        subsub_geomUser.GetPoint(ptnum, ogrPtUser);
+                                                        Point3d pt3DUser = new Point3d(ogrPtUser[0], ogrPtUser[1], ogrPtUser[2]);
+                                                        featureGoo.Append(new GH_Point(pt3DUser), layerPath.AppendElement(m).AppendElement(gi).AppendElement(n));
+                                                    }
+                                                    ///End loop through geometry points
+
+                                                    subsub_geomUser.Dispose();
+                                                }
+                                            }
+
+                                            else
+                                            {
+                                                ///Loop through geometry points
+                                                for (int ptnum = 0; ptnum < sub_geomUser.GetPointCount(); ptnum++)
+                                                {
+                                                    double[] ogrPtUser = new double[3];
+                                                    sub_geomUser.GetPoint(ptnum, ogrPtUser);
+                                                    Point3d pt3DUser = new Point3d(ogrPtUser[0], ogrPtUser[1], ogrPtUser[2]);
+                                                    featureGoo.Append(new GH_Point(pt3DUser), layerPath.AppendElement(m).AppendElement(gi));
+                                                }
+                                                ///End loop through geometry points
+                                            }
+
+                                            sub_geomUser.Dispose();
+
+                                            /// Get Feature Values
+                                            if (fieldValues.PathExists(new GH_Path(iLayer, m)))
+                                            {
+                                                fieldValues.get_Branch(new GH_Path(iLayer, m)).Clear();
+                                            }
+                                            for (int iField = 0; iField < feat.GetFieldCount(); iField++)
+                                            {
+                                                OSGeo.OGR.FieldDefn fdef = def.GetFieldDefn(iField);
+                                                if (feat.IsFieldSet(iField))
+                                                {
+                                                    fieldValues.Append(new GH_String(feat.GetFieldAsString(iField)), layerPath.AppendElement(m));
+                                                }
+                                                else
+                                                {
+                                                    fieldValues.Append(new GH_String("null"), layerPath.AppendElement(m));
+                                                }
+                                            }
+                                            ///End Get Feature Values
+
+                                        }
+                                        ///End getting points if closed polylines and multipolygons
+                                    }
+                                    /// End else pointOnly
+
+                                    m++;
+                                    geomUser.Dispose();
+                                    feat.Dispose();
+                                }
+                                /// End if feat.GetGeometryRef() != null
+                            }
+                            /// End while loop through features
+                        }
+                        /// End clipped layer else statement
 
                         ogrLayer.Dispose();
 
-                    }///end loop through layers
+                    } 
+                    /// End loop through layers
 
                     dataSource.Dispose();
 
-                }
-            }///end loop through data sources
+                } 
+                ///End loop through datasource
+
+            } 
+            ///End loop through boundary tree
+
 
             ///Multi thread conversion of ogr geometry to gh geometry
             Parallel.ForEach(geomDict, new ParallelOptions
-            { MaxDegreeOfParallelism = totalMaxConcurrancy  },
+            { MaxDegreeOfParallelism = totalMaxConcurrancy },
             geomItem =>
             {
-                    gooDict[geomItem.Key] = Heron.Convert.OgrGeomToGHGoo(geomItem.Value, transform);
-                    //featureGoo.AppendRange(Heron.Convert.OgrGeomToGHGoo(geomItem.Value, transform), geomItem.Key);
+                gooDict[geomItem.Key] = Heron.Convert.OgrGeomToGHGoo(geomItem.Value, transform);
+                //featureGoo.AppendRange(Heron.Convert.OgrGeomToGHGoo(geomItem.Value, transform), geomItem.Key);
             }
             );
 
@@ -379,8 +515,8 @@ namespace Heron
             //OSGeo.OGR.DataSource dataSource = OSGeo.OGR.Ogr.Open(shpFilePath, 0);
             if (shpFilePath.ToLower().EndsWith("gml"))
             {
-                OSGeo.GDAL.Dataset dataSet = OSGeo.GDAL.Gdal.OpenEx(shpFilePath, 0, null, new string[] { 
-                    "REMOVE_UNUSED_LAYERS=YES", 
+                OSGeo.GDAL.Dataset dataSet = OSGeo.GDAL.Gdal.OpenEx(shpFilePath, 0, null, new string[] {
+                    "REMOVE_UNUSED_LAYERS=YES",
                     "REMOVE_UNUSED_FIELDS=YES" 
                     //"VALIDATE=YES",
                     //"XSD=https://schemas.opengis.net/citygml/building/1.0/building.xsd"
@@ -462,7 +598,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("BD2E8190-0F71-4C22-BD78-A68091A22EDF"); }
+            get { return new Guid("5B88A42A-4911-4350-B684-287951C32EDA"); }
         }
     }
 }

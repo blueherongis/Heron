@@ -145,6 +145,7 @@
     <Compile Include="Components\GIS Import-Export\ImportOSMLite.cs" />
     <Compile Include="Components\GIS Import-Export\ImportTopoLite.cs" />
     <Compile Include="Components\GIS Import-Export\ImportVectorLite.cs" />
+    <Compile Include="Components\Deprecated\ImportVectorLite_DEPRECATED20250216.cs" />
     <Compile Include="Components\Deprecated\ImportVectorSRS_DEPRECATED20230506.cs" />
     <Compile Include="Components\GIS Import-Export\ImportVectorSRS.cs" />
     <Compile Include="Components\GIS REST\RESTRasterSRS.cs" />
