@@ -14,7 +14,6 @@ namespace Heron
 {
     public class ImportTopo : HeronComponent
     {
-        //Class Constructor
         public ImportTopo() : base("Import Topo", "ImportTopo", "Create a topographic mesh from a raster file (IMG, HGT, ASCII, DEM, TIF, etc) clipped to a boundary", "GIS Import | Export")
         {
 
@@ -23,7 +22,7 @@ namespace Heron
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
-            pManager.AddTextParameter("Topography Raster File", "topoFile", "Filepath for the raster topography input", GH_ParamAccess.item);
+            pManager.AddTextParameter("Topography Raster File", "topoFile", "Filepath(s) for the raster topography input", GH_ParamAccess.list);
             pManager[0].Optional = true;
         }
 
@@ -40,15 +39,18 @@ namespace Heron
             List<Curve> boundary = new List<Curve>();
             DA.GetDataList<Curve>(0, boundary);
 
-            string IMG_file = string.Empty;
-            DA.GetData<string>(1, ref IMG_file);
+            List<string> IMG_files = new List<string>();
+            DA.GetDataList<string>(1, IMG_files);
 
             Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
 
-            Dataset datasource = Gdal.Open(IMG_file, Access.GA_ReadOnly);
-            OSGeo.GDAL.Driver drv = datasource.GetDriver();
+            /// Allow stitching of multiple topo raster files to avoid gaps between
+            string combinedVRT = "/vsimem/combined.tif";
+            Dataset datasource = Gdal.BuildVRT(combinedVRT, IMG_files.ToArray(), null, null, null);
 
+            //Dataset datasource = Gdal.Open(IMG_file, Access.GA_ReadOnly);
+            OSGeo.GDAL.Driver drv = datasource.GetDriver();
 
             if (datasource == null)
             {
@@ -157,7 +159,7 @@ namespace Heron
             dsMax.Transform(heronToUserSRSTransform);
             Rectangle3d dsbox = new Rectangle3d(Plane.WorldXY, dsMin, dsMax);
 
-
+            ///Get pixel size for vertex adjustment
             double pixelWidth = dsbox.Width / width;
             double pixelHeight = dsbox.Height / height;
 
@@ -213,15 +215,21 @@ namespace Heron
                 double latNorth = clipperMin.Y;
                 double latSouth = clipperMax.Y;
 
-                var translateOptions = new[]
+                var translateOptions = new List<string>
                 {
                     "-of", "GTiff",
-                    "-a_nodata", "0",
+                    //"-a_nodata", "0", ///Fill no data values with 0 to avoid causing errors in creating the mesh
                     "-projwin_srs", HeronSRS.Instance.SRS,
                     "-projwin", $"{lonWest}", $"{latNorth}", $"{lonEast}", $"{latSouth}"
                 };
 
-                using (Dataset clippedDataset = Gdal.wrapper_GDALTranslate(clippedTopoFile, datasource, new GDALTranslateOptions(translateOptions), null, null))
+                bool noDataPresent = false;
+                if (fillNoData)
+                {
+                    translateOptions.AddRange(new List<string> { "-a_nodata", "0" });
+                }
+
+                using (Dataset clippedDataset = Gdal.wrapper_GDALTranslate(clippedTopoFile, datasource, new GDALTranslateOptions(translateOptions.ToArray()), null, null))
                 {
                     ///Correct vertical units. Typically, vertical datum is in meters even if horizontal is feet.
                     var linearUnits = sr.GetLinearUnits();
@@ -249,9 +257,11 @@ namespace Heron
                         {
                             // equivalent to bits[col][row] if bits is 2-dimension array
                             double pixel = bits[col + row * width];
-                            if (pixel < -10000)
+                            if (pixel < -9998 || Double.IsNaN(pixel) || pixel > 1000000)
                             {
-                                pixel = 0;
+                                if (fillNoData) { pixel = 0; }
+                                else { pixel = -9999; }
+                                noDataPresent = true;
                             }
 
                             double gcol = adfGeoTransform[0] + adfGeoTransform[1] * col + adfGeoTransform[2] * row;
@@ -289,6 +299,7 @@ namespace Heron
 
                     //Create meshes
                     //non Parallel
+                    mesh.Vertices.UseDoublePrecisionVertices = true;
                     mesh.Vertices.AddVertices(verts);
                     //Parallel
                     //mesh.Vertices.AddVertices(vertsParallel.Values);
@@ -297,21 +308,44 @@ namespace Heron
                     {
                         for (int v = 1; v < rCount[path][0].Value; v++)
                         {
-                            mesh.Faces.AddFace(v - 1 + (u - 1) * (height), v - 1 + u * (height), v - 1 + u * (height) + 1, v - 1 + (u - 1) * (height) + 1);
-                            //(k - 1 + (j - 1) * num2, k - 1 + j * num2, k - 1 + j * num2 + 1, k - 1 + (j - 1) * num2 + 1)
+                            int vertex1 = v - 1 + (u - 1) * (height);
+                            int vertex2 = v - 1 + u * (height);
+                            int vertex3 = v - 1 + u * (height) + 1;
+                            int vertex4 = v - 1 + (u - 1) * (height) + 1;
+                            if (fillNoData || !noDataPresent)
+                            {
+                                mesh.Faces.AddFace(vertex1, vertex2, vertex3, vertex4);
+                            }
+                            else
+                            {
+                                if (!(mesh.Vertices.Point3dAt(vertex1).Z < -9998) &&
+                                    !(mesh.Vertices.Point3dAt(vertex2).Z < -9998) &&
+                                    !(mesh.Vertices.Point3dAt(vertex3).Z < -9998) &&
+                                    !(mesh.Vertices.Point3dAt(vertex4).Z < -9998)
+                                    )
+                                {
+                                    mesh.Faces.AddFace(vertex1, vertex2, vertex3, vertex4);
+                                }
+                            }
                         }
                     }
 
-                    //mesh.Flip(true, true, true);
+                    mesh.Flip(true, true, true);
+                    mesh.Compact();
                     tMesh.Append(new GH_Mesh(mesh), path);
 
                     band.Dispose();
                 }
+                /// End using
+                
+                /// Clean up
                 Gdal.Unlink("/vsimem/topoclipped.tif");
-
             }
-
+            /// End clipping boundary loop
+            
             datasource.Dispose();
+            ///Clean up
+            Gdal.Unlink("/vsimem/combined.tif");
 
             DA.SetDataTree(0, tMesh);
             DA.SetData(1, dsbox);
@@ -321,6 +355,7 @@ namespace Heron
 
 
         private bool clip = true;
+        private bool fillNoData = false;
         public bool Clip
         {
             get { return clip; }
@@ -337,11 +372,18 @@ namespace Heron
                 }
             }
         }
+        public bool FillNoData
+        {
+            get { return fillNoData; }
+            set { fillNoData = value; }
+        }
 
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
             ToolStripMenuItem item = Menu_AppendItem(menu, "Clip topography to boundary", Menu_ClipClicked, true, Clip);
             item.ToolTipText = "Clip topography with the boundary curve input.  If unchecked, the entire raster topography dataset will be created.";
+            ToolStripMenuItem fillItem = Menu_AppendItem(menu, "Fill no data values with 0", Menu_FillNoDataClicked, true, FillNoData);
+            fillItem.ToolTipText = "If there are no data values in the source data, select Fill no data values with 0 to set those pixels to a 0 height.";
         }
 
         private void Menu_ClipClicked(object sender, EventArgs e)
@@ -350,15 +392,23 @@ namespace Heron
             Clip = !Clip;
             ExpireSolution(true);
         }
+        private void Menu_FillNoDataClicked(object sender, EventArgs e)
+        {
+            RecordUndoEvent("FillNoData");
+            FillNoData = !FillNoData;
+            ExpireSolution(true);
+        }
 
         public override bool Write(GH_IO.Serialization.GH_IWriter writer)
         {
             writer.SetBoolean("Clip", Clip);
+            writer.SetBoolean("FillNoData", FillNoData);
             return base.Write(writer);
         }
         public override bool Read(GH_IO.Serialization.GH_IReader reader)
         {
             Clip = reader.GetBoolean("Clip");
+            FillNoData = reader.GetBoolean("FillNoData");
             return base.Read(reader);
         }
 

@@ -1,4 +1,6 @@
 ﻿using Grasshopper.Kernel;
+using Grasshopper.Kernel.Data;
+using Grasshopper.Kernel.Types;
 using OSGeo.GDAL;
 using OSGeo.OSR;
 using Rhino.Geometry;
@@ -10,7 +12,6 @@ namespace Heron
 {
     public class ImportTopoLite : HeronComponent
     {
-        //Class Constructor
         public ImportTopoLite() : base("Import Topo Lite", "ITL", "This is a basic version of the Import Topo component " +
             "which creates a topographic mesh from a raster file (IMG, HGT, ASCII, DEM, TIF, etc).  The data will be imported in the source's units " +
             "and spatial reference system, Heron's SetSRS and Rhino's EarthAnchorPoint will have no effect and the data could be far from Rhino's origin.  " +
@@ -23,12 +24,14 @@ namespace Heron
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("Topography Raster File", "topoFile", "Filepath for the raster topography input", GH_ParamAccess.item);
+            pManager.AddCurveParameter("Boundary", "boundary", "Boundary curve(s) for vector data", GH_ParamAccess.list);
+            pManager.AddTextParameter("Topography Raster File", "topoFile", "Filepath(s) for the raster topography input", GH_ParamAccess.list);
+            pManager[0].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddMeshParameter("Topography Mesh", "topoMesh", "Resultant topographic mesh from the source file", GH_ParamAccess.item);
+            pManager.AddMeshParameter("Topography Mesh", "topoMesh", "Resultant topographic mesh from the source file", GH_ParamAccess.tree);
             pManager.AddRectangleParameter("Topography Extent", "topoExtent", "Bounding box for the entire source file", GH_ParamAccess.item);
             pManager.AddTextParameter("Topography Source Info", "topoInfo", "Raster info about topography source", GH_ParamAccess.item);
 
@@ -36,13 +39,23 @@ namespace Heron
 
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string IMG_file = string.Empty;
-            DA.GetData<string>(0, ref IMG_file);
+            List<Curve> boundary = new List<Curve>();
+            DA.GetDataList<Curve>(0, boundary);
+
+            bool clip = false;
+            if (boundary.Count > 0) { clip = true; }
+
+            List<string> IMG_files = new List<string>();
+            DA.GetDataList<string>(1, IMG_files);
 
             Heron.GdalConfiguration.ConfigureGdal();
             OSGeo.GDAL.Gdal.AllRegister();
 
-            Dataset datasource = Gdal.Open(IMG_file, Access.GA_ReadOnly);
+            /// Allow stitching of multiple topo raster files to avoid gaps between
+            string combinedVRT = "/vsimem/combined.tif";
+            Dataset datasource = Gdal.BuildVRT(combinedVRT, IMG_files.ToArray(), null, null, null);
+            
+            //Dataset datasource = Gdal.Open(combinedVRT, Access.GA_ReadOnly);
             OSGeo.GDAL.Driver drv = datasource.GetDriver();
 
 
@@ -131,71 +144,164 @@ namespace Heron
 
             Rectangle3d dsbox = new Rectangle3d(Plane.WorldXY, dsMin, dsMax);
 
+            ///Get pixel size for vertex adjustment
+            double pixelWidth = dsbox.Width / width;
+            double pixelHeight = dsbox.Height / height;
 
             ///Declare trees
-            string clippedTopoFile = "/vsimem/topoclipped.tif";
-            Mesh mesh = new Mesh();
+            GH_Structure<GH_Point> pointcloud = new GH_Structure<GH_Point>();
+            GH_Structure<GH_Integer> rCount = new GH_Structure<GH_Integer>();
+            GH_Structure<GH_Integer> cCount = new GH_Structure<GH_Integer>();
+            GH_Structure<GH_Mesh> tMesh = new GH_Structure<GH_Mesh>();
 
-            var translateOptions = new[]
+            ///Ensure there is a boundary for the for loop when clip is false and no boundaries are input
+            if (!clip && boundary.Count == 0) { boundary.Add(dsbox.ToNurbsCurve()); }
+
+            for (int i = 0; i < boundary.Count; i++)
             {
-                    "-of", "GTiff",
-                    "-a_nodata", "0", ///Fill no data values with 0 to avoid causing errors in creating the mesh
-            };
+                GH_Path path = new GH_Path(i);
 
-            using (Dataset clippedDataset = Gdal.wrapper_GDALTranslate(clippedTopoFile, datasource, new GDALTranslateOptions(translateOptions), null, null))
-            {
-                Band band = clippedDataset.GetRasterBand(1);
-                width = clippedDataset.RasterXSize;
-                height = clippedDataset.RasterYSize;
-                clippedDataset.GetGeoTransform(adfGeoTransform);
+                Curve clippingBoundary = boundary[i];
 
-                List<Point3d> verts = new List<Point3d>();
+                if (!clip) { clippingBoundary = dsbox.ToNurbsCurve(); }
 
-                double[] bits = new double[width * height];
-                band.ReadRaster(0, 0, width, height, bits, width, height, 0, 0);
+                string clippedTopoFile = "/vsimem/topoclipped.tif";
 
-                for (int col = 0; col < width; col++)
+                if (!(dsbox.BoundingBox.Contains(clippingBoundary.GetBoundingBox(true).Min) && (dsbox.BoundingBox.Contains(clippingBoundary.GetBoundingBox(true).Max))) && clip)
                 {
-                    for (int row = 0; row < height; row++)
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "One or more boundaries may be outside the bounds of the topo dataset.");
+                }
+
+                ///Offsets to mesh/boundary based on pixel size
+                Point3d clipperMinPreAdd = clippingBoundary.GetBoundingBox(true).Corner(true, false, true);
+                Point3d clipperMinPostAdd = new Point3d(clipperMinPreAdd.X, clipperMinPreAdd.Y, clipperMinPreAdd.Z);
+                Point3d clipperMin = clipperMinPostAdd;
+
+                Point3d clipperMaxPreAdd = clippingBoundary.GetBoundingBox(true).Corner(false, true, true);
+                ///add/subtract pixel width if desired to get closer to boundary
+                Point3d clipperMaxPostAdd = new Point3d();
+                Point3d clipperMax = new Point3d();
+                if (clip)
+                {
+                    clipperMaxPostAdd = new Point3d(clipperMaxPreAdd.X + pixelWidth, clipperMaxPreAdd.Y - pixelHeight, clipperMaxPreAdd.Z);
+                    clipperMax = clipperMaxPostAdd;
+                }
+                else
+                {
+                    clipperMaxPostAdd = new Point3d(clipperMaxPreAdd.X, clipperMaxPreAdd.Y, clipperMaxPreAdd.Z);
+                    clipperMax = clipperMaxPostAdd;
+                }
+
+                double lonWest = clipperMin.X;
+                double lonEast = clipperMax.X;
+                double latNorth = clipperMin.Y;
+                double latSouth = clipperMax.Y;
+
+                string spatialReference = string.Empty;
+                sr.ExportToWkt(out spatialReference, null);
+
+                var translateOptions = new List<string>
+                {
+                    "-of", "GTiff",
+                    //"-a_nodata", "0", ///Fill no data values with 0 to avoid causing errors in creating the mesh
+                    "-projwin_srs", spatialReference,
+                    "-projwin", $"{lonWest}", $"{latNorth}", $"{lonEast}", $"{latSouth}"
+
+                };
+
+                bool fillNoData = false;
+                bool noDataPresent = false;
+                if (fillNoData)
+                {
+                    translateOptions.AddRange(new List<string> { "-a_nodata", "0"});
+                }
+
+                using (Dataset clippedDataset = Gdal.wrapper_GDALTranslate(clippedTopoFile, datasource, new GDALTranslateOptions(translateOptions.ToArray()), null, null))
+                {
+                    Band band = clippedDataset.GetRasterBand(1);
+                    width = clippedDataset.RasterXSize;
+                    height = clippedDataset.RasterYSize;
+                    clippedDataset.GetGeoTransform(adfGeoTransform);
+
+                    rCount.Append(new GH_Integer(height), path);
+                    cCount.Append(new GH_Integer(width), path);
+                    Mesh mesh = new Mesh();
+                    List<Point3d> verts = new List<Point3d>();
+                    
+                    double[] bits = new double[width * height];
+                    band.ReadRaster(0, 0, width, height, bits, width, height, 0, 0);
+
+                    for (int col = 0; col < width; col++)
                     {
-                        // equivalent to bits[col][row] if bits is 2-dimension array
-                        double pixel = bits[col + row * width];
-                        if (pixel < -10000)
+                        for (int row = 0; row < height; row++)
                         {
-                            pixel = 0;
+                            // equivalent to bits[col][row] if bits is 2-dimension array
+                            double pixel = bits[col + row * width];
+                            if (pixel < -9998 || Double.IsNaN(pixel) || pixel > 1000000)
+                            {
+                                if (fillNoData) { pixel = 0; }
+                                else { pixel = -9999; }
+                                noDataPresent = true;
+                            }
+
+                            double gcol = adfGeoTransform[0] + adfGeoTransform[1] * col + adfGeoTransform[2] * row;
+                            double grow = adfGeoTransform[3] + adfGeoTransform[4] * col + adfGeoTransform[5] * row;
+
+                            Point3d pt = new Point3d(gcol, grow, pixel);
+
+                            verts.Add(pt);
                         }
 
-                        double gcol = adfGeoTransform[0] + adfGeoTransform[1] * col + adfGeoTransform[2] * row;
-                        double grow = adfGeoTransform[3] + adfGeoTransform[4] * col + adfGeoTransform[5] * row;
-
-                        Point3d pt = new Point3d(gcol, grow, pixel);
-
-                        verts.Add(pt);
                     }
 
-                }
+                    /// Create mesh
+                    mesh.Vertices.UseDoublePrecisionVertices = true;
+                    mesh.Vertices.AddVertices(verts);
 
-                //Create mesh
-                mesh.Vertices.AddVertices(verts);
-
-                for (int u = 1; u < width; u++)
-                {
-                    for (int v = 1; v < height; v++)
+                    for (int u = 1; u < width; u++)
                     {
-                        mesh.Faces.AddFace(v - 1 + (u - 1) * (height), v - 1 + u * (height), v - 1 + u * (height) + 1, v - 1 + (u - 1) * (height) + 1);
+                        for (int v = 1; v < height; v++)
+                        {
+                            int vertex1 = v - 1 + (u - 1) * (height);
+                            int vertex2 = v - 1 + u * (height);
+                            int vertex3 = v - 1 + u * (height) + 1;
+                            int vertex4 = v - 1 + (u - 1) * (height) + 1;
+                            if (fillNoData || !noDataPresent)
+                            {
+                                mesh.Faces.AddFace(vertex1, vertex2, vertex3, vertex4);
+                            }
+                            else
+                            {
+                                if (!(mesh.Vertices.Point3dAt(vertex1).Z < -9998) &&
+                                    !(mesh.Vertices.Point3dAt(vertex2).Z < -9998) &&
+                                    !(mesh.Vertices.Point3dAt(vertex3).Z < -9998) &&
+                                    !(mesh.Vertices.Point3dAt(vertex4).Z < -9998)
+                                    )
+                                {
+                                    mesh.Faces.AddFace(vertex1, vertex2, vertex3, vertex4);
+                                }
+                            }
+                        }
                     }
+
+                    mesh.Flip(true, true, true);
+                    mesh.Compact();
+                    tMesh.Append(new GH_Mesh(mesh), path);
+
+                    band.Dispose();
                 }
+                /// End using
 
-                mesh.Flip(true, true, true);
-
-                band.Dispose();
+                ///Clean up
+                Gdal.Unlink("/vsimem/topoclipped.tif");
             }
+            /// End clipping boundary loop
 
-            ///Clean up
-            Gdal.Unlink("/vsimem/topoclipped.tif");
             datasource.Dispose();
+            ///Clean up
+            Gdal.Unlink("/vsimem/combined.tif");
 
-            DA.SetData(0, mesh);
+            DA.SetDataTree(0, tMesh);
             DA.SetData(1, dsbox);
             DA.SetData(2, srcInfo);
         }
@@ -212,7 +318,7 @@ namespace Heron
 
         public override Guid ComponentGuid
         {
-            get { return new Guid("{577EB6B8-CF48-4D73-AB49-3DB41DEA11EE}"); }
+            get { return new Guid("72F1C308-ADB9-4638-87E6-D5CC0B4D4260"); }
         }
     }
 }
