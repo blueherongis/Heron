@@ -382,8 +382,8 @@ namespace Heron
         {
             ToolStripMenuItem item = Menu_AppendItem(menu, "Clip topography to boundary", Menu_ClipClicked, true, Clip);
             item.ToolTipText = "Clip topography with the boundary curve input.  If unchecked, the entire raster topography dataset will be created.";
-            ToolStripMenuItem fillItem = Menu_AppendItem(menu, "Fill no data values with 0", Menu_FillNoDataClicked, true, FillNoData);
-            fillItem.ToolTipText = "If there are no data values in the source data, select Fill no data values with 0 to set those pixels to a 0 height.";
+            ToolStripMenuItem fillItem = Menu_AppendItem(menu, "Fill no-data values with 0", Menu_FillNoDataClicked, true, FillNoData);
+            fillItem.ToolTipText = "If there are no-data values in the source data, select Fill no data values with 0 to set those pixels to a 0 height.";
         }
 
         private void Menu_ClipClicked(object sender, EventArgs e)
