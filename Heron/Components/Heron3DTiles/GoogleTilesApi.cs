@@ -22,6 +22,7 @@ namespace Heron.Components.Heron3DTiles
 
         public Tileset GetRootTileset()
         {
+            // Root tileset is always JSON; pass explicit key here, session is captured from follow-up requests
             var rootUrl = $"https://tile.googleapis.com/v1/3dtiles/root.json?key={_apiKey}";
             var json = GetString(rootUrl);
             var ts = JsonConvert.DeserializeObject<Tileset>(json) ?? throw new Exception("Failed to parse root tileset.");
@@ -30,6 +31,7 @@ namespace Heron.Components.Heron3DTiles
 
         public Tileset GetChildTileset(string relativeJsonUri)
         {
+            // child.content.uri can be relative ('/v1/3dtiles/...json') — BuildUrl handles host + key + session
             var url = BuildUrl(relativeJsonUri);
             var json = GetString(url);
             var ts = JsonConvert.DeserializeObject<Tileset>(json) ?? throw new Exception("Failed to parse child tileset.");
@@ -39,8 +41,9 @@ namespace Heron.Components.Heron3DTiles
 
         public string EnsureGlb(string relativeGlbUri, bool download, out long bytes, out bool fromCache)
         {
+            // IMPORTANT: Only GLB content should reach here; TilesetWalker avoids queuing .json
             var url = BuildUrl(relativeGlbUri);
-            var hashName = Sha1(url) + ".glb";
+            var hashName = Sha1(url) + ".glb"; // cache key based on full request (includes key/session)
             var local = Path.Combine(_cacheFolder, hashName);
             fromCache = File.Exists(local);
             bytes = 0;
@@ -54,10 +57,35 @@ namespace Heron.Components.Heron3DTiles
                 return local;
             }
 
-            var data = _http.GetByteArrayAsync(url).GetAwaiter().GetResult();
-            File.WriteAllBytes(local, data);
-            bytes = data.LongLength;
+            // Fetch tile content and validate it is a GLB
+            using (var resp = _http.GetAsync(url).GetAwaiter().GetResult())
+            {
+                if (!resp.IsSuccessStatusCode)
+                    throw new Exception($"HTTP {(int)resp.StatusCode} when fetching tile content.");
 
+                var data = resp.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+
+                // Validate GLB magic: 'glTF' (0x67 0x6C 0x54 0x46)
+                bool looksGlb = data != null && data.Length >= 4 &&
+                                data[0] == 0x67 && data[1] == 0x6C && data[2] == 0x54 && data[3] == 0x46;
+
+                if (!looksGlb)
+                {
+                    // Helpful error to catch JSON replies or redirects without session
+                    if (data != null && data.Length > 0 && (data[0] == (byte)'{' || data[0] == (byte)'['))
+                    {
+                        throw new Exception($"Expected GLB but received JSON for URI '{relativeGlbUri}'. " +
+                                            $"This usually means the content URI points to a tileset (.json) " +
+                                            $"or the request missed a required session parameter.");
+                    }
+                    throw new Exception($"Downloaded content is not a GLB (bad magic) for URI '{relativeGlbUri}'.");
+                }
+
+                File.WriteAllBytes(local, data);
+                bytes = data.LongLength;
+            }
+
+            // Capture session token from the original relative URI if present
             TryCaptureSessionFromUri(relativeGlbUri);
             return local;
         }
@@ -68,14 +96,11 @@ namespace Heron.Components.Heron3DTiles
             {
                 var url = BuildUrl(relativeGlbUri);
                 using (var req = new HttpRequestMessage(HttpMethod.Head, url))
+                using (var resp = _http.SendAsync(req).GetAwaiter().GetResult())
                 {
-                    // HttpClient.Send doesn't exist on older frameworks; use SendAsync-sync
-                    using (var resp = _http.SendAsync(req).GetAwaiter().GetResult())
-                    {
-                        if (!resp.IsSuccessStatusCode) return -1;
-                        if (resp.Content.Headers.ContentLength.HasValue)
-                            return resp.Content.Headers.ContentLength.Value;
-                    }
+                    if (!resp.IsSuccessStatusCode) return -1;
+                    if (resp.Content.Headers.ContentLength.HasValue)
+                        return resp.Content.Headers.ContentLength.Value;
                 }
             }
             catch { /* ignore */ }
@@ -152,7 +177,7 @@ namespace Heron.Components.Heron3DTiles
 
         private static string Sha1(string s)
         {
-            using (var sha = SHA1.Create())
+            using (var sha = System.Security.Cryptography.SHA1.Create())
             {
                 var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(s));
                 var sb = new StringBuilder();
