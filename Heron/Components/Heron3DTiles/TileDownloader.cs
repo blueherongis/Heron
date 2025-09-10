@@ -20,6 +20,10 @@ namespace Heron.Components.Heron3DTiles
                 totalBytes = 0;
                 skippedForCap = 0;
 
+                int failedCount = 0;
+                Exception firstError = null;
+                string firstErrorUri = null;
+
                 foreach (var t in plan)
                 {
                     // Try estimate via HEAD if we’re close to cap
@@ -49,10 +53,33 @@ namespace Heron.Components.Heron3DTiles
                             break;
                         }
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        // Skip tiles that fail (network/cache miss with download=false)
+                        // Record the first failure to report a meaningful error if everything fails
+                        failedCount++;
+                        if (firstError == null)
+                        {
+                            firstError = ex;
+                            firstErrorUri = t.ContentUri;
+                        }
                         continue;
+                    }
+                }
+
+                // If nothing could be retrieved from cache or network, surface why
+                if (files.Count == 0)
+                {
+                    if (firstError != null)
+                    {
+                        throw new Exception(
+                            "Failed to obtain any tile content (" + plan.Count + " planned). " +
+                            "This often indicates malformed content URIs, missing required session token, or API access issues. " +
+                            "Sample URI: '" + (firstErrorUri ?? "<null>") + "'. Error: " + firstError.Message
+                        );
+                    }
+                    else
+                    {
+                        throw new Exception("No tiles available: plan was empty or all tiles were skipped due to size cap.");
                     }
                 }
 
