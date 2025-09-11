@@ -13,12 +13,11 @@ namespace Heron.Components.Heron3DTiles
     public static class Importer
     {
         /// <summary>
-        /// Imports GLBs into a headless doc (meters), pulls meshes, applies Earth→Model transform, and returns Mesh list.
-        /// Focus on robust import and material extraction similar to the provided TileImporter logic.
+        /// Imports GLBs into a headless doc (meters), converts ECEF vertex positions to model coordinates (using EarthAnchorPoint)
+        /// by performing per-vertex ECEF -> WGS84 (lon,lat,h) -> Model conversion, extracts meshes and materials.
         /// </summary>
         public static List<Mesh> ImportMeshesOriented(
             List<string> glbFiles,
-            Transform earthToModel,
             out List<GH_Material> ghMaterials,
             out List<string> notes)
         {
@@ -36,9 +35,18 @@ namespace Heron.Components.Heron3DTiles
             if (RhinoApp.ExeVersion < 8)
                 throw new Exception("glTF/GLB code-driven import requires Rhino 8 or newer.");
 
+            var activeDoc = RhinoDoc.ActiveDoc;
+            if (activeDoc == null)
+                throw new Exception("Active Rhino document required for EarthAnchorPoint conversion.");
+
+            // Precompute transforms and scales once.
+            var wgsToModel = Heron.Convert.WGSToXYZTransform(); // Inverse of Model->WGS transform.
+            double unitScaleModelToMeters = Rhino.RhinoMath.UnitScale(activeDoc.ModelUnitSystem, UnitSystem.Meters);
+            double metersToModel = unitScaleModelToMeters == 0 ? 1.0 : 1.0 / unitScaleModelToMeters;
+
             using (var temp = RhinoDoc.CreateHeadless(null))
             {
-                temp.ModelUnitSystem = UnitSystem.Meters;
+                temp.ModelUnitSystem = UnitSystem.Meters; // Imported GLBs assumed in meters (ECEF meters)
 
                 foreach (var fp in glbFiles)
                 {
@@ -48,20 +56,15 @@ namespace Heron.Components.Heron3DTiles
                         continue;
                     }
 
-                    // Prefer the simple Import(path) like the working reference.
                     bool imported = false;
                     try
                     {
                         imported = temp.Import(fp);
                     }
-                    catch (Exception)
-                    {
-                        imported = false;
-                    }
+                    catch { imported = false; }
 
                     if (!imported)
                     {
-                        // Fallback to Import with options dictionary
                         try
                         {
                             var readOpts = new FileReadOptions
@@ -72,10 +75,7 @@ namespace Heron.Components.Heron3DTiles
                             };
                             imported = temp.Import(fp, readOpts.OptionsDictionary);
                         }
-                        catch (Exception)
-                        {
-                            imported = false;
-                        }
+                        catch { imported = false; }
                     }
 
                     if (!imported)
@@ -84,48 +84,64 @@ namespace Heron.Components.Heron3DTiles
                         continue;
                     }
 
-                    // Snapshot imported mesh RhinoObjects
                     var roList = new List<RhinoObject>();
                     foreach (var ro in temp.Objects.GetObjectList(ObjectType.Mesh))
-                    {
                         roList.Add(ro);
-                    }
 
-                    if (roList.Count > 0)
+                    if (roList.Count == 0)
                     {
-                        string baseName = Path.GetFileNameWithoutExtension(fp);
-
-                        foreach (var ro in roList)
-                        {
-                            if (ro?.Geometry is Mesh m)
-                            {
-                                var dup = m.DuplicateMesh();
-                                dup.Normals.ComputeNormals();
-                                dup.Transform(earthToModel); // Earth → Model (Heron EAP)
-                                outMeshes.Add(dup);
-
-                                // Extract render material if available (align to reference logic)
-                                try
-                                {
-                                    var rmat = ro.RenderMaterial;
-                                    if (rmat != null)
-                                    {
-                                        try { if (string.IsNullOrEmpty(rmat.Name)) rmat.Name = baseName; } catch { }
-                                        ghMaterials.Add(new GH_Material(rmat));
-                                    }
-                                }
-                                catch { /* ignore */ }
-                            }
-
-                            // keep temp doc clean between files
-                            if (ro != null)
-                                temp.Objects.Delete(ro, true);
-                        }
-                    }
-                    else
-                    {
-                        // No mesh objects created by importer
                         notes.Add($"No mesh objects imported from: {Path.GetFileName(fp)}");
+                        continue;
+                    }
+
+                    string baseName = Path.GetFileNameWithoutExtension(fp);
+
+                    foreach (var ro in roList)
+                    {
+                        if (!(ro?.Geometry is Mesh m))
+                        {
+                            if (ro != null) temp.Objects.Delete(ro, true);
+                            continue;
+                        }
+
+                        var dup = m.DuplicateMesh();
+                        if (dup == null)
+                        {
+                            if (ro != null) temp.Objects.Delete(ro, true);
+                            continue;
+                        }
+
+                        // Per-vertex ECEF -> WGS84 -> Model conversion.
+                        // Assumptions: Source vertices are in ECEF meters (standard for Google Photorealistic 3D Tiles after glTF import).
+                        var verts = dup.Vertices;
+                        for (int i = 0; i < verts.Count; i++)
+                        {
+                            var ecef = verts.Point3dAt(i);
+                            var w = GeoUtils.EcefToWgs84(ecef); // (lonDeg, latDeg, hMeters)
+                            // Height: convert meters to model units BEFORE using WGSToXYZ transform (which expects elevation in model units).
+                            var geo = new Point3d(w.lonDeg, w.latDeg, w.h * metersToModel);
+                            geo.Transform(wgsToModel); // Now in model coordinates
+                            verts.SetVertex(i, geo);
+                        }
+
+                        dup.Normals.ComputeNormals();
+                        dup.Compact();
+                        outMeshes.Add(dup);
+
+                        // Extract render material if available
+                        try
+                        {
+                            var rmat = ro.RenderMaterial;
+                            if (rmat != null)
+                            {
+                                try { if (string.IsNullOrEmpty(rmat.Name)) rmat.Name = baseName; } catch { }
+                                ghMaterials.Add(new GH_Material(rmat));
+                            }
+                        }
+                        catch { }
+
+                        if (ro != null)
+                            temp.Objects.Delete(ro, true);
                     }
                 }
             }

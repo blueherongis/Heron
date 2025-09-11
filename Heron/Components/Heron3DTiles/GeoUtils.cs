@@ -128,13 +128,14 @@ namespace Heron.Components.Heron3DTiles
             {
                 try
                 {
-                    var ecef = Wgs84ToEcef(wgs.Y, wgs.X, wgs.Z); // lat, lon, h
+                    // FIX: Heron convention is w.X=lon, w.Y=lat, so pass correctly to Wgs84ToEcef(lon, lat, h)
+                    var ecef = Wgs84ToEcef(wgs.X, wgs.Y, wgs.Z); // lon, lat, h
                     ecefPoints.Add(new Point3d(ecef.X, ecef.Y, ecef.Z));
                 }
                 catch (Exception ex)
                 {
                     throw new InvalidOperationException(
-                        $"Failed to convert WGS84 coordinates to ECEF at point lat={wgs.Y}, lon={wgs.X}, h={wgs.Z}.", ex);
+                        $"Failed to convert WGS84 coordinates to ECEF at point lon={wgs.X}, lat={wgs.Y}, h={wgs.Z}.", ex);
                 }
             }
 
