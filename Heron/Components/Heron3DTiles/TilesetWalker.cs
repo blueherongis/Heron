@@ -66,11 +66,12 @@ namespace Heron.Components.Heron3DTiles
                 throw new Exception("Tileset has no root.");
 
             var planned = new List<PlannedTile>();
-            var visitedJson = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var visitedJson = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+            var seenGlb = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase); // prevent duplicate GLB entries
             int jsonFetches = 0;
             int nodeVisits = 0;
-            var stack = new Stack<Tuple<TileNode, int, string>>();
-            stack.Push(Tuple.Create(root.Root, 0, root.Refine));
+            var stack = new Stack<System.Tuple<TileNode, int, string>>();
+            stack.Push(System.Tuple.Create(root.Root, 0, root.Refine));
 
             while (stack.Count > 0)
             {
@@ -115,12 +116,15 @@ namespace Heron.Components.Heron3DTiles
                             {
                                 var subTs = SafeFetchChildTileset(uri, visitedJson, ref jsonFetches);
                                 if (subTs?.Root != null)
-                                    stack.Push(Tuple.Create(subTs.Root, depth + 1, subTs.Refine ?? nodeRefine));
+                                    stack.Push(System.Tuple.Create(subTs.Root, depth + 1, subTs.Refine ?? nodeRefine));
                             }
                         }
                         else if (IsGlbUri(uri))
                         {
-                            planned.Add(new PlannedTile { ContentUri = uri, Depth = depth, BV = node.BoundingVolume, Refine = nodeRefine });
+                            if (seenGlb.Add(uri))
+                            {
+                                planned.Add(new PlannedTile { ContentUri = uri, Depth = depth, BV = node.BoundingVolume, Refine = nodeRefine });
+                            }
                         }
                     }
                     continue;
@@ -138,18 +142,21 @@ namespace Heron.Components.Heron3DTiles
                             {
                                 var subTs = SafeFetchChildTileset(childUri, visitedJson, ref jsonFetches);
                                 if (subTs?.Root != null)
-                                    stack.Push(Tuple.Create(subTs.Root, depth + 1, subTs.Refine ?? nodeRefine));
+                                    stack.Push(System.Tuple.Create(subTs.Root, depth + 1, subTs.Refine ?? nodeRefine));
                             }
                             continue;
                         }
-                        stack.Push(Tuple.Create(child, depth + 1, nodeRefine));
+                        stack.Push(System.Tuple.Create(child, depth + 1, nodeRefine));
                     }
                 }
 
                 // refine == ADD include parent GLB
-                if (nodeRefine.Equals("ADD", StringComparison.OrdinalIgnoreCase) && hasContent && IsGlbUri(uri))
+                if (nodeRefine.Equals("ADD", System.StringComparison.OrdinalIgnoreCase) && hasContent && IsGlbUri(uri))
                 {
-                    planned.Add(new PlannedTile { ContentUri = uri, Depth = depth, BV = node.BoundingVolume, Refine = nodeRefine });
+                    if (seenGlb.Add(uri))
+                    {
+                        planned.Add(new PlannedTile { ContentUri = uri, Depth = depth, BV = node.BoundingVolume, Refine = nodeRefine });
+                    }
                 }
             }
 
@@ -200,9 +207,9 @@ namespace Heron.Components.Heron3DTiles
             
             // Quick AABB rejection
             var obbExtents = new Vector3d(
-                Math.Abs(hx.X) + Math.Abs(hy.X) + Math.Abs(hz.X),
-                Math.Abs(hx.Y) + Math.Abs(hy.Y) + Math.Abs(hz.Y),
-                Math.Abs(hx.Z) + Math.Abs(hy.Z) + Math.Abs(hz.Z));
+                System.Math.Abs(hx.X) + System.Math.Abs(hy.X) + System.Math.Abs(hz.X),
+                System.Math.Abs(hx.Y) + System.Math.Abs(hy.Y) + System.Math.Abs(hz.Y),
+                System.Math.Abs(hx.Z) + System.Math.Abs(hy.Z) + System.Math.Abs(hz.Z));
             
             var obbMin = center - obbExtents;
             var obbMax = center + obbExtents;
@@ -211,7 +218,7 @@ namespace Heron.Components.Heron3DTiles
             
             // Quick sphere rejection
             var dist = center.DistanceTo(_aoiEcefCenter);
-            var obbRadius = Math.Sqrt(hx.Length * hx.Length + hy.Length * hy.Length + hz.Length * hz.Length);
+            var obbRadius = System.Math.Sqrt(hx.Length * hx.Length + hy.Length * hy.Length + hz.Length * hz.Length);
             if (dist > _aoiEcefRadius + obbRadius) return false;
             
             // Precise 2D test in OBB local frame
@@ -299,16 +306,16 @@ namespace Heron.Components.Heron3DTiles
         #region Helpers
         private static bool IsJsonUri(string uri)
         {
-            try { var u = StripQuery(uri); if (u.StartsWith("http", StringComparison.OrdinalIgnoreCase)) u = new Uri(u).AbsolutePath; return u.EndsWith(".json", StringComparison.OrdinalIgnoreCase); }
-            catch { return uri.IndexOf(".json", StringComparison.OrdinalIgnoreCase) >= 0; }
+            try { var u = StripQuery(uri); if (u.StartsWith("http", System.StringComparison.OrdinalIgnoreCase)) u = new System.Uri(u).AbsolutePath; return u.EndsWith(".json", System.StringComparison.OrdinalIgnoreCase); }
+            catch { return uri.IndexOf(".json", System.StringComparison.OrdinalIgnoreCase) >= 0; }
         }
         private static bool IsGlbUri(string uri)
         {
-            try { var u = StripQuery(uri); if (u.StartsWith("http", StringComparison.OrdinalIgnoreCase)) u = new Uri(u).AbsolutePath; return u.EndsWith(".glb", StringComparison.OrdinalIgnoreCase); }
-            catch { return uri.IndexOf(".glb", StringComparison.OrdinalIgnoreCase) >= 0; }
+            try { var u = StripQuery(uri); if (u.StartsWith("http", System.StringComparison.OrdinalIgnoreCase)) u = new System.Uri(u).AbsolutePath; return u.EndsWith(".glb", System.StringComparison.OrdinalIgnoreCase); }
+            catch { return uri.IndexOf(".glb", System.StringComparison.OrdinalIgnoreCase) >= 0; }
         }
         private static string StripQuery(string uri) { int q = uri.IndexOf('?'); return q >= 0 ? uri.Substring(0, q) : uri; }
-        private static double DegToRad(double d) { return d * Math.PI / 180.0; }
+        private static double DegToRad(double d) { return d * System.Math.PI / 180.0; }
 
         private bool TryRegionSizeMeters(BoundingVolume bv, out double widthM, out double heightM)
         {
@@ -320,9 +327,9 @@ namespace Heron.Components.Heron3DTiles
             double north = GeoUtils.RadToDeg(bv.Region[3]);
             double midLatRad = DegToRad((south + north) * 0.5);
             const double metersPerDegLat = 111320.0;
-            double metersPerDegLon = metersPerDegLat * Math.Cos(midLatRad);
-            double dLon = Math.Max(0, east - west);
-            double dLat = Math.Max(0, north - south);
+            double metersPerDegLon = metersPerDegLat * System.Math.Cos(midLatRad);
+            double dLon = System.Math.Max(0, east - west);
+            double dLat = System.Math.Max(0, north - south);
             widthM = dLon * metersPerDegLon;
             heightM = dLat * metersPerDegLat;
             return true;
