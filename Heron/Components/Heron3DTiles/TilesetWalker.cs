@@ -8,6 +8,45 @@ using Rhino.Geometry;
 namespace Heron.Components.Heron3DTiles
 {
     /// <summary>
+    /// Stats describing a tileset traversal.
+    /// </summary>
+    public class TilesetTraversalStats
+    {
+        public int PlannedGlbs;
+        public int JsonFetches;
+        public int NodeVisits;
+        public int PrunedByAoi;
+        public int LeafHeuristicStops;
+        public int ExpandedJsonAtMaxDepth;
+        public int MaxDepthSeen;
+        public bool HitTilePlanBudget;
+        public bool HitJsonFetchBudget;
+        public bool HitNodeVisitBudget;
+        public bool EmptyPlan;
+        public string EmptyPlanReason;
+        public double RelaxAoiMeters;
+        public bool RelaxedMode => RelaxAoiMeters > 0;
+
+        public IEnumerable<string> ToInfoLines()
+        {
+            yield return string.Format("Traversal: GLBs={0}, JsonFetches={1}, NodeVisits={2}, PrunedAoi={3}", PlannedGlbs, JsonFetches, NodeVisits, PrunedByAoi);
+            yield return string.Format("HeuristicLeaves={0}, JsonAtMaxExpanded={1}, MaxDepthSeen={2}", LeafHeuristicStops, ExpandedJsonAtMaxDepth, MaxDepthSeen);
+            if (HitTilePlanBudget || HitJsonFetchBudget || HitNodeVisitBudget)
+            {
+                yield return string.Format("Budgets hit: plan={0}, json={1}, visits={2}", HitTilePlanBudget, HitJsonFetchBudget, HitNodeVisitBudget);
+            }
+            if (RelaxedMode)
+            {
+                yield return string.Format("AOI relaxed by {0} m for pruning.", RelaxAoiMeters);
+            }
+            if (EmptyPlan && !string.IsNullOrEmpty(EmptyPlanReason))
+            {
+                yield return "Empty plan reason: " + EmptyPlanReason;
+            }
+        }
+    }
+
+    /// <summary>
     /// Area-pruned, max-LOD traversal with spatial + size heuristics and accurate ECEF pruning.
     /// </summary>
     public class TilesetWalker
@@ -17,6 +56,9 @@ namespace Heron.Components.Heron3DTiles
         private readonly Point3d _aoiEcefMin, _aoiEcefMax, _aoiEcefCenter;
         private readonly double _aoiEcefRadius;
         private readonly int _maxLod;
+        private readonly double _relaxAoiMeters;
+        private readonly Point3d _aoiEcefMinExpanded, _aoiEcefMaxExpanded;
+        private readonly double _aoiEcefRadiusExpanded;
 
         // Traversal budgets
         private const int TilePlanBudget = 20000;
@@ -30,11 +72,15 @@ namespace Heron.Components.Heron3DTiles
         private readonly double _targetLeafWidthMeters;
         private readonly double _targetLeafHeightMeters;
 
-        public TilesetWalker(GoogleTilesApi api, Polyline aoiModel, int maxLod)
+        // Stats
+        public TilesetTraversalStats Stats { get; private set; } = new TilesetTraversalStats();
+
+        public TilesetWalker(GoogleTilesApi api, Polyline aoiModel, int maxLod, double relaxAoiMeters = 0.0)
         {
             _api = api;
             _maxLod = Math.Max(0, maxLod);
-            
+            _relaxAoiMeters = relaxAoiMeters < 0 ? 0 : relaxAoiMeters;
+
             // Convert AOI to densified ECEF polygon once
             try
             {
@@ -46,15 +92,29 @@ namespace Heron.Components.Heron3DTiles
                     "Failed to convert AOI to ECEF coordinates. This may be due to missing or invalid EarthAnchorPoint. " +
                     "Ensure Rhino document is open and EarthAnchorPoint is properly set using Heron's SetEAP component.", ex);
             }
-            
+
             // Precompute ECEF bounds for fast culling
             GeoUtils.ComputeEcefBounds(_aoiEcef, out _aoiEcefMin, out _aoiEcefMax, out _aoiEcefCenter, out _aoiEcefRadius);
-            
+
+            // Expanded bounds if relaxing
+            if (_relaxAoiMeters > 0)
+            {
+                _aoiEcefMinExpanded = new Point3d(_aoiEcefMin.X - _relaxAoiMeters, _aoiEcefMin.Y - _relaxAoiMeters, _aoiEcefMin.Z - _relaxAoiMeters);
+                _aoiEcefMaxExpanded = new Point3d(_aoiEcefMax.X + _relaxAoiMeters, _aoiEcefMax.Y + _relaxAoiMeters, _aoiEcefMax.Z + _relaxAoiMeters);
+                _aoiEcefRadiusExpanded = _aoiEcefRadius + _relaxAoiMeters;
+            }
+            else
+            {
+                _aoiEcefMinExpanded = _aoiEcefMin;
+                _aoiEcefMaxExpanded = _aoiEcefMax;
+                _aoiEcefRadiusExpanded = _aoiEcefRadius;
+            }
+
             // Approximate AOI size in meters for size heuristics
             var diagonal = _aoiEcefMax - _aoiEcefMin;
             _aoiWidthMeters = Math.Max(diagonal.X, diagonal.Y); // Rough approximation
             _aoiHeightMeters = Math.Max(diagonal.X, diagonal.Y);
-            
+
             double denom = Math.Pow(2.0, _maxLod <= 0 ? 1 : _maxLod);
             _targetLeafWidthMeters = (_aoiWidthMeters / denom);
             _targetLeafHeightMeters = (_aoiHeightMeters / denom);
@@ -62,8 +122,16 @@ namespace Heron.Components.Heron3DTiles
 
         public List<PlannedTile> PlanDownloads(Tileset root)
         {
+            var stats = new TilesetTraversalStats();
+            stats.RelaxAoiMeters = _relaxAoiMeters;
+            Stats = stats; // reset
+
             if (root?.Root == null)
+            {
+                stats.EmptyPlan = true;
+                stats.EmptyPlanReason = "Tileset root missing";
                 throw new Exception("Tileset has no root.");
+            }
 
             var planned = new List<PlannedTile>();
             var visitedJson = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
@@ -75,9 +143,9 @@ namespace Heron.Components.Heron3DTiles
 
             while (stack.Count > 0)
             {
-                if (planned.Count >= TilePlanBudget) break;
-                if (jsonFetches >= JsonFetchBudget) break;
-                if (nodeVisits >= NodeVisitBudget) break;
+                if (planned.Count >= TilePlanBudget) { stats.HitTilePlanBudget = true; break; }
+                if (jsonFetches >= JsonFetchBudget) { stats.HitJsonFetchBudget = true; break; }
+                if (nodeVisits >= NodeVisitBudget) { stats.HitNodeVisitBudget = true; break; }
 
                 var current = stack.Pop();
                 var node = current.Item1;
@@ -85,24 +153,31 @@ namespace Heron.Components.Heron3DTiles
                 string parentRefine = current.Item3;
                 if (node == null) continue;
                 nodeVisits++;
+                if (depth > stats.MaxDepthSeen) stats.MaxDepthSeen = depth;
 
-                // Spatial pruning - now using ECEF-first approach
-                if (!IntersectsAoi(node.BoundingVolume)) continue;
+                // Spatial pruning
+                if (!IntersectsAoi(node.BoundingVolume)) { stats.PrunedByAoi++; continue; }
 
                 var nodeRefine = node.Refine ?? parentRefine ?? "REPLACE";
                 bool hasChildren = node.Children != null && node.Children.Count > 0;
                 bool reachedLod = depth >= _maxLod;
                 var uri = node.Content?.EffectiveUri;
                 bool hasContent = !string.IsNullOrEmpty(uri);
-                bool treatAsLeaf = reachedLod || !hasChildren;
+                bool isJsonContent = hasContent && IsJsonUri(uri);
+                bool isGlbContent = hasContent && IsGlbUri(uri);
 
-                // Region size heuristic to early-stop descent
+                // Leaf logic: only treat as leaf if no children OR reached max LOD and geometry is directly available (GLB)
+                bool treatAsLeaf = (!hasChildren) || (reachedLod && isGlbContent);
+
+                // Region size heuristic to early-stop descent (avoid if only JSON available)
                 if (!treatAsLeaf && TryRegionSizeMeters(node.BoundingVolume, out double regionWidthM, out double regionHeightM))
                 {
                     if (regionWidthM <= _targetLeafWidthMeters * LeafSizeRelaxFactor &&
-                        regionHeightM <= _targetLeafHeightMeters * LeafSizeRelaxFactor)
+                        regionHeightM <= _targetLeafHeightMeters * LeafSizeRelaxFactor &&
+                        (isGlbContent || !hasChildren))
                     {
                         treatAsLeaf = true;
+                        stats.LeafHeuristicStops++;
                     }
                 }
 
@@ -110,16 +185,24 @@ namespace Heron.Components.Heron3DTiles
                 {
                     if (hasContent)
                     {
-                        if (IsJsonUri(uri))
+                        if (isJsonContent)
                         {
-                            if (depth < _maxLod && jsonFetches < JsonFetchBudget && !visitedJson.Contains(uri))
+                            // JSON wrapper at or below max depth -> expand without increasing depth (JSON depth does not count)
+                            if (!visitedJson.Contains(uri) && jsonFetches < JsonFetchBudget)
                             {
-                                var subTs = SafeFetchChildTileset(uri, visitedJson, ref jsonFetches);
+                                visitedJson.Add(uri);
+                                jsonFetches++;
+                                stats.ExpandedJsonAtMaxDepth++;
+                                Tileset subTs = null;
+                                try { subTs = _api.GetChildTileset(uri); }
+                                catch { }
                                 if (subTs?.Root != null)
-                                    stack.Push(System.Tuple.Create(subTs.Root, depth + 1, subTs.Refine ?? nodeRefine));
+                                {
+                                    stack.Push(System.Tuple.Create(subTs.Root, depth, subTs.Refine ?? nodeRefine));
+                                }
                             }
                         }
-                        else if (IsGlbUri(uri))
+                        else if (isGlbContent)
                         {
                             if (seenGlb.Add(uri))
                             {
@@ -136,28 +219,50 @@ namespace Heron.Components.Heron3DTiles
                     foreach (var child in node.Children)
                     {
                         var childUri = child.Content?.EffectiveUri;
-                        if (!string.IsNullOrEmpty(childUri) && IsJsonUri(childUri))
+                        bool childHasContent = !string.IsNullOrEmpty(childUri);
+                        bool childIsJson = childHasContent && IsJsonUri(childUri);
+                        if (childIsJson)
                         {
-                            if (depth + 1 <= _maxLod && jsonFetches < JsonFetchBudget && !visitedJson.Contains(childUri))
+                            // Fetch child tileset (JSON wrapper) without depth increment (JSON depth ignored)
+                            if (jsonFetches < JsonFetchBudget && !visitedJson.Contains(childUri))
                             {
                                 var subTs = SafeFetchChildTileset(childUri, visitedJson, ref jsonFetches);
                                 if (subTs?.Root != null)
-                                    stack.Push(System.Tuple.Create(subTs.Root, depth + 1, subTs.Refine ?? nodeRefine));
+                                    stack.Push(System.Tuple.Create(subTs.Root, depth, subTs.Refine ?? nodeRefine));
                             }
                             continue;
                         }
+                        // Non-JSON child: normal depth increment
                         stack.Push(System.Tuple.Create(child, depth + 1, nodeRefine));
                     }
                 }
 
                 // refine == ADD include parent GLB
-                if (nodeRefine.Equals("ADD", System.StringComparison.OrdinalIgnoreCase) && hasContent && IsGlbUri(uri))
+                if (nodeRefine.Equals("ADD", System.StringComparison.OrdinalIgnoreCase) && isGlbContent)
                 {
                     if (seenGlb.Add(uri))
                     {
                         planned.Add(new PlannedTile { ContentUri = uri, Depth = depth, BV = node.BoundingVolume, Refine = nodeRefine });
                     }
                 }
+            }
+
+            stats.PlannedGlbs = planned.Count;
+            stats.JsonFetches = jsonFetches;
+            stats.NodeVisits = nodeVisits;
+            if (planned.Count == 0)
+            {
+                stats.EmptyPlan = true;
+                if (stats.PrunedByAoi > 0 && nodeVisits > 0)
+                    stats.EmptyPlanReason = "All nodes pruned by AOI";
+                else if (stats.HitJsonFetchBudget)
+                    stats.EmptyPlanReason = "JSON fetch budget hit before reaching GLBs";
+                else if (stats.HitNodeVisitBudget)
+                    stats.EmptyPlanReason = "Node visit budget hit";
+                else if (stats.HitTilePlanBudget)
+                    stats.EmptyPlanReason = "Tile plan budget hit";
+                else
+                    stats.EmptyPlanReason = "Traversal produced no GLB content (possible deep JSON wrappers beyond budgets)";
             }
 
             return planned;
@@ -199,82 +304,64 @@ namespace Heron.Components.Heron3DTiles
 
         private bool IntersectsObbEcef(double[] box)
         {
-            // Parse OBB: center + 3 half-axis vectors
             var center = new Point3d(box[0], box[1], box[2]);
             var hx = new Vector3d(box[3], box[4], box[5]);
             var hy = new Vector3d(box[6], box[7], box[8]);
             var hz = new Vector3d(box[9], box[10], box[11]);
             
-            // Quick AABB rejection
             var obbExtents = new Vector3d(
-                System.Math.Abs(hx.X) + System.Math.Abs(hy.X) + System.Math.Abs(hz.X),
-                System.Math.Abs(hx.Y) + System.Math.Abs(hy.Y) + System.Math.Abs(hz.Y),
-                System.Math.Abs(hx.Z) + System.Math.Abs(hy.Z) + System.Math.Abs(hz.Z));
+                Math.Abs(hx.X) + Math.Abs(hy.X) + Math.Abs(hz.X),
+                Math.Abs(hx.Y) + Math.Abs(hy.Y) + Math.Abs(hz.Y),
+                Math.Abs(hx.Z) + Math.Abs(hy.Z) + Math.Abs(hz.Z));
             
             var obbMin = center - obbExtents;
             var obbMax = center + obbExtents;
             
-            if (GeoUtils.IsAabbDisjoint(_aoiEcefMin, _aoiEcefMax, obbMin, obbMax)) return false;
+            if (GeoUtils.IsAabbDisjoint(_aoiEcefMinExpanded, _aoiEcefMaxExpanded, obbMin, obbMax)) return false;
             
-            // Quick sphere rejection
             var dist = center.DistanceTo(_aoiEcefCenter);
-            var obbRadius = System.Math.Sqrt(hx.Length * hx.Length + hy.Length * hy.Length + hz.Length * hz.Length);
-            if (dist > _aoiEcefRadius + obbRadius) return false;
+            var obbRadius = Math.Sqrt(hx.Length * hx.Length + hy.Length * hy.Length + hz.Length * hz.Length);
+            if (dist > _aoiEcefRadiusExpanded + obbRadius) return false;
             
-            // Precise 2D test in OBB local frame
             return Intersects2DInObbFrame(center, hx, hy, hz);
         }
 
         private bool Intersects2DInObbFrame(Point3d center, Vector3d hx, Vector3d hy, Vector3d hz)
         {
-            // Normalize to get unit axes and half-lengths
             double lenX = hx.Length, lenY = hy.Length, lenZ = hz.Length;
-            if (lenX == 0 || lenY == 0 || lenZ == 0) return true; // Degenerate OBB
-            
+            if (lenX == 0 || lenY == 0 || lenZ == 0) return true;
             var axisX = hx / lenX;
             var axisY = hy / lenY;
             var axisZ = hz / lenZ;
-            
-            // Transform AOI points to OBB local coordinates, project to XY
             var localPoints = new List<Point2d>(_aoiEcef.Count);
             foreach (var ecefPt in _aoiEcef)
             {
                 var relative = ecefPt - center;
-                double localX = relative * axisX; // Dot product
+                double localX = relative * axisX;
                 double localY = relative * axisY;
-                // Drop Z for 2D test
                 localPoints.Add(new Point2d(localX, localY));
             }
-            
-            // Test polygon vs rectangle intersection in 2D
             return GeoUtils.PolygonIntersectsRectangle(localPoints, lenX, lenY);
         }
 
         private bool IntersectsSphereEcef(double[] sphere)
         {
             if (sphere.Length < 4) return false;
-            
             var sphereCenter = new Point3d(sphere[0], sphere[1], sphere[2]);
             double sphereRadius = sphere[3];
-            
-            // Quick sphere-sphere test
             double dist = sphereCenter.DistanceTo(_aoiEcefCenter);
-            return dist <= _aoiEcefRadius + sphereRadius;
+            return dist <= _aoiEcefRadiusExpanded + sphereRadius;
         }
 
         private bool IntersectsRegionEcef(double[] region)
         {
             if (region.Length < 6) return false;
-            
-            // Convert region bounds to ECEF box approximation
             double west = GeoUtils.RadToDeg(region[0]);
             double south = GeoUtils.RadToDeg(region[1]);
             double east = GeoUtils.RadToDeg(region[2]);
             double north = GeoUtils.RadToDeg(region[3]);
             double minHeight = region[4];
             double maxHeight = region[5];
-            
-            // Create ECEF box from region corners
             var corners = new Point3d[8];
             corners[0] = GeoUtils.Wgs84ToEcef(west, south, minHeight);
             corners[1] = GeoUtils.Wgs84ToEcef(east, south, minHeight);
@@ -284,8 +371,6 @@ namespace Heron.Components.Heron3DTiles
             corners[5] = GeoUtils.Wgs84ToEcef(east, south, maxHeight);
             corners[6] = GeoUtils.Wgs84ToEcef(east, north, maxHeight);
             corners[7] = GeoUtils.Wgs84ToEcef(west, north, maxHeight);
-            
-            // Get AABB of region in ECEF
             var regionMin = corners[0];
             var regionMax = corners[0];
             foreach (var corner in corners)
@@ -297,8 +382,7 @@ namespace Heron.Components.Heron3DTiles
                 if (corner.Y > regionMax.Y) regionMax = new Point3d(regionMax.X, corner.Y, regionMax.Z);
                 if (corner.Z > regionMax.Z) regionMax = new Point3d(regionMax.X, regionMax.Y, corner.Z);
             }
-            
-            return !GeoUtils.IsAabbDisjoint(_aoiEcefMin, _aoiEcefMax, regionMin, regionMax);
+            return !GeoUtils.IsAabbDisjoint(_aoiEcefMinExpanded, _aoiEcefMaxExpanded, regionMin, regionMax);
         }
 
         #endregion
@@ -315,7 +399,7 @@ namespace Heron.Components.Heron3DTiles
             catch { return uri.IndexOf(".glb", System.StringComparison.OrdinalIgnoreCase) >= 0; }
         }
         private static string StripQuery(string uri) { int q = uri.IndexOf('?'); return q >= 0 ? uri.Substring(0, q) : uri; }
-        private static double DegToRad(double d) { return d * System.Math.PI / 180.0; }
+        private static double DegToRad(double d) { return d * Math.PI / 180.0; }
 
         private bool TryRegionSizeMeters(BoundingVolume bv, out double widthM, out double heightM)
         {
@@ -327,9 +411,9 @@ namespace Heron.Components.Heron3DTiles
             double north = GeoUtils.RadToDeg(bv.Region[3]);
             double midLatRad = DegToRad((south + north) * 0.5);
             const double metersPerDegLat = 111320.0;
-            double metersPerDegLon = metersPerDegLat * System.Math.Cos(midLatRad);
-            double dLon = System.Math.Max(0, east - west);
-            double dLat = System.Math.Max(0, north - south);
+            double metersPerDegLon = metersPerDegLat * Math.Cos(midLatRad);
+            double dLon = Math.Max(0, east - west);
+            double dLat = Math.Max(0, north - south);
             widthM = dLon * metersPerDegLon;
             heightM = dLat * metersPerDegLat;
             return true;

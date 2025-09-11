@@ -26,60 +26,84 @@ namespace Heron.Components.Heron3DTiles
 
                 foreach (var t in plan)
                 {
-                    // Try estimate via HEAD if we’re close to cap
-                    if (download && totalBytes > 0.8 * _capBytes)
-                    {
-                        long est = _api.HeadContentLength(t.ContentUri);
-                        if (est > 0 && totalBytes + est > _capBytes)
-                        {
-                            skippedForCap++;
-                            continue;
-                        }
-                    }
+                    var uri = t.ContentUri;
+                    if (string.IsNullOrWhiteSpace(uri)) continue;
 
-                    bool fromCache;
-                    long bytes;
+                    bool fromCache = false;
+                    long bytes = 0;
+
                     try
                     {
-                        var f = _api.EnsureGlb(t.ContentUri, download, out bytes, out fromCache);
+                        // Pre-cap check BEFORE downloading
+                        // 1. If tile already cached we know precise size after EnsureGlb (fast path) but we can also HEAD first.
+                        // 2. If not cached attempt HEAD to estimate size; if estimate available and would exceed cap, stop (partial download).
+
+                        // Try HEAD first for uncached tiles when downloading (cheap) to avoid overshoot.
+                        long estSize = -1;
+                        if (download)
+                        {
+                            estSize = _api.HeadContentLength(uri);
+                            if (estSize > 0)
+                            {
+                                if (totalBytes + estSize > _capBytes)
+                                {
+                                    // Would exceed cap; do not download, mark partial and break (desired behavior: stop here)
+                                    skippedForCap++;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Now actually ensure the file (may download or pull from cache)
+                        var f = _api.EnsureGlb(uri, download, out bytes, out fromCache);
+
+                        // If HEAD failed (estSize==-1) and we now know the real size after download; enforce cap.
+                        if (totalBytes + bytes > _capBytes)
+                        {
+                            // Exceeds cap after obtaining tile.
+                            // Remove file if we just downloaded it (avoid counting partial tile). If from cache we simply don't include it.
+                            skippedForCap++;
+                            try
+                            {
+                                if (!fromCache && System.IO.File.Exists(f))
+                                {
+                                    // Delete the freshly downloaded file so that reruns can attempt again after raising cap.
+                                    System.IO.File.Delete(f);
+                                }
+                            }
+                            catch { }
+                            break; // Stop further downloads.
+                        }
+
                         files.Add(f);
                         totalBytes += bytes;
-                        if (download && totalBytes > _capBytes)
-                        {
-                            // Cap exceeded after this tile — drop last and break
-                            files.RemoveAt(files.Count - 1);
-                            skippedForCap++;
-                            totalBytes -= bytes;
-                            break;
-                        }
                     }
                     catch (Exception ex)
                     {
-                        // Record the first failure to report a meaningful error if everything fails
                         failedCount++;
                         if (firstError == null)
                         {
                             firstError = ex;
-                            firstErrorUri = t.ContentUri;
+                            firstErrorUri = uri;
                         }
                         continue;
                     }
                 }
 
-                // If nothing could be retrieved from cache or network, surface why
-                if (files.Count == 0)
+                // If nothing obtained AND we did not skip for cap -> real failure; else allow empty (cap too small / partial allowed)
+                if (files.Count == 0 && skippedForCap == 0)
                 {
                     if (firstError != null)
                     {
                         throw new Exception(
-                            "Failed to obtain any tile content (" + plan.Count + " planned). " +
+                            "Failed to obtain any tile content (" + (plan != null ? plan.Count : 0) + " planned). " +
                             "This often indicates malformed content URIs, missing required session token, or API access issues. " +
                             "Sample URI: '" + (firstErrorUri ?? "<null>") + "'. Error: " + firstError.Message
                         );
                     }
                     else
                     {
-                        throw new Exception("No tiles available: plan was empty or all tiles were skipped due to size cap.");
+                        throw new Exception("No tiles available: plan was empty or all tiles were invalid.");
                     }
                 }
 
