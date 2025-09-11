@@ -181,37 +181,16 @@ namespace Heron.Components.GIS_API
                 // Append traversal stats
                 foreach (var line in walker.Stats.ToInfoLines()) info.Add(line);
 
-                // If empty plan only because of AOI pruning, attempt a relaxed AOI second pass
-                if (plan.Count == 0 && walker.Stats.EmptyPlan && walker.Stats.EmptyPlanReason == "All nodes pruned by AOI")
-                {
-                    info.Add("Second pass: relaxing AOI by 500 meters to avoid over-pruning.");
-                    var relaxedWalker = new TilesetWalker(api, aoi, maxLod, 500.0);
-                    var relaxedPlan = relaxedWalker.PlanDownloads(root);
-                    foreach (var line in relaxedWalker.Stats.ToInfoLines()) info.Add("Relaxed " + line);
-                    if (relaxedPlan.Count > 0)
-                    {
-                        plan = relaxedPlan;
-                        walker = relaxedWalker; // adopt for further stats if needed
-                    }
-                    else
-                    {
-                        info.Add("Relaxed pass still produced no GLBs.");
-                    }
-                }
-
                 long capBytes = (long)(maxGb * 1024 * 1024 * 1024);
-                var downloader = new TileDownloader(api, capBytes);
-                var localGlbs = plan.Count == 0 ? new List<string>() : downloader.Ensure(plan, download, out long totalBytes, out var skippedForCap);
+                List<string> localGlbs = new List<string>();
+                long totalBytes = 0;
+                int skippedForCap = 0;
                 if (plan.Count > 0)
                 {
-                    long totalBytes = 0; int skippedCap = 0; // placeholders overwritten inside Ensure
-                }
-                if (plan.Count > 0)
-                {
-                    // We lost totalBytes above due to scope; recompute quick sum from files (cache sizes) for info.
-                    long bytesSum = 0;
-                    foreach (var f in localGlbs) { try { bytesSum += new FileInfo(f).Length; } catch { } }
-                    info.Add(string.Format("Tiles planned: {0}, files obtained: {1}, bytes (approx): {2:n0}", plan.Count, localGlbs.Count, bytesSum));
+                    var downloader = new TileDownloader(api, capBytes);
+                    localGlbs = downloader.Ensure(plan, download, out totalBytes, out skippedForCap);
+                    info.Add(string.Format("Tiles planned: {0}, downloaded/used: {1}, bytes: {2:n0}", plan.Count, localGlbs.Count, totalBytes));
+                    if (skippedForCap > 0) info.Add(string.Format("Skipped {0} tiles due to size cap ({1} GB).", skippedForCap, maxGb));
                 }
                 else
                 {
@@ -220,14 +199,13 @@ namespace Heron.Components.GIS_API
 
                 usedFiles.AddRange(localGlbs);
 
-                var meshes = localGlbs.Count == 0 ? new List<Mesh>() : Importer.ImportMeshesOriented(localGlbs, out var ghMaterials, out var importNotes);
+                var meshes = new List<Mesh>();
                 List<Grasshopper.Kernel.Types.GH_Material> mats = new List<Grasshopper.Kernel.Types.GH_Material>();
-                List<string> importMessages = new List<string>();
                 if (localGlbs.Count > 0)
                 {
-                    // Importer already produced notes & materials inside call; adapt variable names
-                    meshes = Importer.ImportMeshesOriented(localGlbs, out mats, out importMessages);
-                    info.AddRange(importMessages);
+                    var importMeshes = Importer.ImportMeshesOriented(localGlbs, out mats, out var importNotes);
+                    meshes = importMeshes ?? new List<Mesh>();
+                    info.AddRange(importNotes);
                 }
 
                 da.SetDataList(0, meshes);

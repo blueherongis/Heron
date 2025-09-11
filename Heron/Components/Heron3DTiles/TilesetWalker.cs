@@ -308,7 +308,8 @@ namespace Heron.Components.Heron3DTiles
             var hx = new Vector3d(box[3], box[4], box[5]);
             var hy = new Vector3d(box[6], box[7], box[8]);
             var hz = new Vector3d(box[9], box[10], box[11]);
-            
+
+            // 1. AABB check (fast coarse check)
             var obbExtents = new Vector3d(
                 Math.Abs(hx.X) + Math.Abs(hy.X) + Math.Abs(hz.X),
                 Math.Abs(hx.Y) + Math.Abs(hy.Y) + Math.Abs(hz.Y),
@@ -318,30 +319,15 @@ namespace Heron.Components.Heron3DTiles
             var obbMax = center + obbExtents;
             
             if (GeoUtils.IsAabbDisjoint(_aoiEcefMinExpanded, _aoiEcefMaxExpanded, obbMin, obbMax)) return false;
-            
+
+            // 2. Sphere check (another fast coarse check)
             var dist = center.DistanceTo(_aoiEcefCenter);
             var obbRadius = Math.Sqrt(hx.Length * hx.Length + hy.Length * hy.Length + hz.Length * hz.Length);
             if (dist > _aoiEcefRadiusExpanded + obbRadius) return false;
-            
-            return Intersects2DInObbFrame(center, hx, hy, hz);
-        }
 
-        private bool Intersects2DInObbFrame(Point3d center, Vector3d hx, Vector3d hy, Vector3d hz)
-        {
-            double lenX = hx.Length, lenY = hy.Length, lenZ = hz.Length;
-            if (lenX == 0 || lenY == 0 || lenZ == 0) return true;
-            var axisX = hx / lenX;
-            var axisY = hy / lenY;
-            var axisZ = hz / lenZ;
-            var localPoints = new List<Point2d>(_aoiEcef.Count);
-            foreach (var ecefPt in _aoiEcef)
-            {
-                var relative = ecefPt - center;
-                double localX = relative * axisX;
-                double localY = relative * axisY;
-                localPoints.Add(new Point2d(localX, localY));
-            }
-            return GeoUtils.PolygonIntersectsRectangle(localPoints, lenX, lenY);
+            // If both coarse checks pass, assume intersection. This is more robust than
+            // the complex 2D projection, which is prone to floating point errors at high LOD.
+            return true;
         }
 
         private bool IntersectsSphereEcef(double[] sphere)
