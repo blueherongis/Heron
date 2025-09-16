@@ -203,7 +203,7 @@ namespace Heron.Components.GIS_API
                 List<Grasshopper.Kernel.Types.GH_Material> mats = new List<Grasshopper.Kernel.Types.GH_Material>();
                 if (localGlbs.Count > 0)
                 {
-                    var importMeshes = Importer.ImportMeshesOriented(localGlbs, out mats, out var importNotes);
+                    var importMeshes = TileImporter.ImportMeshesOriented(localGlbs, out mats, out var importNotes);
                     meshes = importMeshes ?? new List<Mesh>();
                     info.AddRange(importNotes);
                 }

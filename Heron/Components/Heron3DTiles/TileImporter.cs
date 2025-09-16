@@ -7,10 +7,9 @@ using System.Collections.Generic;
 using Grasshopper.Kernel.Types;
 using System.IO;
 
-
 namespace Heron.Components.Heron3DTiles
 {
-    public static class Importer
+    public static class TileImporter
     {
         /// <summary>
         /// Imports GLBs into a headless doc (meters), converts ECEF vertex positions to model coordinates (using EarthAnchorPoint)
@@ -44,8 +43,10 @@ namespace Heron.Components.Heron3DTiles
             double unitScaleModelToMeters = Rhino.RhinoMath.UnitScale(activeDoc.ModelUnitSystem, UnitSystem.Meters);
             double metersToModel = unitScaleModelToMeters == 0 ? 1.0 : 1.0 / unitScaleModelToMeters;
 
-            using (var temp = RhinoDoc.CreateHeadless(null))
+            RhinoDoc temp = null;
+            try
             {
+                temp = RhinoDoc.CreateHeadless(null);
                 temp.ModelUnitSystem = UnitSystem.Meters; // Imported GLBs assumed in meters (ECEF meters)
 
                 foreach (var fp in glbFiles)
@@ -143,7 +144,28 @@ namespace Heron.Components.Heron3DTiles
                         if (ro != null)
                             temp.Objects.Delete(ro, true);
                     }
+
+                    // Clear objects after processing each file
+                    temp.Objects.Clear();
                 }
+            }
+            finally
+            {
+                // Explicit cleanup and disposal
+                if (temp != null)
+                {
+                    try
+                    {
+                        temp.Objects.Clear();
+                        temp.Dispose();
+                    }
+                    catch { }
+                    temp = null;
+                }
+                
+                // Force garbage collection to free memory
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
             }
 
             notes.Add($"Imported meshes: {outMeshes.Count}, materials: {ghMaterials.Count}");
