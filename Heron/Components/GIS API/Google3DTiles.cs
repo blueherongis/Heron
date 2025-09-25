@@ -50,8 +50,8 @@ namespace Heron.Components.GIS_API
             p.AddTextParameter("API Key", "Key", "Google Maps Platform API key.", GH_ParamAccess.item);
             p.AddIntegerParameter("Max LOD", "LOD", "Maximum traversal depth (0 = root only).", GH_ParamAccess.item, 4);
             p.AddTextParameter("Cache Folder", "Folder", "Folder to store tile cache (.glb files).", GH_ParamAccess.item, defaultCacheFolder);
-            p.AddBooleanParameter("Download", "D", "If true, run. If false, do nothing.", GH_ParamAccess.item, true);
-            p.AddBooleanParameter("Clear Cache", "Clear", "If true, clear cache folder first.", GH_ParamAccess.item, false);
+            p.AddBooleanParameter("Download", "D", "If true, run. If false, do nothing.", GH_ParamAccess.item, false);
+            p.AddBooleanParameter("Clear Cache", "Clear", "If true, clear cache folder first. Ignored when Download is false.", GH_ParamAccess.item, false);
             p.AddNumberParameter("Max Size (GB)", "MaxGB", "Soft cap for total downloads this run.", GH_ParamAccess.item, 1.0);
         }
 
@@ -69,7 +69,7 @@ namespace Heron.Components.GIS_API
             string apiKey = null;
             int maxLod = 4;
             string cacheFolder = null;
-            bool download = true;
+            bool download = false;
             bool clear = false;
             double maxGb = 1.0;
 
@@ -110,17 +110,10 @@ namespace Heron.Components.GIS_API
                 return;
             }
 
-            if (!download)
-            {
-                da.SetDataList(0, new List<Mesh>());
-                da.SetDataList(1, new List<string> { "Download is false. No action taken." });
-                da.SetDataList(2, new List<string>());
-                da.SetDataList(3, new List<object>());
-                return;
-            }
-
             if (!Directory.Exists(cacheFolder)) Directory.CreateDirectory(cacheFolder);
-            if (clear)
+            
+            // Only clear cache if download is true AND clear is true
+            if (download && clear)
             {
                 try 
                 { 
@@ -130,7 +123,13 @@ namespace Heron.Components.GIS_API
                 }
                 catch (Exception ex) { AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"Failed to clear cache: {ex.Message}"); }
             }
+            else if (!download && clear)
+            {
+                // Inform user that clear cache is ignored when download is false
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, "Clear Cache is ignored when Download is false.");
+            }
 
+            // Early validation of EAP only when needed
             var activeDoc = RhinoDoc.ActiveDoc;
             if (activeDoc == null)
             {
@@ -161,12 +160,73 @@ namespace Heron.Components.GIS_API
 
             try
             {
-                // Show connecting message
-                if (!isDownloading)
+                // If download is false, skip root traversal and work only with cached files
+                if (!download)
                 {
-                    Message = "Connecting to Google 3D Tiles API...";
+                    Message = "Checking cached tiles...";
                     Grasshopper.Instances.RedrawCanvas();
+
+                    // Get all .glb files from cache folder
+                    var cachedFiles = Directory.EnumerateFiles(cacheFolder, "*.glb").ToList();
+                    
+                    if (cachedFiles.Count == 0)
+                    {
+                        Message = "No cached tiles found. Enable Download to fetch tiles.";
+                        info.Add("No cached tiles found in: " + cacheFolder);
+                        info.Add("Set Download to true to download tiles from Google 3D Tiles API.");
+                        
+                        da.SetDataList(0, new List<Mesh>());
+                        da.SetDataList(1, info);
+                        da.SetDataList(2, new List<string>());
+                        da.SetDataList(3, new List<object>());
+                        return;
+                    }
+
+                    // Calculate total size of cached files
+                    long cachedTotalBytes = 0;
+                    foreach (var file in cachedFiles)
+                    {
+                        try
+                        {
+                            cachedTotalBytes += new FileInfo(file).Length;
+                        }
+                        catch { } // Skip files that can't be accessed
+                    }
+
+                    double cachedTotalMB = cachedTotalBytes / (1024.0 * 1024.0);
+                    Message = $"Found {cachedFiles.Count} cached tiles ({cachedTotalMB:F1} MB)";
+                    Grasshopper.Instances.RedrawCanvas();
+                    
+                    info.Add($"Found {cachedFiles.Count} cached tiles in: {cacheFolder}");
+                    info.Add($"Total cached size: {cachedTotalMB:F1} MB");
+                    usedFiles.AddRange(cachedFiles);
+
+                    // Import meshes from cached files
+                    Message = "Importing meshes from cached tiles...";
+                    Grasshopper.Instances.RedrawCanvas();
+
+                    var cachedMeshes = new List<Mesh>();
+                    List<Grasshopper.Kernel.Types.GH_Material> cachedMats = new List<Grasshopper.Kernel.Types.GH_Material>();
+                    
+                    var importMeshes = TileImporter.ImportMeshesOriented(cachedFiles, out cachedMats, out var importNotes);
+                    cachedMeshes = importMeshes ?? new List<Mesh>();
+                    info.AddRange(importNotes);
+
+                    // Completion message
+                    Message = $"Complete: {cachedMeshes.Count} meshes from {cachedFiles.Count} cached tiles ({cachedTotalMB:F1} MB)";
+                    System.Threading.Thread.Sleep(100);
+                    Grasshopper.Instances.RedrawCanvas();
+
+                    da.SetDataList(0, cachedMeshes);
+                    da.SetDataList(1, info);
+                    da.SetDataList(2, usedFiles);
+                    da.SetDataList(3, cachedMats);
+                    return;
                 }
+
+                // Download mode - full processing with root traversal
+                Message = "Connecting to Google 3D Tiles API...";
+                Grasshopper.Instances.RedrawCanvas();
 
                 var api = new GoogleTilesApi(apiKey, cacheFolder);
                 var root = api.GetRootTileset();
@@ -260,7 +320,7 @@ namespace Heron.Components.GIS_API
                 if (meshes.Count > 0)
                 {
                     double totalMB = totalBytes / (1024.0 * 1024.0);
-                    Message = $"Complete: {meshes.Count} meshes from {downloadedTiles} tiles ({totalMB:F1} MB)";
+                    Message = $"Complete: {meshes.Count} meshes from {downloadedTiles} downloaded tiles ({totalMB:F1} MB)";
                 }
                 else
                 {
