@@ -12,16 +12,22 @@ using SysEnv = System.Environment;
 
 namespace Heron.Components.GIS_API
 {
-    public class Google3DTiles : GH_Component
+    public class Google3DTiles : HeronComponent
     {
+        // Add private fields for progress tracking
+        private bool isDownloading = false;
+        private int totalTiles = 0;
+        private int downloadedTiles = 0;
+        private long downloadedBytes = 0;
+
         public Google3DTiles()
           : base("Google 3D Tiles (Photorealistic)",
                  "G3DTiles",
                  "Download + cache Google Photorealistic 3D Tiles for a boundary and import as meshes aligned to EarthAnchorPoint.",
-                 "Heron", "3D Tiles")
+                 "3D Tiles")
         { }
 
-        protected override System.Drawing.Bitmap Icon => null; // TODO
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.shp;
         public override Guid ComponentGuid => new Guid("f7b0f7b1-9e70-4f5a-9aeb-7d50d5d3a5f7");
 
         protected override void RegisterInputParams(GH_InputParamManager p)
@@ -116,7 +122,12 @@ namespace Heron.Components.GIS_API
             if (!Directory.Exists(cacheFolder)) Directory.CreateDirectory(cacheFolder);
             if (clear)
             {
-                try { foreach (var f in Directory.EnumerateFiles(cacheFolder)) File.Delete(f); }
+                try 
+                { 
+                    Message = "Clearing cache...";
+                    Grasshopper.Instances.RedrawCanvas();
+                    foreach (var f in Directory.EnumerateFiles(cacheFolder)) File.Delete(f); 
+                }
                 catch (Exception ex) { AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"Failed to clear cache: {ex.Message}"); }
             }
 
@@ -150,6 +161,13 @@ namespace Heron.Components.GIS_API
 
             try
             {
+                // Show connecting message
+                if (!isDownloading)
+                {
+                    Message = "Connecting to Google 3D Tiles API...";
+                    Grasshopper.Instances.RedrawCanvas();
+                }
+
                 var api = new GoogleTilesApi(apiKey, cacheFolder);
                 var root = api.GetRootTileset();
                 info.Add("Fetched root tileset.");
@@ -165,6 +183,9 @@ namespace Heron.Components.GIS_API
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"Failed to compute AOI WGS84 bounds: {ex.Message}");
                 }
+
+                Message = "Planning tile downloads...";
+                Grasshopper.Instances.RedrawCanvas();
 
                 TilesetWalker walker;
                 try
@@ -185,10 +206,30 @@ namespace Heron.Components.GIS_API
                 List<string> localGlbs = new List<string>();
                 long totalBytes = 0;
                 int skippedForCap = 0;
+                
                 if (plan.Count > 0)
                 {
+                    // Initialize progress tracking
+                    totalTiles = plan.Count;
+                    downloadedTiles = 0;
+                    downloadedBytes = 0;
+                    isDownloading = true;
+
+                    Message = $"Downloading tiles (0/{totalTiles})...";
+                    Grasshopper.Instances.RedrawCanvas();
+
                     var downloader = new TileDownloader(api, capBytes);
                     localGlbs = downloader.Ensure(plan, download, out totalBytes, out skippedForCap);
+                    
+                    // Update progress after download completion
+                    downloadedTiles = localGlbs.Count;
+                    downloadedBytes = totalBytes;
+                    
+                    // Convert bytes to MB for display
+                    double totalMB = totalBytes / (1024.0 * 1024.0);
+                    Message = $"Downloaded {downloadedTiles}/{totalTiles} tiles ({totalMB:F1} MB)";
+                    Grasshopper.Instances.RedrawCanvas();
+                    
                     info.Add(string.Format("Tiles planned: {0}, downloaded/used: {1}, bytes: {2:n0}", plan.Count, localGlbs.Count, totalBytes));
                     if (skippedForCap > 0) info.Add(string.Format("Skipped {0} tiles due to size cap ({1} GB).", skippedForCap, maxGb));
                 }
@@ -199,6 +240,12 @@ namespace Heron.Components.GIS_API
 
                 usedFiles.AddRange(localGlbs);
 
+                if (localGlbs.Count > 0)
+                {
+                    Message = "Importing meshes...";
+                    Grasshopper.Instances.RedrawCanvas();
+                }
+
                 var meshes = new List<Mesh>();
                 List<Grasshopper.Kernel.Types.GH_Material> mats = new List<Grasshopper.Kernel.Types.GH_Material>();
                 if (localGlbs.Count > 0)
@@ -208,6 +255,22 @@ namespace Heron.Components.GIS_API
                     info.AddRange(importNotes);
                 }
 
+                // Completion message
+                isDownloading = false;
+                if (meshes.Count > 0)
+                {
+                    double totalMB = totalBytes / (1024.0 * 1024.0);
+                    Message = $"Complete: {meshes.Count} meshes from {downloadedTiles} tiles ({totalMB:F1} MB)";
+                }
+                else
+                {
+                    Message = "Complete: No meshes imported";
+                }
+
+                // Final canvas redraw
+                System.Threading.Thread.Sleep(100);
+                Grasshopper.Instances.RedrawCanvas();
+
                 da.SetDataList(0, meshes);
                 da.SetDataList(1, info);
                 da.SetDataList(2, usedFiles);
@@ -215,14 +278,27 @@ namespace Heron.Components.GIS_API
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("EarthAnchor") || ex.Message.Contains("ActiveDoc"))
             {
+                isDownloading = false;
+                Message = "Error: " + ex.Message;
+                Grasshopper.Instances.RedrawCanvas();
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, ex.Message);
                 da.SetDataList(1, info.Concat(new[] { "Error: " + ex.Message }));
             }
             catch (Exception ex)
             {
+                isDownloading = false;
+                Message = "Error: " + ex.Message;
+                Grasshopper.Instances.RedrawCanvas();
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, ex.Message);
                 da.SetDataList(1, info.Concat(new[] { ex.ToString() }));
             }
+        }
+
+        // Helper method to format file size similar to RESTOSM
+        private string FormatFileSize(long bytes)
+        {
+            double mb = bytes / (1024.0 * 1024.0);
+            return mb.ToString("F1") + " MB";
         }
     }
 }
