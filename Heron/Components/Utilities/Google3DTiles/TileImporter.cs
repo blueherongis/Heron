@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using Grasshopper.Kernel.Types;
 using System.IO;
 
-namespace Heron.Components.Heron3DTiles
+namespace Heron.Utilities.Google3DTiles
 {
     public static class TileImporter
     {

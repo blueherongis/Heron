@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Heron.Components.Heron3DTiles
+namespace Heron.Utilities.Google3DTiles
 {
         public class TileDownloader
         {

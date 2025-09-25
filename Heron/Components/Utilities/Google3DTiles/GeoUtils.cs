@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Heron.Components.Heron3DTiles
+namespace Heron.Utilities.Google3DTiles
 {
     /// <summary>
     /// Simple 3D vector struct for ECEF calculations
@@ -38,6 +38,13 @@ namespace Heron.Components.Heron3DTiles
 
     public static partial class GeoUtils
     {
+        // WGS84 constants
+        const double a = 6378137.0; // semi-major
+        const double f = 1.0 / 298.257223563;
+        const double b = a * (1 - f); // semi-minor
+        const double e2 = 1 - (b * b) / (a * a);
+        public static double RadToDeg(double r) => r * (180.0 / Math.PI);
+
 
         // Build min/max lon/lat via Heron
         public static (double minLon, double minLat, double maxLon, double maxLat) AoiToWgs(Rhino.Geometry.Polyline pl)
@@ -142,6 +149,37 @@ namespace Heron.Components.Heron3DTiles
             return ecefPoints;
         }
 
+
+        /// <summary>
+        /// Densifies a closed polygonal ring expressed in WGS84 (Heron convention: X=longitude°, Y=latitude°, Z=height)
+        /// by inserting intermediate vertices along each edge so that the great-circle (spherical) chord length
+        /// between consecutive points does not exceed the specified maximum.
+        /// </summary>
+        /// <param name="wgsPoints">
+        /// Ordered list of WGS84 points (lon/lat in degrees). The last point need not repeat the first;
+        /// the method treats the sequence as closed by connecting the final point back to the first.
+        /// </param>
+        /// <param name="maxChordMeters">
+        /// Maximum allowed chord length (approximate great-circle distance) in meters between consecutive
+        /// output vertices. Edges longer than this are subdivided uniformly by spherical interpolation.
+        /// </param>
+        /// <returns>
+        /// A new list of WGS84 points (lon/lat in degrees, height currently set to 0 for inserted points) with
+        /// additional vertices inserted along great-circle arcs. Original vertices are preserved in order.
+        /// </returns>
+        /// <remarks>
+        /// Implementation details:
+        /// 1. Uses a Haversine-based spherical distance (ApproximateDistance) to estimate edge length.
+        /// 2. Number of segments per edge = ceil(distance / maxChordMeters); if distance <= maxChordMeters no subdivision.
+        /// 3. Intermediate points computed via spherical linear interpolation (InterpolateGeodesic) to follow the great-circle.
+        /// 4. Height is not interpolated; inserted points receive Z=0 (caller may post-process heights if needed).
+        /// 5. Degenerate consecutive vertices (same lon/lat within 1e-10) are skipped without subdivision.
+        /// Accuracy / Limitations:
+        /// - Assumes spherical Earth for densification; adequate for tile intersection / spatial filtering where
+        ///   sub-meter ellipsoidal fidelity is unnecessary.
+        /// - For very large distances (multi-thousand km) or polar wrapping, spherical vs. ellipsoidal differences grow.
+        /// - Input list must contain at least one point; no validation of geographic bounds is performed here.
+        /// </remarks>
         private static List<Point3d> DensifyGeodesic(List<Point3d> wgsPoints, double maxChordMeters)
         {
             var result = new List<Point3d>();
@@ -171,6 +209,25 @@ namespace Heron.Components.Heron3DTiles
             return result;
         }
 
+        /// <summary>
+        /// Computes an approximate great-circle distance between two geographic positions
+        /// specified in decimal degrees using the Haversine formula on a spherical Earth model.
+        /// </summary>
+        /// <param name="lat1">Start point latitude in decimal degrees (−90 to +90).</param>
+        /// <param name="lon1">Start point longitude in decimal degrees (−180 to +180).</param>
+        /// <param name="lat2">End point latitude in decimal degrees (−90 to +90).</param>
+        /// <param name="lon2">End point longitude in decimal degrees (−180 to +180).</param>
+        /// <returns>
+        /// Great-circle distance between the two positions in meters, assuming a spherical Earth
+        /// radius of 6,371,000 m.
+        /// </returns>
+        /// <remarks>
+        /// This method uses a fixed mean Earth radius and does not account for ellipsoidal
+        /// flattening (WGS84). For higher accuracy over long distances or in precision-sensitive
+        /// workflows, consider an ellipsoidal algorithm (e.g., Vincenty or Karney).
+        /// Adequate for edge densification and approximate spatial filtering where sub-meter
+        /// accuracy is not required.
+        /// </remarks>
         private static double ApproximateDistance(double lat1, double lon1, double lat2, double lon2)
         {
             // Haversine formula for great circle distance
@@ -183,8 +240,28 @@ namespace Heron.Components.Heron3DTiles
             return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
         }
 
-        private static (double lat, double lon) InterpolateGeodesic(double lat1, double lon1, double lat2, double lon2,
-            double t)
+        /// <summary>
+        /// Computes an intermediate geodetic position along the great-circle (approximate geodesic)
+        /// between two latitude/longitude positions using spherical linear interpolation (slerp).
+        /// </summary>
+        /// <param name="lat1">Start point latitude in decimal degrees (−90 to +90).</param>
+        /// <param name="lon1">Start point longitude in decimal degrees (−180 to +180).</param>
+        /// <param name="lat2">End point latitude in decimal degrees (−90 to +90).</param>
+        /// <param name="lon2">End point longitude in decimal degrees (−180 to +180).</param>
+        /// <param name="t">
+        /// Interpolation factor in [0,1]:
+        /// 0 returns (lat1, lon1), 1 returns (lat2, lon2), values in between follow the great-circle arc.
+        /// </param>
+        /// <returns>
+        /// A tuple (lat, lon) in decimal degrees representing the interpolated position.
+        /// </returns>
+        /// <remarks>
+        /// This treats the Earth as a unit sphere for the interpolation step (sufficient for edge
+        /// densification where sub-meter ellipsoidal accuracy is not critical). The shortest great-circle
+        /// path is chosen. For very small angular separations a direct return of the start point is used
+        /// to avoid numerical instability. Height is not interpolated here (caller assigns as needed).
+        /// </remarks>
+        private static (double lat, double lon) InterpolateGeodesic(double lat1, double lon1, double lat2, double lon2, double t)
         {
             // Spherical linear interpolation (slerp) on unit sphere
             double rlat1 = lat1 * Math.PI / 180, rlon1 = lon1 * Math.PI / 180;
@@ -257,114 +334,82 @@ namespace Heron.Components.Heron3DTiles
                    (aMax.Z < bMin.Z) || (bMax.Z < aMin.Z);
         }
 
+
         /// <summary>
-        /// Approximate AOI rectangle to WGS84 lon/lat AABB by sampling the poly corners.
+        /// Converts Earth-Centered, Earth-Fixed (ECEF) Cartesian coordinates (meters) to
+        /// geodetic WGS84 longitude (deg), latitude (deg) and ellipsoidal height (meters).
         /// </summary>
-        public static (double minLon, double minLat, double maxLon, double maxLat) ApproximateBoundaryToWgs84(
-            Polyline aoiModel, Transform modelToEarth)
-        {
-            double minLon = double.PositiveInfinity, minLat = double.PositiveInfinity;
-            double maxLon = double.NegativeInfinity, maxLat = double.NegativeInfinity;
-
-            foreach (var pt in aoiModel)
-            {
-                var ecef = modelToEarth * pt; // now in Earth-centered frame
-                // Convert ECEF to WGS84 (lon/lat in degrees) – quick solver
-                var (lon, lat, _) = EcefToWgs84(ecef);
-                minLon = Math.Min(minLon, lon);
-                minLat = Math.Min(minLat, lat);
-                maxLon = Math.Max(maxLon, lon);
-                maxLat = Math.Max(maxLat, lat);
-            }
-
-            return (minLon, minLat, maxLon, maxLat);
-        }
-
-        // WGS84 constants
-        const double a = 6378137.0; // semi-major
-        const double f = 1.0 / 298.257223563;
-        const double b = a * (1 - f); // semi-minor
-        const double e2 = 1 - (b * b) / (a * a);
-
+        /// <param name="ecef">
+        /// Input point expressed in the global ECEF frame:
+        /// X axis → intersection of equator and prime meridian,
+        /// Y axis → 90° East along equator,
+        /// Z axis → North pole.
+        /// Units: meters.
+        /// </param>
+        /// <returns>
+        /// A tuple (lonDeg, latDeg, h):
+        ///   lonDeg: longitude in degrees in range [-180, 180)
+        ///   latDeg: geodetic latitude in degrees (−90 to +90)
+        ///   h: ellipsoidal height above the WGS84 reference ellipsoid in meters.
+        /// </returns>
+        /// <remarks>
+        /// Implementation notes:
+        /// 1. Longitude is obtained directly via atan2(y, x).
+        /// 2. An initial latitude estimate is formed using a simplified relation that
+        ///    ignores height (Bowring-style initial guess).
+        /// 3. Latitude is then refined with a short fixed-count iteration (5 passes),
+        ///    sufficient for centimeter-level accuracy for typical Earth-scale magnitudes.
+        /// 4. Each iteration recomputes the prime vertical radius of curvature (N) and
+        ///    updates the latitude using the relationship between geodetic and geocentric latitudes.
+        /// 5. Final height is derived from the difference between the point’s distance
+        ///    from the spin axis (p) and the ellipsoidal normal projection.
+        /// Assumptions:
+        ///   - Input coordinates are finite double values.
+        ///   - WGS84 constants (a, e2) defined in this class.
+        /// Accuracy:
+        ///   - Typically better than ~1e-8 radians for latitude with the fixed 5 iterations.
+        ///   - Height accuracy within millimeters to centimeters for normal terrestrial ranges.
+        /// </remarks>
         public static (double lonDeg, double latDeg, double h) EcefToWgs84(Point3d ecef)
         {
-            // Iterative solution
+            // Extract Cartesian components (meters)
             double x = ecef.X, y = ecef.Y, z = ecef.Z;
-            double lon = Math.Atan2(y, x);
-            double p = Math.Sqrt(x * x + y * y);
-            double lat = Math.Atan2(z, p * (1 - e2));
-            double N;
 
+            // Longitude (radians). atan2 handles all quadrants; no iteration required.
+            double lon = Math.Atan2(y, x);
+
+            // Distance from Z axis (projection onto equatorial plane)
+            double p = Math.Sqrt(x * x + y * y);
+
+            // Initial geodetic latitude guess (radians) accounting for ellipsoidal flattening
+            double lat = Math.Atan2(z, p * (1 - e2));
+
+            double N; // Prime vertical radius of curvature
+
+            // Iterate to refine latitude (fixed small count for performance & stability)
             for (int i = 0; i < 5; i++)
             {
-                N = a / Math.Sqrt(1 - e2 * Math.Sin(lat) * Math.Sin(lat));
+                double sinLat = Math.Sin(lat);
+                N = a / Math.Sqrt(1 - e2 * sinLat * sinLat);
+
+                // Height estimate using current latitude
                 double h = p / Math.Cos(lat) - N;
+
+                // Update latitude using relation that accounts for ellipsoidal shape
                 lat = Math.Atan2(z, p * (1 - e2 * (N / (N + h))));
             }
 
-            N = a / Math.Sqrt(1 - e2 * Math.Sin(lat) * Math.Sin(lat));
+            // Recompute N with final latitude
+            double sinFinalLat = Math.Sin(lat);
+            N = a / Math.Sqrt(1 - e2 * sinFinalLat * sinFinalLat);
+
+            // Final height above ellipsoid
             double hfinal = p / Math.Cos(lat) - N;
 
+            // Convert radians → degrees for longitude & latitude
             return (RadToDeg(lon), RadToDeg(lat), hfinal);
         }
 
-        public static double RadToDeg(double r) => r * (180.0 / Math.PI);
-
-
-        /// <summary>
-        /// (A) Compute ECEF AABB using Rhino's model->ECEF transform (EarthAnchorPoint).
-        /// Assumes EarthAnchorPoint.GetModelToEarthTransform returns WGS84 ECEF meters.
-        /// </summary>
-        public static (Point3d min, Point3d max) ModelPolylineToEcefAabb_Rhino(Polyline pl)
-        {
-            var activeDoc = Rhino.RhinoDoc.ActiveDoc;
-            if (activeDoc?.EarthAnchorPoint == null)
-            {
-                throw new InvalidOperationException("Active document or EarthAnchorPoint unavailable.");
-            }
-
-            Transform? t;
-            try
-            {
-                t = activeDoc.EarthAnchorPoint.GetModelToEarthTransform(activeDoc.ModelUnitSystem);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException(
-                    "Failed to get model to earth transform. This may indicate EarthAnchorPoint is not properly initialized.", ex);
-            }
-
-            if (t == null) 
-            {
-                throw new InvalidOperationException("Failed to get model to earth transform - transform is null.");
-            }
-
-            bool first = true;
-            Point3d min = Point3d.Unset, max = Point3d.Unset;
-
-            foreach (var p in pl)
-            {
-                var ecef = p;
-                ecef.Transform(t.Value);
-                if (first)
-                {
-                    min = ecef;
-                    max = ecef;
-                    first = false;
-                }
-                else
-                {
-                    if (ecef.X < min.X) min.X = ecef.X;
-                    if (ecef.Y < min.Y) min.Y = ecef.Y;
-                    if (ecef.Z < min.Z) min.Z = ecef.Z;
-                    if (ecef.X > max.X) max.X = ecef.X;
-                    if (ecef.Y > max.Y) max.Y = ecef.Y;
-                    if (ecef.Z > max.Z) max.Z = ecef.Z;
-                }
-            }
-
-            return (min, max);
-        }
 
         /// <summary>
         /// Helper: convert WGS84 (lon°, lat°, h_m) to ECEF (X,Y,Z meters).
@@ -384,188 +429,5 @@ namespace Heron.Components.Heron3DTiles
             return new Point3d(x, y, z);
         }
 
-        /// <summary>
-        /// (B) Compute ECEF AABB using GDAL: model -> WGS84 degrees -> ECEF (EPSG:4978).
-        /// Uses OGR.Geometry.Transform for maximum compatibility with older GDAL C# bindings.
-        /// </summary>
-        public static (Point3d min, Point3d max) ModelPolylineToEcefAabb_Gdal(Polyline pl)
-        {
-            var srs4326 = new og.SpatialReference("");
-            srs4326.ImportFromEPSG(4326); // WGS84 Geographic (lon,lat,h)
-            var srs4978 = new og.SpatialReference("");
-            srs4978.ImportFromEPSG(4978); // WGS84 Geocentric (ECEF)
-
-            var ct = new OSGeo.OSR.CoordinateTransformation(srs4326, srs4978);
-
-            var activeDoc = Rhino.RhinoDoc.ActiveDoc;
-            if (activeDoc == null)
-            {
-                throw new InvalidOperationException("No active Rhino document found.");
-            }
-
-            double unitScaleToMeters = Rhino.RhinoMath.UnitScale(
-                activeDoc.ModelUnitSystem,
-                Rhino.UnitSystem.Meters);
-
-            bool first = true;
-            Point3d min = Point3d.Unset, max = Point3d.Unset;
-
-            // Reuse a single geometry instance for efficiency
-            var ogrPoint = new OSGeo.OGR.Geometry(OSGeo.OGR.wkbGeometryType.wkbPoint25D);
-            ogrPoint.AssignSpatialReference(srs4326);
-
-            foreach (var p in pl)
-            {
-                Point3d w;
-                try
-                {
-                    w = Heron.Convert.XYZToWGS(p); // w.X = lon°, w.Y = lat°, w.Z = elevation (model units)
-                }
-                catch (Exception ex)
-                {
-                    throw new InvalidOperationException(
-                        "Failed to convert model coordinates to WGS84. Check EarthAnchorPoint configuration.", ex);
-                }
-                
-                double hMeters = w.Z * unitScaleToMeters;
-
-                // Reset point coordinates (faster than creating a new geometry every loop)
-                ogrPoint.Empty();
-                ogrPoint.AddPoint(w.X, w.Y, hMeters);
-
-                // Transform to ECEF (EPSG:4978)
-                ogrPoint.Transform(ct);
-
-                var ecef = new Point3d(ogrPoint.GetX(0), ogrPoint.GetY(0), ogrPoint.GetZ(0));
-
-                if (first)
-                {
-                    min = ecef;
-                    max = ecef;
-                    first = false;
-                }
-                else
-                {
-                    if (ecef.X < min.X) min.X = ecef.X;
-                    if (ecef.Y < min.Y) min.Y = ecef.Y;
-                    if (ecef.Z < min.Z) min.Z = ecef.Z;
-                    if (ecef.X > max.X) max.X = ecef.X;
-                    if (ecef.Y > max.Y) max.Y = ecef.Y;
-                    if (ecef.Z > max.Z) max.Z = ecef.Z;
-                }
-            }
-
-            ogrPoint.Dispose();
-            return (min, max);
-        }
-
-        /// <summary>
-        /// Optional: derive a bounding sphere from an ECEF AABB (useful for 3D Tiles).
-        /// center = midpoint of box; radius = max distance corner->center.
-        /// </summary>
-        public static (Point3d center, double radius) AabbToBoundingSphere(Point3d min, Point3d max)
-        {
-            var center = new Point3d(
-                0.5 * (min.X + max.X),
-                0.5 * (min.Y + max.Y),
-                0.5 * (min.Z + max.Z));
-
-            double r2 = 0.0;
-            for (int i = 0; i < 8; i++)
-            {
-                var corner = new Point3d(
-                    (i & 1) == 0 ? min.X : max.X,
-                    (i & 2) == 0 ? min.Y : max.Y,
-                    (i & 4) == 0 ? min.Z : max.Z);
-                double d2 = center.DistanceToSquared(corner);
-                if (d2 > r2) r2 = d2;
-            }
-
-            return (center, Math.Sqrt(r2));
-        }
-
-        /// <summary>
-        /// Test if a polygon intersects a rectangle centered at origin with half-widths hx, hy
-        /// </summary>
-        public static bool PolygonIntersectsRectangle(IList<Point2d> polygon, double hx, double hy)
-        {
-            if (polygon == null || polygon.Count == 0) return false;
-
-            // Quick test: any polygon vertex inside rectangle?
-            foreach (var pt in polygon)
-            {
-                if (Math.Abs(pt.X) <= hx && Math.Abs(pt.Y) <= hy) return true;
-            }
-
-            // Test: any rectangle corner inside polygon?
-            var corners = new Point2d[]
-            {
-                new Point2d(-hx, -hy), new Point2d(hx, -hy),
-                new Point2d(hx, hy), new Point2d(-hx, hy)
-            };
-
-            foreach (var corner in corners)
-            {
-                if (PointInPolygon(corner, polygon)) return true;
-            }
-
-            // Test: any edge intersections?
-            return HasEdgeIntersections(polygon, corners);
-        }
-
-        private static bool PointInPolygon(Point2d point, IList<Point2d> polygon)
-        {
-            // Ray casting algorithm
-            bool inside = false;
-            int n = polygon.Count;
-            for (int i = 0, j = n - 1; i < n; j = i++)
-            {
-                var pi = polygon[i];
-                var pj = polygon[j];
-                if (((pi.Y > point.Y) != (pj.Y > point.Y)) &&
-                    (point.X < (pj.X - pi.X) * (point.Y - pi.Y) / (pj.Y - pi.Y) + pi.X))
-                {
-                    inside = !inside;
-                }
-            }
-
-            return inside;
-        }
-
-        private static bool HasEdgeIntersections(IList<Point2d> polyA, Point2d[] polyB)
-        {
-            // Test all edge pairs for intersection
-            int nA = polyA.Count, nB = polyB.Length;
-            for (int i = 0; i < nA; i++)
-            {
-                var a1 = polyA[i];
-                var a2 = polyA[(i + 1) % nA];
-
-                for (int j = 0; j < nB; j++)
-                {
-                    var b1 = polyB[j];
-                    var b2 = polyB[(j + 1) % nB];
-
-                    if (SegmentsIntersect(a1, a2, b1, b2)) return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static bool SegmentsIntersect(Point2d a1, Point2d a2, Point2d b1, Point2d b2)
-        {
-            var da = a2 - a1;
-            var db = b2 - b1;
-            var dc = b1 - a1;
-
-            double denom = da.X * db.Y - da.Y * db.X;
-            if (Math.Abs(denom) < 1e-10) return false; // Parallel
-
-            double t = (dc.X * db.Y - dc.Y * db.X) / denom;
-            double u = (dc.X * da.Y - dc.Y * da.X) / denom;
-
-            return t >= 0 && t <= 1 && u >= 0 && u <= 1;
-        }
     }
 }

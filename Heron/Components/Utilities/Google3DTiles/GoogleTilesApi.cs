@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using Newtonsoft.Json;
 
-namespace Heron.Components.Heron3DTiles
+namespace Heron.Utilities.Google3DTiles
 {
     public class GoogleTilesApi
     {

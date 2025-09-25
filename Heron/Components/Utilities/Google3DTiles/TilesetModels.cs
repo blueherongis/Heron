@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace Heron.Components.Heron3DTiles
+namespace Heron.Utilities.Google3DTiles
 {
     // Minimal models for 3D Tiles / Google tileset
     public class Tileset
