@@ -22,7 +22,7 @@ namespace Heron
         {
             get
             {
-                return "Brian Washburn";
+                return "Brian Washburn; feat: K.Zhu, A.Heumann, C.Connock, N.Azel";
             }
         }
 
