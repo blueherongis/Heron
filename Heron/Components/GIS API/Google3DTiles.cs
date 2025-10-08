@@ -35,7 +35,7 @@ namespace Heron
           : base("Google 3D Tiles (Photorealistic)",
                  "G3DTiles",
                  "Download + cache Google Photorealistic 3D Tiles for a boundary and import as meshes aligned to EarthAnchorPoint.",
-                 "3D Tiles")
+                 "GIS API")
         { }
 
         protected override System.Drawing.Bitmap Icon => Properties.Resources.shp;
@@ -67,11 +67,13 @@ namespace Heron
 
         protected override void RegisterOutputParams(GH_OutputParamManager p)
         {
-            // Order requested: Info, Files, Meshes, Materials
+            // Order requested: Info, Files, Meshes, Materials, Attribution, Logo
             p.AddTextParameter("Info", "I", "Status messages / diagnostics.", GH_ParamAccess.list);
             p.AddTextParameter("Files", "F", "Tile .glb files used (cache paths).", GH_ParamAccess.list);
             p.AddMeshParameter("Meshes", "M", "Imported meshes, oriented to EarthAnchorPoint.", GH_ParamAccess.list);
             p.AddGenericParameter("Materials", "Mat", "Materials for each tile.", GH_ParamAccess.list);
+            p.AddTextParameter("Attribution", "A", "Google copyright/attribution text from tileset. Display this with the Google Maps logo.", GH_ParamAccess.item);
+            p.AddGenericParameter("Google Logo", "Logo", "Google Maps logo bitmap. Must be displayed with attribution per Google's policy.", GH_ParamAccess.item);
         }
 
         // Context menu for options
@@ -137,7 +139,7 @@ namespace Heron
             if (!da.GetData(0, ref boundary) || boundary == null)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Boundary is required.");
-                SetOutputs(da, new List<string> { "Error: Boundary is required." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: Boundary is required." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
 
@@ -146,7 +148,7 @@ namespace Heron
             if (!rawBBox.IsValid || rawBBox.Diagonal.Length <= modelTol)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Boundary bounding box invalid or too small.");
-                SetOutputs(da, new List<string> { "Error: Invalid / tiny boundary." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: Invalid / tiny boundary." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
 
@@ -155,7 +157,7 @@ namespace Heron
             if (!da.GetData(3, ref apiKey) || string.IsNullOrWhiteSpace(apiKey))
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "API Key is required.");
-                SetOutputs(da, new List<string> { "Error: API Key is required." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: API Key is required." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
             da.GetData(4, ref download);
@@ -163,25 +165,25 @@ namespace Heron
             if (!boundary.TryGetPlane(out var boundaryPlane))
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Boundary must be planar.");
-                SetOutputs(da, new List<string> { "Error: Boundary must be planar." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: Boundary must be planar." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
             if (maxLod < 0)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Max LOD must be >= 0.");
-                SetOutputs(da, new List<string> { "Error: Max LOD must be >= 0." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: Max LOD must be >= 0." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
             if (string.IsNullOrWhiteSpace(cacheFolder))
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Cache Folder is required.");
-                SetOutputs(da, new List<string> { "Error: Cache Folder is required." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: Cache Folder is required." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
             if (maxSizeGbOption < 0.0)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Max Size (GB) option must be >= 0.");
-                SetOutputs(da, new List<string> { "Error: Max Size (GB) option must be >= 0." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: Max Size (GB) option must be >= 0." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
 
@@ -192,7 +194,7 @@ namespace Heron
             if (aoi == null || !aoi.IsClosed)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Boundary must be a closed planar curve.");
-                SetOutputs(da, new List<string> { "Error: Boundary must be a closed planar curve." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: Boundary must be a closed planar curve." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
             var aoiBounds = aoi.BoundingBox;
@@ -237,19 +239,20 @@ namespace Heron
             if (activeDoc == null)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "No active Rhino document.");
-                SetOutputs(da, new List<string> { "Error: No active Rhino document." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: No active Rhino document." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
             var eap = activeDoc.EarthAnchorPoint;
             if (eap == null || !eap.EarthLocationIsSet())
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "EarthAnchorPoint not set.");
-                SetOutputs(da, new List<string> { "Error: EarthAnchorPoint not set." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>());
+                SetOutputs(da, new List<string> { "Error: EarthAnchorPoint not set." }, new List<string>(), new List<Rhino.Geometry.Mesh>(), new List<object>(), string.Empty);
                 return;
             }
 
             var info = new List<string>();
             var usedFiles = new List<string>();
+            string attribution = string.Empty; // Store attribution from root tileset
 
             // Try manifest first (works both when download=false and download=true) to avoid traversal when valid
             ManifestData manifestData;
@@ -264,6 +267,13 @@ namespace Heron
                 info.Add("Manifest found: " + Path.GetFileName(manifestPath));
                 var manifestTilePaths = manifestData.Tiles.Select(t => Path.Combine(cacheFolder, t.File)).ToList();
                 bool allExist = manifestTilePaths.All(File.Exists);
+                
+                // Extract attribution from manifest if available
+                if (!string.IsNullOrEmpty(manifestData.Attribution))
+                {
+                    attribution = manifestData.Attribution;
+                }
+                
                 if (!allExist)
                 {
                     info.Add("Manifest tiles missing - proceeding with traversal.");
@@ -271,20 +281,20 @@ namespace Heron
                 else if (!download)
                 {
                     info.Add("All cached tiles present. Loading from cache (Download=false).");
-                    LoadTilesFromList(da, manifestTilePaths, info, true, boundaryHash);
+                    LoadTilesFromList(da, manifestTilePaths, info, true, boundaryHash, attribution);
                     return;
                 }
                 else
                 {
                     info.Add("Manifest matches boundary; skipping download.");
-                    LoadTilesFromList(da, manifestTilePaths, info, true, boundaryHash);
+                    LoadTilesFromList(da, manifestTilePaths, info, true, boundaryHash, attribution);
                     return;
                 }
             }
             else if (!download)
             {
                 info.Add("No valid manifest for this AOI (model+geodetic). Enable Download.");
-                SetOutputs(da, info, new List<string>(), new List<Mesh>(), new List<object>());
+                SetOutputs(da, info, new List<string>(), new List<Mesh>(), new List<object>(), string.Empty);
                 Message = "No cached manifest";
                 Grasshopper.Instances.RedrawCanvas();
                 return;
@@ -316,7 +326,7 @@ namespace Heron
                 catch (Exception exWalk)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Failed to initialize TilesetWalker: " + exWalk.Message);
-                    SetOutputs(da, info.Concat(new[] { "Error: Failed to initialize TilesetWalker." }).ToList(), usedFiles, new List<Mesh>(), new List<object>());
+                    SetOutputs(da, info.Concat(new[] { "Error: Failed to initialize TilesetWalker." }).ToList(), usedFiles, new List<Mesh>(), new List<object>(), attribution);
                     return;
                 }
 
@@ -348,11 +358,27 @@ namespace Heron
 
                 var meshes = new List<Mesh>();
                 List<Grasshopper.Kernel.Types.GH_Material> mats = new List<Grasshopper.Kernel.Types.GH_Material>();
+                HashSet<string> glbCopyrights = new HashSet<string>();
+                
                 if (localGlbs.Count > 0)
                 {
-                    var importMeshes = TileImporter.ImportMeshesOriented(localGlbs, out mats, out var importNotes);
+                    var importMeshes = TileImporter.ImportMeshesOriented(localGlbs, out mats, out var importNotes, out glbCopyrights);
                     meshes = importMeshes ?? new List<Mesh>();
                     info.AddRange(importNotes);
+                    
+                    // Use GLB copyrights as attribution if found
+                    if (glbCopyrights.Count > 0)
+                    {
+                        attribution = string.Join("; ", glbCopyrights);
+                        info.Add($"Attribution extracted from {glbCopyrights.Count} GLB file(s): " + attribution);
+                        info.Add("IMPORTANT: Display the Google Maps logo with this attribution text.");
+                        info.Add("See: https://developers.google.com/maps/documentation/tile/policies#logo");
+                    }
+                    else if (string.IsNullOrEmpty(attribution))
+                    {
+                        attribution = "© Google";
+                        info.Add("No copyright found in GLB files; using default: " + attribution);
+                    }
                 }
 
                 isDownloading = false;
@@ -378,6 +404,7 @@ namespace Heron
                             Max = new double[] { aoiBounds.Max.X, aoiBounds.Max.Y, aoiBounds.Max.Z },
                             MinLon = minLon, MinLat = minLat, MaxLon = maxLon, MaxLat = maxLat,
                             WgsHash = wgsVertexHash,
+                            Attribution = attribution, // Store attribution in manifest
                             GeneratedUtc = DateTime.UtcNow,
                             Tiles = usedFiles.Select(p => new ManifestTile { File = Path.GetFileName(p), Bytes = SafeFileSize(p) }).ToList()
                         };
@@ -387,31 +414,40 @@ namespace Heron
                     catch (Exception mex) { info.Add("Failed to write manifest: " + mex.Message); }
                 }
 
-                SetOutputs(da, info, usedFiles, meshes, mats.Cast<object>().ToList());
+                SetOutputs(da, info, usedFiles, meshes, mats.Cast<object>().ToList(), attribution);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("EarthAnchor") || ex.Message.Contains("ActiveDoc"))
             {
                 isDownloading = false; Message = "Error: " + ex.Message; Grasshopper.Instances.RedrawCanvas(); AddRuntimeMessage(GH_RuntimeMessageLevel.Error, ex.Message);
-                SetOutputs(da, info.Concat(new[] { "Error: " + ex.Message }).ToList(), new List<string>(), new List<Mesh>(), new List<object>());
+                SetOutputs(da, info.Concat(new[] { "Error: " + ex.Message }).ToList(), new List<string>(), new List<Mesh>(), new List<object>(), attribution);
             }
             catch (Exception ex)
             {
                 isDownloading = false; Message = "Error: " + ex.Message; Grasshopper.Instances.RedrawCanvas(); AddRuntimeMessage(GH_RuntimeMessageLevel.Error, ex.Message);
-                SetOutputs(da, info.Concat(new[] { ex.ToString() }).ToList(), new List<string>(), new List<Mesh>(), new List<object>());
+                SetOutputs(da, info.Concat(new[] { ex.ToString() }).ToList(), new List<string>(), new List<Mesh>(), new List<object>(), attribution);
             }
         }
 
-        private void LoadTilesFromList(IGH_DataAccess da, List<string> tilePaths, List<string> info, bool fromManifest, string boundaryHash)
+        private void LoadTilesFromList(IGH_DataAccess da, List<string> tilePaths, List<string> info, bool fromManifest, string boundaryHash, string attribution = "")
         {
             Message = fromManifest ? "Loading cached tiles..." : "Loading tiles..."; Grasshopper.Instances.RedrawCanvas();
             info.Add((fromManifest ? "Using manifest" : "Using cache") + " boundary hash: " + boundaryHash);
             info.Add("Tile files: " + tilePaths.Count);
             List<Grasshopper.Kernel.Types.GH_Material> mats;
-            var meshes = TileImporter.ImportMeshesOriented(tilePaths, out mats, out var importNotes) ?? new List<Mesh>();
+            HashSet<string> glbCopyrights;
+            var meshes = TileImporter.ImportMeshesOriented(tilePaths, out mats, out var importNotes, out glbCopyrights) ?? new List<Mesh>();
             info.AddRange(importNotes);
+            
+            // If attribution from manifest is empty and we have GLB copyrights, use those
+            if (string.IsNullOrEmpty(attribution) && glbCopyrights.Count > 0)
+            {
+                attribution = string.Join("; ", glbCopyrights);
+                info.Add($"Attribution extracted from {glbCopyrights.Count} GLB file(s)");
+            }
+            
             Message = $"Complete: {meshes.Count} meshes (cached)"; info.Add($"Loaded {meshes.Count} meshes from cache.");
             System.Threading.Thread.Sleep(60); Grasshopper.Instances.RedrawCanvas();
-            SetOutputs(da, info, tilePaths, meshes, mats.Cast<object>().ToList());
+            SetOutputs(da, info, tilePaths, meshes, mats.Cast<object>().ToList(), attribution);
         }
 
         private long SafeFileSize(string path) { try { return new FileInfo(path).Length; } catch { return 0; } }
@@ -459,8 +495,49 @@ namespace Heron
             return minOk && maxOk;
         }
 
-        private void SetOutputs(IGH_DataAccess da, List<string> info, List<string> files, List<Mesh> meshes, List<object> mats)
-        { da.SetDataList(0, info); da.SetDataList(1, files); da.SetDataList(2, meshes); da.SetDataList(3, mats); }
+        private void SetOutputs(IGH_DataAccess da, List<string> info, List<string> files, List<Mesh> meshes, List<object> mats, string attribution)
+        { 
+            da.SetDataList(0, info); 
+            da.SetDataList(1, files); 
+            da.SetDataList(2, meshes); 
+            da.SetDataList(3, mats); 
+            da.SetData(4, attribution);
+            
+            // Create a simple Google Maps logo placeholder
+            // TODO: Replace with actual Google Maps logo from resources once added
+            // Download from: https://developers.google.com/maps/documentation/tile/policies#logo
+            var logo = CreateGoogleMapsLogoPlaceholder();
+            da.SetData(5, new Grasshopper.Kernel.Types.GH_ObjectWrapper(logo));
+        }
+        
+        private System.Drawing.Bitmap CreateGoogleMapsLogoPlaceholder()
+        {
+            // Create a simple placeholder with "Google Maps Logo Required" text
+            // Users should add the actual Google Maps logo per Google's requirements
+            var bmp = new System.Drawing.Bitmap(200, 40);
+            using (var g = System.Drawing.Graphics.FromImage(bmp))
+            {
+                g.Clear(System.Drawing.Color.White);
+                using (var font = new System.Drawing.Font("Arial", 8, System.Drawing.FontStyle.Bold))
+                using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.Black))
+                {
+                    var text = "Google Maps™";
+                    var format = new System.Drawing.StringFormat
+                    {
+                        Alignment = System.Drawing.StringAlignment.Center,
+                        LineAlignment = System.Drawing.StringAlignment.Center
+                    };
+                    g.DrawString(text, font, brush, new System.Drawing.RectangleF(0, 0, 200, 40), format);
+                }
+                
+                // Draw a simple border
+                using (var pen = new System.Drawing.Pen(System.Drawing.Color.LightGray, 1))
+                {
+                    g.DrawRectangle(pen, 0, 0, bmp.Width - 1, bmp.Height - 1);
+                }
+            }
+            return bmp;
+        }
 
         // Manifest classes
         private class ManifestData
@@ -475,6 +552,7 @@ namespace Heron
             public double MaxLon { get; set; }
             public double MaxLat { get; set; }
             public string WgsHash { get; set; } // Added in version 2
+            public string Attribution { get; set; } // Added for Google copyright
             public DateTime GeneratedUtc { get; set; }
             public List<ManifestTile> Tiles { get; set; }
         }

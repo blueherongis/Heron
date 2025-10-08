@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using Grasshopper.Kernel.Types;
 using System.IO;
+using System.Text;
+using Newtonsoft.Json.Linq;
 
 namespace Heron.Utilities.Google3DTiles
 {
@@ -14,14 +16,17 @@ namespace Heron.Utilities.Google3DTiles
         /// <summary>
         /// Imports GLBs into a headless doc (meters), converts ECEF vertex positions to model coordinates (using EarthAnchorPoint)
         /// by performing per-vertex ECEF -> WGS84 (lon,lat,h) -> Model conversion, extracts meshes and materials.
+        /// Also extracts copyright information from GLB asset metadata.
         /// </summary>
         public static List<Mesh> ImportMeshesOriented(
             List<string> glbFiles,
             out List<GH_Material> ghMaterials,
-            out List<string> notes)
+            out List<string> notes,
+            out HashSet<string> copyrights)
         {
             notes = new List<string>();
             ghMaterials = new List<GH_Material>();
+            copyrights = new HashSet<string>();
             var outMeshes = new List<Mesh>();
 
             if (glbFiles == null || glbFiles.Count == 0)
@@ -55,6 +60,20 @@ namespace Heron.Utilities.Google3DTiles
                     {
                         notes.Add($"Invalid path or file not found: {fp}");
                         continue;
+                    }
+
+                    // Extract copyright from GLB file before importing
+                    try
+                    {
+                        var copyright = ExtractCopyrightFromGlb(fp);
+                        if (!string.IsNullOrWhiteSpace(copyright))
+                        {
+                            copyrights.Add(copyright);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        notes.Add($"Failed to extract copyright from {Path.GetFileName(fp)}: {ex.Message}");
                     }
 
                     bool imported = false;
@@ -169,7 +188,53 @@ namespace Heron.Utilities.Google3DTiles
             }
 
             notes.Add($"Imported meshes: {outMeshes.Count}, materials: {ghMaterials.Count}");
+            if (copyrights.Count > 0)
+            {
+                notes.Add($"Collected {copyrights.Count} unique copyright(s) from GLB files");
+            }
             return outMeshes;
+        }
+
+        /// <summary>
+        /// Extracts copyright information from a GLB file's asset metadata.
+        /// GLB format: 12-byte header + JSON chunk + BIN chunk
+        /// </summary>
+        private static string ExtractCopyrightFromGlb(string glbPath)
+        {
+            using (var fs = new FileStream(glbPath, FileMode.Open, FileAccess.Read))
+            using (var br = new BinaryReader(fs))
+            {
+                // Read GLB header (12 bytes)
+                var magic = br.ReadUInt32(); // 0x46546C67 = "glTF"
+                if (magic != 0x46546C67)
+                    return null;
+
+                var version = br.ReadUInt32(); // Should be 2
+                var length = br.ReadUInt32();  // Total file length
+
+                // Read first chunk (JSON)
+                var chunkLength = br.ReadUInt32();
+                var chunkType = br.ReadUInt32(); // 0x4E4F534A = "JSON"
+
+                if (chunkType != 0x4E4F534A)
+                    return null;
+
+                // Read JSON data
+                var jsonBytes = br.ReadBytes((int)chunkLength);
+                var jsonString = Encoding.UTF8.GetString(jsonBytes);
+
+                // Parse JSON to extract copyright
+                try
+                {
+                    var json = JObject.Parse(jsonString);
+                    var copyright = json["asset"]?["copyright"]?.ToString();
+                    return copyright;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
         }
     }
 }

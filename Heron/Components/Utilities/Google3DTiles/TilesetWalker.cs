@@ -194,7 +194,10 @@ namespace Heron.Utilities.Google3DTiles
                                 jsonFetches++;
                                 stats.ExpandedJsonAtMaxDepth++;
                                 Tileset subTs = null;
-                                try { subTs = _api.GetChildTileset(uri); }
+                                try 
+                                { 
+                                    subTs = _api.GetChildTileset(uri);
+                                }
                                 catch { }
                                 if (subTs?.Root != null)
                                 {
@@ -274,7 +277,9 @@ namespace Heron.Utilities.Google3DTiles
             {
                 visitedJson.Add(jsonUri);
                 jsonFetches++;
-                return _api.GetChildTileset(jsonUri);
+                var childTileset = _api.GetChildTileset(jsonUri);
+                
+                return childTileset;
             }
             catch { return null; }
         }

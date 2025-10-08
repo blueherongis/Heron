@@ -11,9 +11,17 @@ namespace Heron.Utilities.Google3DTiles
     // Minimal models for 3D Tiles / Google tileset
     public class Tileset
     {
+        [JsonProperty("asset")] public Asset Asset { get; set; }
         [JsonProperty("root")] public TileNode Root { get; set; }
         [JsonProperty("geometricError")] public double GeometricError { get; set; }
         [JsonProperty("refine")] public string Refine { get; set; }
+    }
+
+    public class Asset
+    {
+        [JsonProperty("version")] public string Version { get; set; }
+        [JsonProperty("tilesetVersion")] public string TilesetVersion { get; set; }
+        [JsonProperty("copyright")] public string Copyright { get; set; }
     }
 
     public class TileNode
