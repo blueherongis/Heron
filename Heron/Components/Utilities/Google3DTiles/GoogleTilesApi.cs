@@ -3,6 +3,8 @@ using System.Text;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace Heron.Utilities.Google3DTiles
@@ -39,7 +41,7 @@ namespace Heron.Utilities.Google3DTiles
             return ts;
         }
 
-        public string EnsureGlb(string relativeGlbUri, bool download, out long bytes, out bool fromCache)
+        public string EnsureGlb(string relativeGlbUri, bool download, out long bytes, out bool fromCache, out TileCacheMetadata cacheMetadata)
         {
             // IMPORTANT: Only GLB content should reach here; TilesetWalker avoids queuing .json
             var url = BuildUrl(relativeGlbUri);
@@ -47,8 +49,13 @@ namespace Heron.Utilities.Google3DTiles
             var local = Path.Combine(_cacheFolder, hashName);
             fromCache = File.Exists(local);
             bytes = 0;
+            cacheMetadata = null;
 
-            if (!download && fromCache) return local;
+            if (!download && fromCache)
+            {
+                bytes = new FileInfo(local).Length;
+                return local;
+            }
             if (!download && !fromCache) throw new Exception("Tile not in cache and Download=false.");
 
             if (fromCache)
@@ -83,6 +90,9 @@ namespace Heron.Utilities.Google3DTiles
 
                 File.WriteAllBytes(local, data);
                 bytes = data.LongLength;
+
+                // Extract and return cache metadata for manifest storage
+                cacheMetadata = ExtractCacheMetadata(resp);
             }
 
             // Capture session token from the original relative URI if present
@@ -105,6 +115,83 @@ namespace Heron.Utilities.Google3DTiles
             }
             catch { /* ignore */ }
             return -1;
+        }
+
+        private TileCacheMetadata ExtractCacheMetadata(HttpResponseMessage response)
+        {
+            try
+            {
+                var meta = new TileCacheMetadata
+                {
+                    DownloadedUtc = DateTime.UtcNow,
+                    CacheControl = response.Headers.CacheControl?.ToString(),
+                    Expires = response.Content.Headers.Expires,
+                    LastModified = response.Content.Headers.LastModified,
+                    ETag = response.Headers.ETag?.Tag
+                };
+
+                // Parse Cache-Control for max-age
+                if (response.Headers.CacheControl != null)
+                {
+                    meta.MaxAgeSeconds = response.Headers.CacheControl.MaxAge?.TotalSeconds;
+                    meta.MustRevalidate = response.Headers.CacheControl.MustRevalidate;
+                    meta.NoCache = response.Headers.CacheControl.NoCache;
+                }
+
+                return meta;
+            }
+            catch
+            {
+                // Non-critical - return null if extraction fails
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a tile has expired based on its cache metadata.
+        /// Public static method for use by components validating manifest data.
+        /// </summary>
+        public static bool IsTileExpired(TileCacheMetadata meta)
+        {
+            if (meta == null)
+            {
+                // No metadata = assume valid (legacy tiles or download mode)
+                return false;
+            }
+
+            try
+            {
+                var now = DateTime.UtcNow;
+
+                // Check no-cache directive (tile must be revalidated)
+                if (meta.NoCache)
+                {
+                    return true; // Treat as expired to force revalidation
+                }
+
+                // Check explicit Expires header
+                if (meta.Expires.HasValue && meta.Expires.Value.UtcDateTime < now)
+                {
+                    return true;
+                }
+
+                // Check max-age from Cache-Control
+                if (meta.MaxAgeSeconds.HasValue && meta.DownloadedUtc != default(DateTime))
+                {
+                    var expirationTime = meta.DownloadedUtc.AddSeconds(meta.MaxAgeSeconds.Value);
+                    if (expirationTime < now)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch
+            {
+                // If we can't parse metadata, assume valid
+                return false;
+            }
         }
 
         private string BuildUrl(string relative)
@@ -185,5 +272,29 @@ namespace Heron.Utilities.Google3DTiles
                 return sb.ToString();
             }
         }
+    }
+
+    /// <summary>
+    /// Metadata stored for each cached tile for cache control.
+    /// Stored directly in the manifest JSON under each tile entry.
+    /// </summary>
+    public class TileCacheMetadata
+    {
+        public DateTime DownloadedUtc { get; set; }
+        public string CacheControl { get; set; }
+        public DateTimeOffset? Expires { get; set; }
+        public DateTimeOffset? LastModified { get; set; }
+        public string ETag { get; set; }
+        public double? MaxAgeSeconds { get; set; }
+        public bool MustRevalidate { get; set; }
+        public bool NoCache { get; set; }
+    }
+
+    /// <summary>
+    /// Custom exception thrown when cached tiles have expired.
+    /// </summary>
+    public class CacheExpiredException : Exception
+    {
+        public CacheExpiredException(string message) : base(message) { }
     }
 }

@@ -38,6 +38,11 @@ namespace Heron
                  "GIS API")
         { }
 
+        public override Grasshopper.Kernel.GH_Exposure Exposure
+        {
+            get { return GH_Exposure.quarternary; }
+        }
+
         protected override System.Drawing.Bitmap Icon => Properties.Resources.shp;
         public override Guid ComponentGuid => new Guid("f7b0f7b1-9e70-4f5a-9aeb-7d50d5d3a5f7");
 
@@ -222,8 +227,25 @@ namespace Heron
                 {
                     Message = "Clearing cache...";
                     Grasshopper.Instances.RedrawCanvas();
-                    foreach (var f in Directory.EnumerateFiles(cacheFolder, "*.glb")) { try { File.Delete(f); } catch { } }
-                    foreach (var mf in Directory.EnumerateFiles(cacheFolder, ManifestPrefix + "*.json")) { try { File.Delete(mf); } catch { } }
+                    
+                    // Delete tile files
+                    foreach (var f in Directory.EnumerateFiles(cacheFolder, "*.glb")) 
+                    { 
+                        try { File.Delete(f); } catch { } 
+                    }
+                    
+                    // Delete manifest files
+                    foreach (var mf in Directory.EnumerateFiles(cacheFolder, ManifestPrefix + "*.json")) 
+                    { 
+                        try { File.Delete(mf); } catch { } 
+                    }
+                    
+                    // Delete consolidated metadata file
+                    var metadataFile = Path.Combine(cacheFolder, "tiles_cache_metadata.json");
+                    if (File.Exists(metadataFile))
+                    {
+                        try { File.Delete(metadataFile); } catch { }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -262,9 +284,15 @@ namespace Heron
             double matchTolModel = Math.Max(modelTol * 2.0, 0.01);
             double matchTolDeg = 1e-5; // ~1 meter
             bool manifestValid = TryLoadManifest(manifestPath, out manifestData) && NewBoundaryMatches(manifestData, aoiBounds, matchTolModel, minLon, minLat, maxLon, maxLat, matchTolDeg, wgsVertexHash, maxLod);
+            
             if (manifestValid)
             {
                 info.Add("Manifest found: " + Path.GetFileName(manifestPath));
+                
+                // VALIDATE CACHE EXPIRATION
+                var api = new GoogleTilesApi(apiKey, cacheFolder);
+                ValidateCachedTiles(api, manifestPath, info);
+                
                 var manifestTilePaths = manifestData.Tiles.Select(t => Path.Combine(cacheFolder, t.File)).ToList();
                 bool allExist = manifestTilePaths.All(File.Exists);
                 
@@ -281,8 +309,20 @@ namespace Heron
                 else if (!download)
                 {
                     info.Add("All cached tiles present. Loading from cache (Download=false).");
-                    LoadTilesFromList(da, manifestTilePaths, info, true, boundaryHash, attribution);
-                    return;
+                    
+                    // Wrap loading in try-catch to handle CacheExpiredException
+                    try
+                    {
+                        LoadTilesFromList(da, manifestTilePaths, info, true, boundaryHash, attribution);
+                        return;
+                    }
+                    catch (CacheExpiredException cex)
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Error, cex.Message);
+                        info.Add("ERROR: " + cex.Message);
+                        SetOutputs(da, info, new List<string>(), new List<Mesh>(), new List<object>(), attribution);
+                        return;
+                    }
                 }
                 else
                 {
@@ -334,7 +374,7 @@ namespace Heron
                 foreach (var line in walker.Stats.ToInfoLines()) info.Add(line);
 
                 long capBytes = (long)(maxSizeGbOption * 1024 * 1024 * 1024);
-                List<string> localGlbs = new List<string>();
+                List<TileDownloadResult> tileResults = new List<TileDownloadResult>();
                 long totalBytes = 0;
                 int skippedForCap = 0;
 
@@ -343,15 +383,17 @@ namespace Heron
                     totalTiles = plan.Count; downloadedTiles = 0; downloadedBytes = 0; isDownloading = true;
                     Message = $"Downloading (0/{totalTiles})"; Grasshopper.Instances.RedrawCanvas();
                     var downloader = new TileDownloader(api, capBytes);
-                    localGlbs = downloader.Ensure(plan, download, out totalBytes, out skippedForCap);
-                    downloadedTiles = localGlbs.Count; downloadedBytes = totalBytes;
+                    tileResults = downloader.Ensure(plan, download, out totalBytes, out skippedForCap);
+                    downloadedTiles = tileResults.Count; downloadedBytes = totalBytes;
                     double totalMB = totalBytes / (1024.0 * 1024.0);
                     Message = $"Downloaded {downloadedTiles}/{totalTiles} ({totalMB:F1} MB)"; Grasshopper.Instances.RedrawCanvas();
-                    info.Add(string.Format("Tiles planned: {0}, downloaded/used: {1}, bytes: {2:n0}", plan.Count, localGlbs.Count, totalBytes));
+                    info.Add(string.Format("Tiles planned: {0}, downloaded/used: {1}, bytes: {2:n0}", plan.Count, tileResults.Count, totalBytes));
                     if (skippedForCap > 0) info.Add(string.Format("Skipped {0} tiles due to size cap ({1} GB).", skippedForCap, maxSizeGbOption));
                 }
                 else info.Add("No tiles planned (even after any relaxed attempt).");
 
+                // Extract file paths for use
+                var localGlbs = tileResults.Select(r => r.FilePath).ToList();
                 usedFiles.AddRange(localGlbs);
 
                 if (localGlbs.Count > 0) { Message = "Importing meshes..."; Grasshopper.Instances.RedrawCanvas(); }
@@ -391,7 +433,7 @@ namespace Heron
                 else { Message = "Complete: No meshes"; info.Add("Complete: No meshes imported."); }
                 System.Threading.Thread.Sleep(100); Grasshopper.Instances.RedrawCanvas();
 
-                if (usedFiles.Count > 0)
+                if (tileResults.Count > 0)
                 {
                     try
                     {
@@ -406,7 +448,12 @@ namespace Heron
                             WgsHash = wgsVertexHash,
                             Attribution = attribution, // Store attribution in manifest
                             GeneratedUtc = DateTime.UtcNow,
-                            Tiles = usedFiles.Select(p => new ManifestTile { File = Path.GetFileName(p), Bytes = SafeFileSize(p) }).ToList()
+                            Tiles = tileResults.Select(r => new ManifestTile 
+                            { 
+                                File = Path.GetFileName(r.FilePath), 
+                                Bytes = r.Bytes,
+                                CacheMetadata = r.CacheMetadata // Include cache metadata in manifest
+                            }).ToList()
                         };
                         File.WriteAllText(manifestPath, JsonConvert.SerializeObject(manifest, Formatting.Indented));
                         info.Add("Wrote manifest: " + Path.GetFileName(manifestPath));
@@ -448,6 +495,86 @@ namespace Heron
             Message = $"Complete: {meshes.Count} meshes (cached)"; info.Add($"Loaded {meshes.Count} meshes from cache.");
             System.Threading.Thread.Sleep(60); Grasshopper.Instances.RedrawCanvas();
             SetOutputs(da, info, tilePaths, meshes, mats.Cast<object>().ToList(), attribution);
+        }
+
+        private void ValidateCachedTiles(GoogleTilesApi api, string manifestPath, List<string> info)
+        {
+            if (!File.Exists(manifestPath)) return;
+
+            try
+            {
+                // Read manifest
+                ManifestData manifestData;
+                if (!TryLoadManifest(manifestPath, out manifestData) || manifestData.Tiles == null)
+                {
+                    info.Add("Cache validation skipped: manifest invalid or no tiles");
+                    return;
+                }
+
+                int expiredCount = 0;
+                int missingCount = 0;
+                List<string> expiredTiles = new List<string>();
+
+                foreach (var tile in manifestData.Tiles)
+                {
+                    if (string.IsNullOrEmpty(tile.File)) continue;
+
+                    var tilePath = Path.Combine(Path.GetDirectoryName(manifestPath), tile.File);
+
+                    if (!File.Exists(tilePath))
+                    {
+                        missingCount++;
+                        continue;
+                    }
+
+                    // Check if tile has expired using cache metadata from manifest
+                    if (GoogleTilesApi.IsTileExpired(tile.CacheMetadata))
+                    {
+                        expiredCount++;
+                        expiredTiles.Add(tile.File);
+                    }
+                }
+
+                if (expiredCount > 0)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                        $"{expiredCount} cached tiles have EXPIRED based on HTTP Cache-Control headers. " +
+                        $"Please enable 'Run' to re-download fresh tiles.");
+                    info.Add($"WARNING: {expiredCount} tiles have expired:");
+                    info.Add("  Expired tiles should be re-downloaded to ensure data freshness.");
+                    info.Add("  Enable the 'Run' input to refresh expired content.");
+                    
+                    // List first few expired tiles
+                    int showCount = Math.Min(5, expiredTiles.Count);
+                    for (int i = 0; i < showCount; i++)
+                    {
+                        info.Add($"  - {expiredTiles[i]}");
+                    }
+                    if (expiredTiles.Count > showCount)
+                    {
+                        info.Add($"  ... and {expiredTiles.Count - showCount} more");
+                    }
+                }
+
+                if (missingCount > 0)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Warning,
+                        $"{missingCount} tiles are missing from cache. " +
+                        $"Enable 'Run' to re-download.");
+                    info.Add($"WARNING: {missingCount} tiles missing from cache");
+                }
+
+                if (expiredCount == 0 && missingCount == 0)
+                {
+                    info.Add("Cache validation: All tiles are fresh and valid.");
+                }
+            }
+            catch (Exception ex)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Remark, 
+                    $"Could not validate cache: {ex.Message}");
+                info.Add($"Cache validation skipped: {ex.Message}");
+            }
         }
 
         private long SafeFileSize(string path) { try { return new FileInfo(path).Length; } catch { return 0; } }
@@ -556,6 +683,11 @@ namespace Heron
             public DateTime GeneratedUtc { get; set; }
             public List<ManifestTile> Tiles { get; set; }
         }
-        private class ManifestTile { public string File { get; set; } public long Bytes { get; set; } }
+        private class ManifestTile 
+        { 
+            public string File { get; set; } 
+            public long Bytes { get; set; }
+            public TileCacheMetadata CacheMetadata { get; set; } // Cache control metadata
+        }
     }
 }
