@@ -8,6 +8,7 @@ using Grasshopper.Kernel.Types;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json.Linq;
+using Rhino.Render.ChildSlotNames;
 
 namespace Heron.Utilities.Google3DTiles
 {
@@ -138,12 +139,13 @@ namespace Heron.Utilities.Google3DTiles
                         {
                             var ecef = verts.Point3dAt(i);
                             var w = GeoUtils.EcefToWgs84(ecef); // (lonDeg, latDeg, hMeters)
-                            // Height: convert meters to model units BEFORE using WGSToXYZ transform (which expects elevation in model units).
+                                                                // Height: convert meters to model units BEFORE using WGSToXYZ transform (which expects elevation in model units).
                             var geo = new Point3d(w.lonDeg, w.latDeg, w.h * metersToModel);
                             geo.Transform(wgsToModel); // Now in model coordinates
                             verts.SetVertex(i, geo);
                         }
 
+                        dup.Unweld(Rhino.RhinoMath.ToRadians(10), false); // Unweld for cleaner looking meshes
                         dup.Normals.ComputeNormals();
                         dup.Compact();
                         outMeshes.Add(dup);
@@ -154,7 +156,36 @@ namespace Heron.Utilities.Google3DTiles
                             var rmat = ro.RenderMaterial;
                             if (rmat != null)
                             {
-                                try { if (string.IsNullOrEmpty(rmat.Name)) rmat.Name = baseName; } catch { }
+                                try
+                                {
+                                    // Rename material to indicate Google 3D Tile source and group them together in the material list
+                                    rmat.Name = "G3DTile-" + baseName;
+                                    // Ensure metallic is zero for typical photorealistic textures
+                                    rmat.SetParameter(PhysicallyBased.Metallic, 0.0);
+
+                                    // Copy the unpacked diffuse bitmap into the same directory as the GLB file,
+                                    // renaming it to match the GLB base name while preserving the image extension.
+                                    var diffuseTexture = rmat.GetTextureFromUsage(Rhino.Render.RenderMaterial.StandardChildSlots.Diffuse);
+                                    var diffuseBitmapUnpacked = diffuseTexture.Filename;
+                                    if (!string.IsNullOrWhiteSpace(diffuseBitmapUnpacked) && File.Exists(diffuseBitmapUnpacked))
+                                    {
+                                        try
+                                        {
+                                            var destDir = Path.GetDirectoryName(fp) ?? System.Environment.CurrentDirectory;
+                                            var newName = Path.GetFileNameWithoutExtension(fp) + Path.GetExtension(diffuseBitmapUnpacked);
+                                            var destPath = Path.Combine(destDir, newName);
+                                            File.Copy(diffuseBitmapUnpacked, destPath, true);
+                                            // Update the texture filename to the new copied path if desired
+                                            try { diffuseTexture.Filename = destPath; } catch { }
+                                            //notes.Add($"Copied texture to {destPath}");
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            notes.Add($"Failed to copy texture {diffuseBitmapUnpacked} to {fp}: {ex.Message}");
+                                        }
+                                    }
+                                }
+                                catch { }
                                 ghMaterials.Add(new GH_Material(rmat));
                             }
                         }
@@ -181,7 +212,7 @@ namespace Heron.Utilities.Google3DTiles
                     catch { }
                     temp = null;
                 }
-                
+
                 // Force garbage collection to free memory
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
