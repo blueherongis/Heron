@@ -137,7 +137,6 @@
     <Reference Include="RhinoCommon, Version=8.12.24282.7001, Culture=neutral, PublicKeyToken=552281e97c755530, processorArchitecture=MSIL">
       <HintPath>..\packages\RhinoCommon.8.12.24282.7001\lib\net48\RhinoCommon.dll</HintPath>
     </Reference>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Collections.Immutable, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Collections.Immutable.8.0.0\lib\net462\System.Collections.Immutable.dll</HintPath>
@@ -384,13 +383,11 @@
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets'))" />
     <Error Condition="!Exists('..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets'))" />
     <Error Condition="!Exists('..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets'))" />
     <Error Condition="!Exists('..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets'))" />
     <Error Condition="!Exists('..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets'))" />
   </Target>
-  <Import Project="..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets" Condition="Exists('..\packages\System.Text.Json.6.0.2\build\System.Text.Json.targets')" />
   <Import Project="..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets" Condition="Exists('..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets')" />
   <Import Project="..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets" Condition="Exists('..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets')" />
   <Import Project="..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets" Condition="Exists('..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets')" />
@@ -402,4 +399,16 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <Target Name="DownloadGeoidFile" AfterTargets="Build">
+    <!-- Define the source URL as a property. This avoids large gtx files being checked into source control -->
+    <PropertyGroup>
+      <GeoidUrl>https://github.com/OSGeo/proj-datumgrid/raw/refs/heads/master/world/egm08_25.gtx</GeoidUrl>
+      <TargetGtxPath>$(TargetDir)gdal\share\egm08_25.gtx</TargetGtxPath>
+    </PropertyGroup>
+    <!-- Ensure the directory exists first -->
+    <MakeDir Directories="$(TargetDir)gdal\share" Condition="!Exists('$(TargetDir)gdal\share')" />
+    <!-- Use a condition to check for file existence -->
+    <Exec Command="powershell -Command &quot;Invoke-WebRequest -Uri '$(GeoidUrl)' -OutFile '$(TargetGtxPath)'&quot;" Condition="!Exists('$(TargetGtxPath)') And '$(OS)' == 'Windows_NT'" />
+    <Exec Command="curl -LJo $(TargetGtxPath) $(GeoidUrl)" Condition="!Exists('$(TargetGtxPath)') And '$(OS)' != 'Windows_NT'" />
+  </Target>
 </Project>

@@ -1,14 +1,19 @@
-﻿using Rhino;
+﻿using Grasshopper.Kernel.Types;
+using Newtonsoft.Json.Linq;
+using OSGeo.OSR;
+using Rhino;
 using Rhino.DocObjects;
 using Rhino.FileIO;
 using Rhino.Geometry;
+using Rhino.Render.ChildSlotNames;
+using Rhino.UI;
 using System;
 using System.Collections.Generic;
-using Grasshopper.Kernel.Types;
+using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Net.Http;
 using System.Text;
-using Newtonsoft.Json.Linq;
-using Rhino.Render.ChildSlotNames;
 
 namespace Heron.Utilities.Google3DTiles
 {
@@ -29,6 +34,9 @@ namespace Heron.Utilities.Google3DTiles
             ghMaterials = new List<GH_Material>();
             copyrights = new HashSet<string>();
             var outMeshes = new List<Mesh>();
+
+            ///GDAL setup
+            Heron.GdalConfiguration.ConfigureOgr();
 
             if (glbFiles == null || glbFiles.Count == 0)
             {
@@ -116,6 +124,7 @@ namespace Heron.Utilities.Google3DTiles
                     }
 
                     string baseName = Path.GetFileNameWithoutExtension(fp);
+                    int incrementMaterialName = 0; // Avoid duplicate material and bitmap names to avoid known issue in Rhino
 
                     foreach (var ro in roList)
                     {
@@ -138,8 +147,8 @@ namespace Heron.Utilities.Google3DTiles
                         for (int i = 0; i < verts.Count; i++)
                         {
                             var ecef = verts.Point3dAt(i);
-                            var w = GeoUtils.EcefToWgs84(ecef); // (lonDeg, latDeg, hMeters)
-                                                                // Height: convert meters to model units BEFORE using WGSToXYZ transform (which expects elevation in model units).
+                            var w = GeoUtils.EcefToGeoidGdal(ecef); // (lonDeg, latDeg, hMeters)
+                            // Height: convert meters to model units BEFORE using WGSToXYZ transform (which expects elevation in model units).
                             var geo = new Point3d(w.lonDeg, w.latDeg, w.h * metersToModel);
                             geo.Transform(wgsToModel); // Now in model coordinates
                             verts.SetVertex(i, geo);
@@ -159,7 +168,9 @@ namespace Heron.Utilities.Google3DTiles
                                 try
                                 {
                                     // Rename material to indicate Google 3D Tile source and group them together in the material list
-                                    rmat.Name = "G3DTile-" + baseName;
+                                    rmat.Name = "G3DTile-" + baseName + "_" + incrementMaterialName;
+                                    incrementMaterialName++;
+
                                     // Ensure metallic is zero for typical photorealistic textures
                                     rmat.SetParameter(PhysicallyBased.Metallic, 0.0);
 
@@ -172,7 +183,7 @@ namespace Heron.Utilities.Google3DTiles
                                         try
                                         {
                                             var destDir = Path.GetDirectoryName(fp) ?? System.Environment.CurrentDirectory;
-                                            var newName = Path.GetFileNameWithoutExtension(fp) + Path.GetExtension(diffuseBitmapUnpacked);
+                                            var newName = Path.GetFileNameWithoutExtension(fp) + "_" + incrementMaterialName + Path.GetExtension(diffuseBitmapUnpacked);
                                             var destPath = Path.Combine(destDir, newName);
                                             File.Copy(diffuseBitmapUnpacked, destPath, true);
                                             // Update the texture filename to the new copied path if desired

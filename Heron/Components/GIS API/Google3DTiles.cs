@@ -13,7 +13,8 @@ using SysEnv = System.Environment;
 using GH_IO.Serialization;
 using Rhino.Input; // For RhinoGet
 using Rhino.Commands; // For Result
-using Newtonsoft.Json; // Manifest serialization
+using Newtonsoft.Json;
+using OSGeo.OSR; // Manifest serialization
 
 namespace Heron
 {
@@ -133,6 +134,8 @@ namespace Heron
         {
             var doc = RhinoDoc.ActiveDoc;
             double modelTol = doc != null ? doc.ModelAbsoluteTolerance : 0.01;
+            Heron.GdalConfiguration.ConfigureGdal();
+            Heron.GdalConfiguration.ConfigureOgr();
 
             Curve boundary = null;
             int maxLod = 4;
@@ -195,7 +198,9 @@ namespace Heron
             if (!Directory.Exists(cacheFolder)) Directory.CreateDirectory(cacheFolder);
 
             // Create AOI polyline *before* computing manifest metrics to ensure consistency
-            var aoi = boundary.ToPolyline(0, 0, 0.1, 0.1).ToPolyline();
+            //var aoi = boundary.ToPolyline(0, 0, 0.1, 0.1).ToPolyline();
+            var aoi = GeoUtils.GetAoiBoundingPolyline(boundary);
+
             if (aoi == null || !aoi.IsClosed)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Boundary must be a closed planar curve.");
@@ -204,7 +209,7 @@ namespace Heron
             }
             var aoiBounds = aoi.BoundingBox;
 
-            // WGS84 AOI bounds
+            // WGS84 AOI bounds for Manifest
             double minLon = 0, minLat = 0, maxLon = 0, maxLat = 0;
             try
             {
