@@ -1,11 +1,15 @@
 ﻿using System;
+using System.Configuration;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Linq;
 using System.Diagnostics;
 
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
+using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -44,7 +48,7 @@ namespace Heron
                 ///appsettings.json is included in GitHub to be used as a template
                 Stream jsonStream = DecryptAppSettings(appsettingsEncrypted);
 
-                var configuration = new ConfigurationBuilder()
+                var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
                     .SetBasePath(executingDirectory)
                     .AddJsonFile("appsettings.json", true, true)
                     .AddEnvironmentVariables()
@@ -53,8 +57,7 @@ namespace Heron
                     .Build();
                 var services = new ServiceCollection();
 
-                services.Configure<HeronConfiguration>(configuration.GetSection(typeof(HeronConfiguration).FullName));
-
+                services.Configure<HeronConfiguration>(configuration.GetSection(nameof(HeronConfiguration)));
                 var provider = services.BuildServiceProvider();
                 return provider;
             }
@@ -197,8 +200,8 @@ namespace Heron
     /// </summary>
     public class HeronVersion
     {
-        public const string AssemblyVer = "0.4.3";
-        public const string AssemblyFileVer = "0.4.3";
+        public const string AssemblyVer = "0.4.4";
+        public const string AssemblyFileVer = "0.4.4";
     }
 
     public class HeronLocation
