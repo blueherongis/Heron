@@ -159,6 +159,7 @@
     <Compile Include="Components\GIS Tools\GdalConvexHull.cs" />
     <Compile Include="Components\GIS Tools\GdalBuffer.cs" />
     <Compile Include="Components\GIS Tools\GdalFillNoData.cs" />
+    <Compile Include="Components\GIS Tools\GdalGrid.cs" />
     <Compile Include="Components\GIS Tools\OgrInfo.cs" />
     <Compile Include="Components\GIS Tools\GdalInfo.cs" />
     <Compile Include="Components\GIS Tools\SetEAP.cs" />
