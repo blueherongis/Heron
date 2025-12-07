@@ -77,6 +77,9 @@ namespace Heron
             ///TODO: Check what units the userSRS is in and coordinate with the scaling function.  Currently only accounts for a userSRS in meters.
             ///TODO: translate or scale GCS (decimal degrees) to something like a Projectected Coordinate System.  Need to go dd to xy
 
+            ///Gdal setup
+            Heron.GdalConfiguration.ConfigureOgr();
+
             ///transform rhino EAP from rhinoSRS to userSRS
             double eapLat = EarthAnchorPoint.EarthBasepointLatitude;
             double eapLon = EarthAnchorPoint.EarthBasepointLongitude;
@@ -157,6 +160,9 @@ namespace Heron
 
         public static Transform GetUserSRSToHeronSRSTransform(OSGeo.OSR.SpatialReference userSRS)
         {
+            ///Gdal setup
+            Heron.GdalConfiguration.ConfigureOgr();
+
             ///transform rhino EAP from rhinoSRS to userSRS
             Plane eapPlane = EarthAnchorPoint.GetEarthAnchorPlane(out Vector3d eapNorth);
 
