@@ -69,11 +69,6 @@ namespace Heron
                     //const string notSet = "_Not_set_";
                     //string tmp = Gdal.GetConfigOption("GDAL_DATA", notSet);
 
-                    ///Custom configuration options
-                    OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
-                    ///To be backwards compatible with the way Heron uses coordinate order
-                    OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
-
                     if (string.IsNullOrEmpty(executingDirectory))
                         throw new InvalidOperationException("cannot get executing directory");
 
@@ -81,7 +76,7 @@ namespace Heron
                     var arch = RuntimeInformation.ProcessArchitecture;
                     var isOSX = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
                     if (arch == Architecture.X64 && isOSX == true) { osxPlatform = "osx-64"; }
-                    if (arch == Architecture.Arm64 && isOSX == true) { osxPlatform = "osx-Arm64"; }
+                    if (arch == Architecture.Arm64 && isOSX == true) { osxPlatform = "osx-arm64"; }
                     // modify search place and order
                     //SetDefaultDllDirectories(DllSearchFlags);
 
@@ -97,6 +92,11 @@ namespace Heron
                     //AddDllDirectory(nativePath);
                     //AddDllDirectory(Path.Combine(nativePath, "plugins"));
                     
+                    ///Custom configuration options
+                    //OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
+                    ///To be backwards compatible with the way Heron uses coordinate order
+                    //OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
+
                     // Set the additional GDAL environment variables.
                     string gdalDataMac = Path.Combine(gdalPath, "data");
                     Environment.SetEnvironmentVariable("GDAL_DATA", gdalDataMac);

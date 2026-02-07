@@ -168,7 +168,7 @@ namespace Heron
 
         }
 
-
+        // TODO: Update this method to use HttpClient instead of HttpWebRequest for better performance and resource management.
         public static string GetData(string qst)
         {
             System.Net.HttpWebRequest req = System.Net.WebRequest.Create(qst) as System.Net.HttpWebRequest;
@@ -188,33 +188,6 @@ namespace Heron
             }
             return result;
         }
-
-        // Async .NET 4.5 Json from here http://www.jayway.com/2012/03/13/httpclient-makes-get-and-post-very-simple/
-        public async Task<JObject> GetAsync(string uri)
-        {
-            var httpClient = new HttpClient();
-            var content = await httpClient.GetStringAsync(uri);
-            return await Task.Run(() => JObject.Parse(content));
-        }
-
-        public class GetAsyncClass
-        {
-            public JObject GetAsyncJson(string uri)
-            {
-                string output = GetData(uri);
-                JObject ja = JObject.Parse(output);
-                return ja;
-            }
-        }
-
-        static void delCallBack(IAsyncResult async)
-        {
-            System.Runtime.Remoting.Messaging.AsyncResult ar = (System.Runtime.Remoting.Messaging.AsyncResult)async;
-            jsonDelegate del = (jsonDelegate)ar.AsyncDelegate;
-            JObject ja = del.EndInvoke(async);
-        }
-
-
 
         protected override System.Drawing.Bitmap Icon
         {

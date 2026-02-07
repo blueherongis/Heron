@@ -1,430 +1,244 @@
-﻿<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{A3CC60C1-0145-4237-8E81-1E96326B62A2}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Heron</RootNamespace>
-    <AssemblyName>Heron</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <LangVersion>12.0</LangVersion>
-    <FileAlignment>512</FileAlignment>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-    <TargetFrameworkProfile />
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug Rhino 7|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug Rhino 7\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="Ed.Eto, Version=1.0.0.0, Culture=neutral, PublicKeyToken=552281e97c755530, processorArchitecture=MSIL">
-      <HintPath>..\packages\RhinoCommon.8.12.24282.7001\lib\net48\Ed.Eto.dll</HintPath>
-    </Reference>
-    <Reference Include="Eto, Version=2.8.0.0, Culture=neutral, PublicKeyToken=552281e97c755530, processorArchitecture=MSIL">
-      <HintPath>..\packages\RhinoCommon.8.12.24282.7001\lib\net48\Eto.dll</HintPath>
-    </Reference>
-    <Reference Include="gdalconst_csharp, Version=3.7.2.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
-      <HintPath>..\packages\GDAL.3.7.2\lib\netstandard2.0\gdalconst_csharp.dll</HintPath>
-    </Reference>
-    <Reference Include="gdal_csharp, Version=3.7.2.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
-      <HintPath>..\packages\GDAL.3.7.2\lib\netstandard2.0\gdal_csharp.dll</HintPath>
-    </Reference>
-    <Reference Include="GH_IO, Version=8.12.24282.7001, Culture=neutral, PublicKeyToken=6a29997d2e6b4f97, processorArchitecture=MSIL">
-      <HintPath>..\packages\Grasshopper.8.12.24282.7001\lib\net48\GH_IO.dll</HintPath>
-    </Reference>
-    <Reference Include="Grasshopper, Version=8.12.24282.7001, Culture=neutral, PublicKeyToken=dda4f5ec2cd80803, processorArchitecture=MSIL">
-      <HintPath>..\packages\Grasshopper.8.12.24282.7001\lib\net48\Grasshopper.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=10.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.10.0.1\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
-    </Reference>
-    <!-- added -->
-    <Reference Include="Microsoft.Extensions.Primitives, Version=9.0.0.8, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Primitives.9.0.8\lib\net462\Microsoft.Extensions.Primitives.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Configuration, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Configuration.8.0.0\lib\net462\Microsoft.Extensions.Configuration.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Configuration.Abstractions, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Configuration.Abstractions.8.0.0\lib\net462\Microsoft.Extensions.Configuration.Abstractions.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Configuration.Binder, Version=8.0.0.2, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Configuration.Binder.8.0.2\lib\net462\Microsoft.Extensions.Configuration.Binder.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Configuration.EnvironmentVariables, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Configuration.EnvironmentVariables.8.0.0\lib\net462\Microsoft.Extensions.Configuration.EnvironmentVariables.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Configuration.FileExtensions, Version=8.0.0.1, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Configuration.FileExtensions.8.0.1\lib\net462\Microsoft.Extensions.Configuration.FileExtensions.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Configuration.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Configuration.Json.6.0.0\lib\net461\Microsoft.Extensions.Configuration.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Configuration.UserSecrets, Version=6.0.0.1, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Configuration.UserSecrets.6.0.1\lib\net461\Microsoft.Extensions.Configuration.UserSecrets.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.DependencyInjection, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.8.0.0\lib\net462\Microsoft.Extensions.DependencyInjection.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=8.0.0.2, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.8.0.2\lib\net462\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.FileProviders.Abstractions, Version=9.0.0.8, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.FileProviders.Abstractions.9.0.8\lib\net462\Microsoft.Extensions.FileProviders.Abstractions.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.FileProviders.Physical, Version=9.0.0.8, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.FileProviders.Physical.9.0.8\lib\net462\Microsoft.Extensions.FileProviders.Physical.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.FileSystemGlobbing, Version=9.0.0.8, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.FileSystemGlobbing.9.0.8\lib\net462\Microsoft.Extensions.FileSystemGlobbing.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Options, Version=8.0.0.2, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Options.8.0.2\lib\net462\Microsoft.Extensions.Options.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Extensions.Options.ConfigurationExtensions, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Extensions.Options.ConfigurationExtensions.8.0.0\lib\net462\Microsoft.Extensions.Options.ConfigurationExtensions.dll</HintPath>
-    </Reference>
-    <!-- end. -->
-    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="ogr_csharp, Version=3.7.2.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
-      <HintPath>..\packages\GDAL.3.7.2\lib\netstandard2.0\ogr_csharp.dll</HintPath>
-    </Reference>
-    <Reference Include="OsmSharp, Version=6.2.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\OsmSharp.6.2.0\lib\net45\OsmSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="osr_csharp, Version=3.7.2.0, Culture=neutral, PublicKeyToken=db5a52b08dc5b321, processorArchitecture=MSIL">
-      <HintPath>..\packages\GDAL.3.7.2\lib\netstandard2.0\osr_csharp.dll</HintPath>
-    </Reference>
-    <Reference Include="protobuf-net, Version=3.0.0.0, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
-      <HintPath>..\packages\protobuf-net.3.2.30\lib\net462\protobuf-net.dll</HintPath>
-    </Reference>
-    <Reference Include="protobuf-net.Core, Version=3.0.0.0, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
-      <HintPath>..\packages\protobuf-net.Core.3.2.30\lib\net462\protobuf-net.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Rhino.UI, Version=8.12.24282.7001, Culture=neutral, PublicKeyToken=552281e97c755530, processorArchitecture=MSIL">
-      <HintPath>..\packages\RhinoCommon.8.12.24282.7001\lib\net48\Rhino.UI.dll</HintPath>
-    </Reference>
-    <Reference Include="RhinoCommon, Version=8.12.24282.7001, Culture=neutral, PublicKeyToken=552281e97c755530, processorArchitecture=MSIL">
-      <HintPath>..\packages\RhinoCommon.8.12.24282.7001\lib\net48\RhinoCommon.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Collections.Immutable, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Collections.Immutable.8.0.0\lib\net462\System.Collections.Immutable.dll</HintPath>
-    </Reference>
-    <Reference Include="System.ComponentModel.Composition" />
-    <Reference Include="System.ComponentModel.DataAnnotations" />
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.IO, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.IO.4.3.0\lib\net462\System.IO.dll</HintPath>
-      <Private>True</Private>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.IO.Pipelines, Version=10.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.IO.Pipelines.10.0.1\lib\net462\System.IO.Pipelines.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Net.Http.Json, Version=10.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Net.Http.Json.10.0.1\lib\net462\System.Net.Http.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Numerics.Vectors, Version=4.1.6.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Numerics.Vectors.4.6.1\lib\net462\System.Numerics.Vectors.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Runtime, Version=4.1.1.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Runtime.4.3.1\lib\net462\System.Runtime.dll</HintPath>
-      <Private>True</Private>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="System.Security.Cryptography.Algorithms, Version=4.2.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Security.Cryptography.Algorithms.4.3.1\lib\net463\System.Security.Cryptography.Algorithms.dll</HintPath>
-      <Private>True</Private>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Security.Cryptography.Encoding, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Security.Cryptography.Encoding.4.3.0\lib\net46\System.Security.Cryptography.Encoding.dll</HintPath>
-      <Private>True</Private>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Security.Cryptography.Primitives, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Security.Cryptography.Primitives.4.3.0\lib\net46\System.Security.Cryptography.Primitives.dll</HintPath>
-      <Private>True</Private>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.ServiceModel" />
-    <Reference Include="System.Text.Encodings.Web, Version=10.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Text.Encodings.Web.10.0.1\lib\net462\System.Text.Encodings.Web.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Text.Json, Version=10.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Text.Json.10.0.1\lib\net462\System.Text.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.4.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Threading.Tasks.Extensions.4.6.3\lib\net462\System.Threading.Tasks.Extensions.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
-    <Reference Include="Unofficial.laszip.netstandard, Version=5.5.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Unofficial.laszip.netstandard.5.5.2\lib\netstandard2.0\Unofficial.laszip.netstandard.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Components\Deprecated\ImportLAZ_DEPRECATED20250120.cs" />
-    <Compile Include="Components\Deprecated\MapboxRaster_DEPRECATED20211114.cs" />
-    <Compile Include="Components\Deprecated\SlippyRaster_DEPRECATED2021114.cs" />
-    <Compile Include="Components\GIS API\Google3DTilesPoi.cs" />
-    <Compile Include="Components\GIS API\Google3DTilesAoi.cs" />
-    <Compile Include="Components\GIS API\MapboxIsochrone.cs" />
-    <Content Include="Resources\GoogleMaps_Logo_WithLightOutline_2x.png" />
-    <None Include="Components\GIS API\MapboxIsochroneSpeckle.cs" />
-    <Compile Include="Components\GIS API\Google3DTilesPoiAsync.cs" />
-    <Compile Include="Components\GIS API\SlippyRasterCustom.cs" />
-    <Compile Include="Components\GIS API\Yelp.cs" />
-    <Compile Include="Components\GIS Import-Export\ExportLAZ.cs" />
-    <Compile Include="Components\GIS Import-Export\ExportVector.cs" />
-    <Compile Include="Components\GIS Import-Export\ImportOSMLite.cs" />
-    <Compile Include="Components\GIS Import-Export\ImportTopoLite.cs" />
-    <Compile Include="Components\Deprecated\ImportTopoLite_DEPRECATED20250217.cs" />
-    <Compile Include="Components\GIS Import-Export\ImportVectorLite.cs" />
-    <Compile Include="Components\Deprecated\ImportVectorLite_DEPRECATED20250216.cs" />
-    <Compile Include="Components\Deprecated\ImportVectorSRS_DEPRECATED20230506.cs" />
-    <Compile Include="Components\GIS Import-Export\ImportVectorSRS.cs" />
-    <Compile Include="Components\GIS REST\RESTRasterSRS.cs" />
-    <Compile Include="Components\GIS REST\RESTOSM.cs" />
-    <Compile Include="Components\GIS REST\RESTTopo.cs" />
-    <Compile Include="Components\GIS REST\RESTVectorSRS.cs" />
-    <Compile Include="Components\Deprecated\RESTVector_DEPRECATED20220730.cs" />
-    <Compile Include="Components\GIS Tools\DMStoDD.cs" />
-    <None Include="Components\GIS Tools\GdalConcaveHull.cs" />
-    <Compile Include="Components\GIS Tools\GdalConvexHull.cs" />
-    <Compile Include="Components\GIS Tools\GdalBuffer.cs" />
-    <Compile Include="Components\GIS Tools\GdalFillNoData.cs" />
-    <Compile Include="Components\GIS Tools\GdalGrid.cs" />
-    <Compile Include="Components\GIS Tools\OgrInfo.cs" />
-    <Compile Include="Components\GIS Tools\GdalInfo.cs" />
-    <Compile Include="Components\GIS Tools\SetEAP.cs" />
-    <Compile Include="Components\GIS Tools\SetSRS.cs" />
-    <Compile Include="Components\Deprecated\SetSRS_DEPRECATED20240811.cs" />
-    <None Include="Components\Utilities\DecimateTopoFromPoint.cs" />
-    <Compile Include="Components\Utilities\Google3DTiles\GoogleTilesApi.cs" />
-    <Compile Include="Components\Utilities\Google3DTiles\TileImporter.cs" />
-    <Compile Include="Components\Utilities\Google3DTiles\TileDownloader.cs" />
-    <Compile Include="Components\Utilities\Google3DTiles\TilesetModels.cs" />
-    <Compile Include="Components\Utilities\Google3DTiles\GeoUtils.cs" />
-    <Compile Include="Components\Utilities\Google3DTiles\TilesetWalker.cs" />
-    <Compile Include="Components\Utilities\MultiMoveToTopo.cs" />
-    <Compile Include="Components\Utilities\MultiSDiff.cs" />
-    <Compile Include="Components\Utilities\GdalDetails.cs" />
-    <Compile Include="Components\Utilities\TopiaryFlatten.cs" />
-    <Compile Include="GdalConfiguration.cs" />
-    <Compile Include="HeronConfiguration.cs" />
-    <Compile Include="HeronSRS.cs" />
-    <Compile Include="SpeckleAsync\GH_AsyncComponentGoogle.cs" />
-    <Compile Include="SpeckleAsync\GH_AsyncComponentYelp.cs" />
-    <Compile Include="Components\Utilities\HexToColor.cs" />
-    <Compile Include="Components\Utilities\ColorToHex.cs" />
-    <Compile Include="Convert.cs" />
-    <Compile Include="Components\Deprecated\ExportVector_DEPRECATED20240729.cs" />
-    <Compile Include="SpeckleAsync\WorkerInstanceGoogle.cs" />
-    <Compile Include="SpeckleAsync\WorkerInstanceYelp.cs" />
-    <Content Include="appsettings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <None Include="Components\GIS Tools\GdalPoligonize.cs" />
-    <Compile Include="HeronBoxPreviewComponent.cs" />
-    <Compile Include="Components\Utilities\ImageFilterColors.cs" />
-    <Compile Include="Components\Utilities\ImageCubeMapPlus.cs" />
-    <Compile Include="Components\Utilities\ImageCubeMap.cs" />
-    <Compile Include="Components\Utilities\ImageCubeToEqui.cs" />
-    <Compile Include="Components\Utilities\ImageTopColors.cs" />
-    <Compile Include="Components\Utilities\ImageRotate.cs" />
-    <Compile Include="Components\Utilities\ImageFlip.cs" />
-    <Compile Include="Components\GIS Tools\GdalOGR2OGR.cs" />
-    <Compile Include="Components\GIS Tools\GdalWarp.cs" />
-    <Compile Include="Components\GIS Tools\GdalTranslate.cs" />
-    <Compile Include="HeronComponent.cs" />
-    <Compile Include="HeronInfo.cs" />
-    <Compile Include="HeronRasterPreviewComponent.cs" />
-    <Compile Include="Components\GIS Import-Export\ImportLAZ.cs" />
-    <Compile Include="Components\GIS Import-Export\ImportOSM.cs" />
-    <Compile Include="Components\Deprecated\ImportSHP_DEPRECATED.cs" />
-    <Compile Include="Components\GIS Import-Export\ImportRaster.cs" />
-    <Compile Include="Components\GIS Import-Export\ImportTopo.cs" />
-    <Compile Include="Components\Deprecated\ImportVector_DEPRECATED20220730.cs" />
-    <Compile Include="Components\Deprecated\ImportTopo_DEPRECATED.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Components\GIS API\MapboxRaster.cs" />
-    <Compile Include="Components\GIS API\MapboxTopo.cs" />
-    <Compile Include="Components\GIS API\MapboxVector.cs" />
-    <Compile Include="Components\Utilities\MultiMeshPatch.cs" />
-    <Compile Include="Components\Deprecated\MultiSDiff_DEPRECATED20230910.cs" />
-    <Compile Include="Components\GIS REST\RESTLayer.cs" />
-    <Compile Include="Components\Deprecated\RESTTOSM_DEPRECATED20240128.cs" />
-    <Compile Include="Components\GIS API\SlippyRaster.cs" />
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-    <Compile Include="Components\Deprecated\RESTRaster_DEPRECATED20220730.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Components\Deprecated\RESTLayer_DEPRECATED.cs" />
-    <Compile Include="Components\GIS REST\RESTRevGeo.cs" />
-    <Compile Include="Components\Deprecated\RESTTopo_DEPRECATED20250119.cs" />
-    <Compile Include="Components\Deprecated\RESTVector_DEPRECATED.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Components\Deprecated\SetEAP_DEPRECATED20220416.cs" />
-    <Compile Include="Components\GIS Tools\DDtoXY.cs" />
-    <Compile Include="Components\GIS REST\RESTGeocode.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Components\GIS API\SlippyTiles.cs" />
-    <Compile Include="Components\GIS API\SlippyViewport.cs" />
-    <Compile Include="Components\GIS Tools\CoordinateTransformation.cs" />
-    <Compile Include="Components\Utilities\VisualCenter.cs" />
-    <Compile Include="Components\GIS Tools\XYtoDD.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="app.config" />
-    <None Include="packages.config" />
-    <None Include="Resources\HeronServiceEndpoints.json" />
-    <None Include="Resources\Icon.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\Demo.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <WCFMetadata Include="Service References\" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\layer-01.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\ddtoxy.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\eap.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\geocode.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\img.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\layer.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\raster.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\shp.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\vector.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\revgeocode.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\xytodd.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\heron-favicon.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\heron-icon.png" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>Move /Y "$(ProjectDir)bin\$(ConfigurationName)\$(ProjectName).dll" "$(ProjectDir)bin\$(ConfigurationName)\$(ProjectName).gha"</PostBuildEvent>
-  </PropertyGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets'))" />
-    <Error Condition="!Exists('..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets'))" />
-    <Error Condition="!Exists('..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets'))" />
-    <Error Condition="!Exists('..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets'))" />
-    <Error Condition="!Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets'))" />
-  </Target>
-  <Import Project="..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets" Condition="Exists('..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets')" />
-  <Import Project="..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets" Condition="Exists('..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets')" />
-  <Import Project="..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets" Condition="Exists('..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets')" />
-  <Import Project="..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets" Condition="Exists('..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets')" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- Select the framework(s) you wish to target.
+        Rhino 6: net45
+        Rhino 7: net48
+        Rhino 8 Windows: net48, net7.0, net7.0-windows, net7.0-windows10.0.22000.0, etc
+        Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
+    -->
+		<TargetFrameworks>net8.0-windows;net8.0</TargetFrameworks>
+		<EnableDynamicLoading>true</EnableDynamicLoading>
+		<TargetExt>.gha</TargetExt>
+		<NoWarn>NU1701;NETSDK1086</NoWarn>
+		<EnableWindowsTargeting>true</EnableWindowsTargeting>
+		<LangVersion>12.0</LangVersion>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<!-- Specifies information for Assembly and Yak -->
+		<Version>1.0</Version>
+		<Title>Heron</Title>
+		<Company>Heron Authors</Company>
+		<Description>Description of Heron</Description>
+	</PropertyGroup>
+
+	<!-- For Windows only builds -->
+	<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) or $(TargetFramework.StartsWith('net4'))">
+		<UseWindowsForms>true</UseWindowsForms>
+	</PropertyGroup>
+
+	<!-- Reference WinForms for .NET 7.0 on macOS -->
+	<ItemGroup Condition="!($(TargetFramework.Contains('-windows')) or $(TargetFramework.StartsWith('net4')))">
+		<!-- Rhino 8.11 and later you can use this -->
+		<!-- <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" /> -->
+
+		<!-- Rhino 8.10 and earlier -->
+		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" ExcludeAssets="all" GeneratePathProperty="true" />
+		<Reference Include="$(PkgMicrosoft_NETFramework_ReferenceAssemblies_net48)\build\.NETFramework\v4.8\System.Windows.Forms.dll" Private="False" />
+		<PackageReference Include="System.Drawing.Common" Version="8.0.0" ExcludeAssets="runtime" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<!-- Disables the persistent compiler server that locks files -->
+		<UseSharedCompilation>false</UseSharedCompilation>
+		
+		<!-- Set a default or base folder suffix -->
+		<PlatformFolder Condition="$([MSBuild]::IsOSPlatform('Windows'))">win</PlatformFolder>
+		<PlatformFolder Condition="$([MSBuild]::IsOSPlatform('OSX'))">mac</PlatformFolder>
+
+		<!-- Append the folder to the existing OutputPath -->
+		<OutputPath>$([MSBuild]::NormalizeDirectory('$([System.IO.Path]::Combine('$(ProjectDir)', 'Heron', 'bin', '$(Configuration)', '$(PlatformFolder)'))'))</OutputPath>
+		<!-- <OutputPath>$(ProjectDir)bin\$(Configuration)\$(PlatformFolder)\</OutputPath> -->
+
+		<!-- Clean up the path (optional but recommended) -->
+		<!-- Prevents nesting like bin/win/net48/ so Yak finds your files easily -->
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<!-- This tells the debugger where to start the process -->
+		<StartWorkingDir>$(OutputPath)</StartWorkingDir>
+
+		<!-- Path to Rhino - Adjust version if necessary -->
+		<StartAction>Program</StartAction>
+		<StartProgram Condition="$([MSBuild]::IsOSPlatform('Windows'))">C:\Program Files\Rhino 8\System\Rhino.exe</StartProgram>
+		<StartProgram Condition="$([MSBuild]::IsOSPlatform('OSX'))">/Applications/Rhino 8.app/Contents/MacOS/Rhinoceros</StartProgram>
+	</PropertyGroup>
+
+	<Target Name="BuildYakPackage" AfterTargets="DispatchToInnerBuilds" Condition="'$(Configuration)' == 'Release'">
+		<PropertyGroup>
+			<YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(windows)) and Exists('C:\Program Files\Rhino 8\System\Yak.exe')">C:\Program Files\Rhino 8\System\Yak.exe</YakExecutable>
+			<YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(macos)) and Exists('/Applications/Rhino 8.app/Contents/Resources/bin/yak')">/Applications/Rhino 8.app/Contents/Resources/bin/yak</YakExecutable>
+
+			<BuildYakPackage Condition="$(BuildYakPackage) == '' and $(YakExecutable) != '' and Exists($(YakExecutable))">True</BuildYakPackage>
+		</PropertyGroup>
+
+		<Warning Text="Could not find Yak executable" Condition="$(YakExecutable) == ''" />
+
+		<ItemGroup>
+			<YakPackagesToDelete Include="$(OutputPath)\*.yak;$(OutputPath)\**\manifest.yml" />
+		</ItemGroup>
+
+		<Delete Files="@(YakPackagesToDelete)" />
+
+		<Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
+		<Exec Command="&quot;$(YakExecutable)&quot; build --platform $(PlatformFolder)" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
+
+	</Target>
+
+	<!-- Nuget Packages-->
+	<ItemGroup>
+		<PackageReference Include="GDAL.Applications" Version="3.7.3" />
+		<PackageReference Include="GDAL.Native" Version="3.7.3" />
+		<PackageReference Include="GDAL.Plugins" Version="3.7.3" />
+		<PackageReference Include="Grasshopper" Version="8.12.24282.7001" ExcludeAssets="runtime" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.1" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.1" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+		<PackageReference Include="OsmSharp" Version="6.2.0" />
+		<PackageReference Include="System.Resources.Extensions" Version="10.0.1" />
+		<PackageReference Include="Unofficial.laszip.netstandard" Version="5.5.11" />
+	</ItemGroup>
+	<!-- End Nuget Packages-->
+
+	<!-- Components to specify build action different from default Compile Include-->
+	<ItemGroup>
+		<Content Include="Resources\GoogleMaps_Logo_WithLightOutline_2x.png" />
+
+		<Content Include="appsettings.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Remove="Components\GIS API\Google3DTilesPoiAsync.cs" />
+		<Compile Remove="Components\GIS API\MapboxIsochroneSpeckle.cs" />
+		<Compile Remove="Components\GIS Tools\GdalConcaveHull.cs" />
+		<Compile Remove="Components\GIS Tools\GdalPoligonize.cs" />
+		<Compile Remove="Components\Utilities\DecimateTopoFromPoint.cs" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="app.config" />
+		<None Include="Components\GIS API\Google3DTilesPoiAsync.cs" />
+		<None Include="Components\GIS API\MapboxIsochroneSpeckle.cs" />
+		<None Include="Components\GIS Tools\GdalConcaveHull.cs" />
+		<None Include="Components\GIS Tools\GdalPoligonize.cs" />
+		<None Include="Components\Utilities\DecimateTopoFromPoint.cs" />
+		<None Include="packages.config" />
+		<None Include="Resources\HeronServiceEndpoints.json" />
+		<None Include="Resources\Icon.png" />
+	</ItemGroup>
+		<!-- Resources-->	
+	
+		<!-- End Components-->
+	<!-- End Components-->
+
+
+	<ItemGroup>
+		<None Include="Resources\Demo.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<WCFMetadata Include="Service References\" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\layer-01.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\ddtoxy.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\eap.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\geocode.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\img.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\layer.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\raster.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\shp.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\vector.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\revgeocode.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\xytodd.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\heron-favicon.png" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="Resources\heron-icon.png" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Compile Update="Properties\Settings.Designer.cs">
+	    <DesignTimeSharedInput>True</DesignTimeSharedInput>
+	    <AutoGen>True</AutoGen>
+	    <DependentUpon>Settings.settings</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+	<ItemGroup>
+	  <None Update="Properties\Settings.settings">
+	    <Generator>SettingsSingleFileGenerator</Generator>
+	    <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+	  </None>
+	</ItemGroup>
+	<!-- End Resources-->
+
+	<Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+		<PropertyGroup>
+			<ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+		</PropertyGroup>
+		<Error Condition="!Exists('..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets'))" />
+		<Error Condition="!Exists('..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets'))" />
+		<Error Condition="!Exists('..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets'))" />
+		<Error Condition="!Exists('..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets'))" />
+		<Error Condition="!Exists('..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets'))" />
+		<Error Condition="!Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets'))" />
+	</Target>
+	<Import Project="..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets" Condition="Exists('..\packages\GDAL.Native.3.7.2\build\netstandard2.0\GDAL.Native.targets')" />
+	<Import Project="..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets" Condition="Exists('..\packages\GDAL.Plugins.3.7.2\build\netstandard2.0\GDAL.Plugins.targets')" />
+	<Import Project="..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets" Condition="Exists('..\packages\RhinoCommon.8.12.24282.7001\build\net48\RhinoCommon.targets')" />
+	<Import Project="..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets" Condition="Exists('..\packages\Grasshopper.8.12.24282.7001\build\net48\Grasshopper.targets')" />
+	<Import Project="..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets" Condition="Exists('..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets')" />
+	<Import Project="..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets" Condition="Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" />
+
+	<!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>
   <Target Name="AfterBuild">
   </Target>
   -->
-  <Target Name="DownloadGeoidFile" AfterTargets="Build">
-    <!-- Define the source URL as a property. This avoids large gtx files being checked into source control -->
-    <PropertyGroup>
-      <GeoidUrl>https://github.com/OSGeo/proj-datumgrid/raw/refs/heads/master/world/egm08_25.gtx</GeoidUrl>
-      <TargetGtxPath>$(TargetDir)gdal\share\egm08_25.gtx</TargetGtxPath>
-    </PropertyGroup>
-    <!-- Ensure the directory exists first -->
-    <MakeDir Directories="$(TargetDir)gdal\share" Condition="!Exists('$(TargetDir)gdal\share')" />
-    <!-- Use a condition to check for file existence -->
-    <Exec Command="powershell -Command &quot;Invoke-WebRequest -Uri '$(GeoidUrl)' -OutFile '$(TargetGtxPath)'&quot;" Condition="!Exists('$(TargetGtxPath)') And '$(OS)' == 'Windows_NT'" />
-    <Exec Command="curl -LJo $(TargetGtxPath) $(GeoidUrl)" Condition="!Exists('$(TargetGtxPath)') And '$(OS)' != 'Windows_NT'" />
-  </Target>
-  <Import Project="..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets" Condition="Exists('..\packages\Microsoft.NETFramework.ReferenceAssemblies.net48.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net48.targets')" />
-  <Import Project="..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets" Condition="Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" />
+
+	<!-- Ensure availability of Geoid file-->
+	<Target Name="DownloadGeoidFile" AfterTargets="Build">
+		<!-- Define the source URL as a property. This avoids large gtx files being checked into source control -->
+		<PropertyGroup>
+			<GeoidUrl>https://github.com/OSGeo/proj-datumgrid/raw/refs/heads/master/world/egm08_25.gtx</GeoidUrl>
+			<TargetGtxPath>$(OutputPath)gdal\share\egm08_25.gtx</TargetGtxPath>
+		</PropertyGroup>
+		<!-- Ensure the directory exists first -->
+		<MakeDir Directories="$(OutputPath)gdal\share" Condition="!Exists('$(OutputPath)gdal\share')" />
+		<!-- Use a condition to check for file existence -->
+		<Exec Command="powershell -Command &quot;Invoke-WebRequest -Uri '$(GeoidUrl)' -OutFile '$(TargetGtxPath)'&quot;" Condition="!Exists('$(TargetGtxPath)') And '$(OS)' == 'Windows_NT'" />
+		<Exec Command="curl -LJo $(TargetGtxPath) $(GeoidUrl)" Condition="!Exists('$(TargetGtxPath)') And '$(OS)' != 'Windows_NT'" />
+	</Target>
+	<!-- End ensure availability of Geoid file-->
+
 </Project>
