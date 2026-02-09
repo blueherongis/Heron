@@ -47,9 +47,9 @@ namespace Heron.Utilities.Google3DTiles
             /// Geoid source: https://github.com/OSGeo/proj-datumgrid/blob/master/world/egm08_25.gtx (142mb file)
             /// See also: https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html for geoid vs ellipsoid
 
-            var geoidgridsLocation = Path.Combine(HeronLocation.GetHeronFolder(), "gdal", "share", "egm08_25.gtx");
+            var geoidgridsLocation = Path.Combine(HeronLocation.GetHeronFolder(), "gdal", "share", "test loc", "egm08_25.gtx");
             _wgsGeoidSrs = new SpatialReference("");
-            _wgsGeoidSrs.SetFromUserInput("+proj=longlat +datum=WGS84 +no_defs +geoidgrids=" + geoidgridsLocation);
+            _wgsGeoidSrs.SetFromUserInput("+proj=longlat +datum=WGS84 +no_defs +geoidgrids=\"" + geoidgridsLocation + "\"");
 
             ///Set transform from input spatial reference to Heron spatial reference
             _heronSrs = new OSGeo.OSR.SpatialReference("");
