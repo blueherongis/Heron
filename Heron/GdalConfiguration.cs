@@ -88,14 +88,9 @@ namespace Heron
                     //    throw new FileNotFoundException(
                     //        $"GDAL native wrapper file not found at '{Path.Combine(nativePath, "gdal_wrap.dll")}'");
 
-                    // Add directories
+                    // Add directories.  Everything is thrown in the same folder for mac, so we don't need to add the plugins folder separately
                     //AddDllDirectory(nativePath);
                     //AddDllDirectory(Path.Combine(nativePath, "plugins"));
-                    
-                    ///Custom configuration options
-                    //OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
-                    ///To be backwards compatible with the way Heron uses coordinate order
-                    //OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
 
                     // Set the additional GDAL environment variables.
                     string gdalDataMac = Path.Combine(gdalPath, "data");
@@ -116,6 +111,12 @@ namespace Heron
 
                     string certificateFileMac = Path.Combine(gdalPath, "curl-ca-bundle.crt");
                     Gdal.SetConfigOption("GDAL_CURL_CA_BUNDLE", certificateFileMac);
+
+                    ///Custom configuration options
+                    OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
+                    ///To be backwards compatible with the way Heron uses coordinate order
+                    OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
+                    //OSGeo.GDAL.Gdal.SetConfigOption("SHAPE_RESTORE_SHX", "YES");
 
                     _usable = true;// tmp != notSet;
                     return;
