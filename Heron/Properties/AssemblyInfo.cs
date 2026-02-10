@@ -15,7 +15,10 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
-//[assembly: GH_Loading(GH_LoadingDemand.ForceDirect)]
+// Force Grasshopper to load this assembly directly, rather than using the default lazy loading. This is necessary for the assembly to be loaded in time for the Grasshopper plugin to work properly.
+// Note: This may cause a longer startup time for Grasshopper, but it ensures that the plugin is available when needed.
+// https://discourse.mcneel.com/t/coff-and-grasshoppper/74883/15?u=brian_washburn
+[assembly: GH_Loading(GH_LoadingDemand.ForceDirect)]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
 // to COM components.  If you need to access a type in this assembly from 
