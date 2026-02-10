@@ -223,6 +223,9 @@
   <Target Name="BeforeBuild">
   </Target>
   <Target Name="AfterBuild">
+	  Disable MSSQLSpatial OGR driver. It only works if you have ODBC Driver 18 for SQL Server downloaded/installed from Microsoft 
+	  The user can remove .disabled to get OGR to include it as a driver.
+	  <Exec Condition="$([MSBuild]::IsOSPlatform('Windows'))" Command="if exist &quot;$(OutputPath)gdal\x64\plugins\ogr_MSSQLSpatial.dll&quot; ( ren &quot;$(OutputPath)gdal\x64\plugins\ogr_MSSQLSpatial.dll&quot; &quot;ogr_MSSQLSpatial.dll.disabled&quot; )" />
   </Target>
   -->
 
