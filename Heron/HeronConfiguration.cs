@@ -8,6 +8,7 @@ using System.Diagnostics;
 
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Memory;
+using Microsoft.Extensions.Configuration.UserSecrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,12 +52,20 @@ namespace Heron
                     .SetBasePath(executingDirectory)
                     .AddJsonFile("appsettings.json", true, true)
                     .AddEnvironmentVariables()
-                    //.AddUserSecrets("6aefc65d-9849-4d4f-b9a7-16d77517db86")
+                    .AddUserSecrets("6aefc65d-9849-4d4f-b9a7-16d77517db86")
                     .AddJsonStream(jsonStream)
                     .Build();
                 var services = new ServiceCollection();
 
-                services.Configure<HeronConfiguration>(configuration.GetSection(nameof(HeronConfiguration)));
+                // Try to bind configuration using the fully-qualified type name first (matches appsettings.json "Heron.HeronConfiguration").
+                // Fall back to the simple type name if the section doesn't exist. This prevents null option values when
+                // configuration sections use the namespace-qualified key.
+                var configSection = configuration.GetSection(typeof(HeronConfiguration).FullName);
+                if (configSection == null || !configSection.Exists())
+                {
+                    configSection = configuration.GetSection(nameof(HeronConfiguration));
+                }
+                services.Configure<HeronConfiguration>(configSection);
                 var provider = services.BuildServiceProvider();
                 return provider;
             }
