@@ -93,6 +93,7 @@ namespace Heron
                     //AddDllDirectory(Path.Combine(nativePath, "plugins"));
 
                     // Set the additional GDAL environment variables.
+                    // TODO: Look into wrapping paths in quotes in case there are spaces in the path.
                     string gdalDataMac = Path.Combine(gdalPath, "data");
                     Environment.SetEnvironmentVariable("GDAL_DATA", gdalDataMac);
                     Gdal.SetConfigOption("GDAL_DATA", gdalDataMac);
@@ -116,7 +117,7 @@ namespace Heron
                     OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
                     ///To be backwards compatible with the way Heron uses coordinate order
                     OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
-                    //OSGeo.GDAL.Gdal.SetConfigOption("SHAPE_RESTORE_SHX", "YES");
+                    OSGeo.GDAL.Gdal.SetConfigOption("SHAPE_RESTORE_SHX", "YES");
 
                     _usable = true;// tmp != notSet;
                     return;
@@ -165,7 +166,7 @@ namespace Heron
                 OSGeo.GDAL.Gdal.SetConfigOption("GDAL_HTTP_UNSAFESSL", "YES");
                 ///To be backwards compatible with the way Heron uses coordinate order
                 OSGeo.GDAL.Gdal.SetConfigOption("OSR_DEFAULT_AXIS_MAPPING_STRATEGY", "TRADITIONAL_GIS_ORDER"); //or use AUTHORITY_COMPLIANT
-                //OSGeo.GDAL.Gdal.SetConfigOption("SHAPE_RESTORE_SHX", "YES");
+                OSGeo.GDAL.Gdal.SetConfigOption("SHAPE_RESTORE_SHX", "YES");
 
                 _usable = true;
             }
