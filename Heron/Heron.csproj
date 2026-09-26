@@ -5,7 +5,7 @@
         Rhino 6: net45
         Rhino 7: net48
         Rhino 8 Windows: net48, net7.0, net7.0-windows, net7.0-windows10.0.22000.0, etc
-        Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
+        Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc BW: remove net48 if this doesn't work
     -->
 		<TargetFrameworks>net8.0-windows;net8.0</TargetFrameworks>
 		<EnableDynamicLoading>true</EnableDynamicLoading>
@@ -24,6 +24,7 @@
 		<Description>Description of Heron</Description>
 	</PropertyGroup>
 
+	<!-- Look into the ItemGroup for PackageReference from HeronLASTools-->
 	<!-- For Windows only builds -->
 	<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) or $(TargetFramework.StartsWith('net4'))">
 		<UseWindowsForms>true</UseWindowsForms>
@@ -94,6 +95,7 @@
 		<PackageReference Include="GDAL.Native" Version="3.12.1" />
 		<PackageReference Include="GDAL.Plugins" Version="3.12.1" />
 		<PackageReference Include="Grasshopper" Version="8.12.24282.7001" ExcludeAssets="runtime" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.1" />
@@ -243,5 +245,10 @@
 		<Exec Command="curl -LJo $(TargetGtxPath) $(GeoidUrl)" Condition="!Exists('$(TargetGtxPath)') And '$(OS)' != 'Windows_NT'" />
 	</Target>
 	<!-- End ensure availability of Geoid file-->
+
+	<!-- Remove ogr_MSSQLSpatial.dll after build since it requires ODBC Driver 18 for SQL Server -->
+	<Target Name="RemoveMSSQLSpatialPlugin" AfterTargets="Build">
+		<Delete Files="$(OutputPath)gdal\x64\plugins\ogr_MSSQLSpatial.dll" />
+	</Target>
 
 </Project>
