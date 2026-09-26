@@ -206,6 +206,7 @@ namespace Heron
                     ///https://docs.microsoft.com/en-us/dotnet/api/system.net.webclient.downloadfilecompleted?view=net-6.0
                     using (var webClient = new WebClient())
                     {
+                        webClient.Headers.Add("User-Agent", "heron");
                         webClient.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadCompleted);
                         webClient.DownloadProgressChanged += new DownloadProgressChangedEventHandler(ProgressChanged);
                         webClient.DownloadFileAsync(new Uri(tQ), Path.Combine(folderPath, prefix + "_" + i + ".tif"));
