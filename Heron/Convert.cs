@@ -1019,8 +1019,8 @@ namespace Heron
             var lonDMSPattern = @"[ ,]*(-?(180[ :°d]*00[ :\'\'m]*00(\.0+)?|(1[0-7][0-9]|0[0-9][0-9]|[0-9][0-9])[ :°d]*[0-5][0-9][ :\'\'m]*[0-5][0-9](\.\d+)?)[ :\?\""s]*(E|e|W|w)?)";
             
             ///Regex pattern DD Longitude is with -180 to 180
-            var lonDDPattern = @"^(\+|-)?(?:180(?:(?:\.0{1,20})?)|(?:[0-9]|[1-9][0-9]|1[0-7][0-9])(?:(?:\.[0-9]{1,20})?))$";
-            
+            var lonDDPattern = @"^(\+|-)?(?:180(?:(?:\.0{1,40})?)|(?:[0-9]|[1-9][0-9]|1[0-7][0-9])(?:(?:\.[0-9]{1,40})?))$";
+
             ///Get rid of any white spaces
             dms = dms.Trim();
 
@@ -1029,7 +1029,7 @@ namespace Heron
             ///Test if the Lon is DD format and return as double if valid
             if (Regex.Match(dms, lonDDPattern).Success)
             {
-                return Double.Parse(dms);
+                return Double.Parse(dms, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
             }
 
             ///Else test if the Lon is DMS format and convert to double DD and return if valid
@@ -1042,7 +1042,7 @@ namespace Heron
                 double result;
                 for (int i = 0; i < bits.Count; i++)
                 {
-                    if (Double.TryParse(bits[i].ToString(), out result))
+                    if (Double.TryParse(bits[i].ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out result))
                     {
                         coordinate += result / f;
                         f *= 60;
@@ -1065,7 +1065,7 @@ namespace Heron
             var latDMSPattern = @"(-?(90[ :°d]*00[ :\'\'m]*00(\.0+)?|[0-8][0-9][ :°d]*[0-5][0-9][ :\'\'m]*[0-5][0-9](\.\d+)?)[ :\?\""s]*(N|n|S|s)?)";
             
             ///Regex pattern DD Latitude is with -90 to 90
-            var latDDPattern = @"^(\+|-)?(?:90(?:(?:\.0{1,20})?)|(?:[0-9]|[1-8][0-9])(?:(?:\.[0-9]{1,20})?))$";
+            var latDDPattern = @"^(\+|-)?(?:90(?:(?:\.0{1,40})?)|(?:[0-9]|[1-8][0-9])(?:(?:\.[0-9]{1,40})?))$";
 
             ///Get rid of any white spaces
             dms = dms.Trim();
@@ -1075,7 +1075,7 @@ namespace Heron
             ///Test if the Lat is DD format and return as double if valid
             if (Regex.Match(dms, latDDPattern).Success)
             {
-                return Double.Parse(dms);
+                return Double.Parse(dms, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
             }
             
             ///Else test if the Lat is DMS format and convert to double DD and return if valid
@@ -1088,7 +1088,7 @@ namespace Heron
                 double result;
                 for (int i = 0; i < bits.Count; i++)
                 {
-                    if (Double.TryParse(bits[i].ToString(), out result))
+                    if (Double.TryParse(bits[i].ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out result))
                     {
                         coordinate += result / f;
                         f *= 60;
