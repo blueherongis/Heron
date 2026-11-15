@@ -153,8 +153,8 @@ namespace Heron
                 Transform heronToUserSRSTransform = new Transform(1);
                 Transform userSRSToHeronTransform = new Transform(1);
                 Transform transform = new Transform(1);
-                ///Allow no transform for a straight export of coordinates if EAP is not set
-                if (RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthLocationIsSet())
+                ///Allow no transform for a straight export of coordinates if EAP is not set or ModelIsInHeronSRS is selected
+                if (!ModelIsInHeronSRS && RhinoDoc.ActiveDoc.EarthAnchorPoint.EarthLocationIsSet())
                 {
                     ///Apply EAP to HeronSRS
                     heronToUserSRSTransform = Heron.Convert.GetUserSRSToHeronSRSTransform(heronSRS);
@@ -612,6 +612,8 @@ namespace Heron
             }
         }
 
+        public bool ModelIsInHeronSRS { get; set; } = false;
+
         protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
         {
             if (drvDict.Count == 0)
@@ -648,6 +650,16 @@ namespace Heron
                 "the first one is considered the outer linestring of the polygon and the rest are considered holes." +
                 "If unchecked, closed polyline(s) will be exported as (MULTI)LINESTRING.";
 
+            ToolStripMenuItem srsItem = Menu_AppendItem(menu, "Model is drawn in Heron SRS (no EAP transform)", 
+                Menu_ModelIsInHeronSRSClicked, true, ModelIsInHeronSRS);
+
+        }
+
+        private void Menu_ModelIsInHeronSRSClicked(object sender, EventArgs e)
+        {
+            RecordUndoEvent("ModelIsInHeronSRS");
+            ModelIsInHeronSRS = !ModelIsInHeronSRS;
+            ExpireSolution(true);
         }
 
         private void ServiceItemOnClick(object sender, EventArgs e)
@@ -693,6 +705,8 @@ namespace Heron
 
         private string drvType = "ESRI Shapefile";
         private string drvExtension = ".shp";
+        private bool modelInSrs = false;
+
 
         public Dictionary<string, string> DriverDictionary
         {
@@ -724,6 +738,7 @@ namespace Heron
             writer.SetString("DriverType", DriverType);
             writer.SetString("DriverExtension", DriverExtension);
             writer.SetBoolean("ExportCurveAsPolygon", ExportCurveAsPolygon);
+            writer.SetBoolean("ModelIsInHeronSRS", ModelIsInHeronSRS);
             return base.Write(writer);
         }
 
@@ -732,6 +747,8 @@ namespace Heron
             DriverType = reader.GetString("DriverType");
             DriverExtension = reader.GetString("DriverExtension");
             ExportCurveAsPolygon = reader.GetBoolean("ExportCurveAsPolygon");
+            //ModelIsInHeronSRS = reader.GetBoolean("ModelIsInHeronSRS");
+            if (reader.TryGetBoolean("ModelIsInHeronSRS", ref modelInSrs)) ModelIsInHeronSRS = modelInSrs;
             return base.Read(reader);
         }
 
@@ -743,8 +760,6 @@ namespace Heron
         {
             get
             {
-                //You can add image files to your project resources and access them like this:
-                // return Resources.IconForThisComponent;
                 return Properties.Resources.shp;
             }
         }
