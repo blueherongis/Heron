@@ -3,6 +3,8 @@ using Newtonsoft.Json.Linq;
 using Rhino.DocObjects;
 using System;
 using System.Linq;
+using OSGeo.OSR;
+using OSGeo.OGR;
 
 namespace Heron
 {
@@ -18,7 +20,8 @@ namespace Heron
         {
             pManager.AddBooleanParameter("Set EAP", "set", "Set the EarthAnchorPoint", GH_ParamAccess.item, false);
             pManager.AddTextParameter("Point of Interest", "poi", "Point of interest or address with which to set the EarthAnchorPoint. " +
-                "If a point of interest or address is supplied, this component will query the ESRI geolocation service and set the EAP to the first coordinates in the list of candidates.", GH_ParamAccess.item);
+                "If a point of interest or address is supplied, this component will query the ESRI geolocation service and set the EAP to the first coordinates in the list of candidates.  " +
+                "If the Point of Interest starts with \"EPSG:\" or \"epsg:\", the component will set the EAP to the origin of the specified coordinate system.", GH_ParamAccess.item);
             pManager[1].Optional = true;
             pManager.AddGenericParameter("Latitude", "LAT", "Latitude as a number (full double precision) or text in either Decimal Degree (DD) or Degree Minute Second (DMS) format", GH_ParamAccess.item);
             pManager[2].Optional = true;
@@ -46,13 +49,11 @@ namespace Heron
 
             DA.GetData<bool>("Set EAP", ref EAP);
             DA.GetData<string>("Point of Interest", ref address);
-            //DA.GetData<string>("Latitude", ref latString);
-            //DA.GetData<string>("Longitude", ref lonString);
 
             double latNum = Double.NaN;
             double lonNum = Double.NaN;
             latString = GetCoordinate(DA, "Latitude", out latNum);
-            lonString = GetCoordinate(DA, "Longitude", out lonNum);
+            lonString = GetCoordinate(DA, "Longitude", out lonNum);            
 
             if (EAP == true)
             {
@@ -75,7 +76,47 @@ namespace Heron
                     return;
                 }
 
-                if (!string.IsNullOrEmpty(address) && string.IsNullOrEmpty(latString) && string.IsNullOrEmpty(lonString))
+                // If the user has provided a Point of Interest that starts with "EPSG:" or "epsg:", we will parse the EPSG code and use it to transform the origin (0,0)
+                // of that coordinate system to WGS84 coordinates, which will then be used to set the EAP.
+                if (!string.IsNullOrEmpty(address) && (address.StartsWith("EPSG:", StringComparison.OrdinalIgnoreCase) || address.StartsWith("epsg:", StringComparison.OrdinalIgnoreCase)))
+                {
+                    // GDAL setup
+                    Heron.GdalConfiguration.ConfigureOgr();
+
+                    // Parse EPSG code from Point of Interest input
+                    string[] parts = address.Split(':');
+                    if (parts.Length == 2 && int.TryParse(parts[1], out int epsgCode))
+                    {
+                        try
+                        {
+                            // Transform origin (0, 0) of the coordinate system to WGS84
+                            var sourceCoords = new double[] { 0, 0 }; // Origin of source coordinate system
+                            var targetSRS = new SpatialReference(null);
+                            targetSRS.ImportFromEPSG(4326);
+                            var sourceSRS = new SpatialReference(null);
+                            sourceSRS.ImportFromEPSG(epsgCode);
+                            using (var coordTransform = new OSGeo.OSR.CoordinateTransformation(sourceSRS, targetSRS))
+                            {
+                                coordTransform.TransformPoint(sourceCoords);
+                                //var targetCoords = coordTransform.TransformPoint(sourceCoords);
+                                ePt.EarthBasepointLatitude = sourceCoords[1];
+                                ePt.EarthBasepointLongitude = sourceCoords[0];
+                            }
+                            addressString = $"EAP set to origin of EPSG:{epsgCode} in WGS84\r\n";
+                        }
+                        catch (Exception ex)
+                        {
+                            AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Failed to transform EPSG:{epsgCode} to WGS84: {ex.Message}");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Invalid EPSG code format. Please use 'EPSG:XXXX' where XXXX is the coordinate system code.");
+                        return;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(address) && string.IsNullOrEmpty(latString) && string.IsNullOrEmpty(lonString))
                 {
                     string output = Heron.Convert.HttpToJson("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?Address=" + address + "&f=pjson");
                     JObject ja = JObject.Parse(output);
